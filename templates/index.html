@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block title %} — Game Lookup{% endblock %}
+
+{% block style %}
+.lookup-wrap{
+  max-width:1100px;
+  margin:48px auto;
+  padding:0 24px;
+}
+.lookup-header{
+  margin-bottom:36px;
+}
+.lookup-eyebrow{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.lookup-title{
+  font-size:28px;
+  font-weight:800;
+  letter-spacing:-0.5px;
+  color:var(--text);
+}
+
+/* ── Breadcrumb ── */
+.breadcrumb{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:28px;
+  min-height:28px;
+}
+.breadcrumb-item{
+  font-size:13px;
+  font-weight:600;
+  color:var(--muted);
+  cursor:pointer;
+  transition:color .12s;
+}
+.breadcrumb-item:hover{color:var(--text);}
+.breadcrumb-item.active{color:var(--text); cursor:default;}
+.breadcrumb-sep{color:var(--border2); font-size:14px;}
+
+/* ── Panels ── */
+.panel{ display:none; }
+.panel.visible{ display:block; }
+
+/* ── Team grid ── */
+.team-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:12px;
+}
+.team-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:20px 14px 16px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.team-card:hover{
+  border-color:var(--accent);
+  background:var(--surface2);
+}
+.team-logo{
+  width:48px;
+  height:48px;
+  object-fit:contain;
+}
+.team-abbrev{
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.5px;
+  color:var(--text);
+  text-transform:uppercase;
+}
+.team-gp{
+  font-size:11px;
+  color:var(--muted);
+}
+
+/* ── Month list ── */
+.month-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.month-btn{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 22px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text2);
+  cursor:pointer;
+  transition:border-color .12s, background .12s, color .12s;
+}
+.month-btn:hover{
+  border-color:var(--accent);
+  background:var(--surface2);
+  color:var(--text);
+}
+
+/* ── Game list ── */
+.game-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.game-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:14px 18px;
+  text-decoration:none;
+  color:var(--text);
+  transition:border-color .12s, background .12s;
+}
+.game-row:hover{
+  border-color:var(--accent);
+  background:var(--surface2);
+}
+.game-row-logos{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:120px;
+}
+.game-row-logo{
+  width:32px;
+  height:32px;
+  object-fit:contain;
+}
+.game-row-vs{
+  font-size:10px;
+  font-weight:700;
+  color:var(--muted);
+  letter-spacing:.5px;
+}
+.game-row-label{
+  font-size:14px;
+  font-weight:600;
+  flex:1;
+}
+.game-row-sub{
+  font-size:12px;
+  color:var(--muted);
+}
+.game-row-date{
+  font-size:12px;
+  color:var(--muted);
+  white-space:nowrap;
+  margin-left:auto;
+}
+
+/* ── Grade scale ── */
+.scale{
+  margin-top:48px;
+  padding-top:32px;
+  border-top:1px solid var(--border);
+}
+.scale-title{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:var(--muted);
+  margin-bottom:16px;
+}
+.scale-chips{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.scale-chip{
+  padding:5px 16px;
+  border-radius:6px;
+  font-size:13px;
+  font-weight:600;
+  color:#fff;
+}
+{% endblock %}
+
+{% block content %}
+<div class="lookup-wrap">
+  <div class="lookup-header">
+    <div class="lookup-eyebrow">2025–26 NHL Season</div>
+    <div class="lookup-title">Game Lookup</div>
+  </div>
+
+  <div class="breadcrumb" id="breadcrumb">
+    <span class="breadcrumb-item active" id="bc-teams" onclick="showTeams()">All Teams</span>
+  </div>
+
+  {# ── Panel 1: Team cards ── #}
+  <div class="panel visible" id="panel-teams">
+    <div class="team-grid" id="team-grid"></div>
+  </div>
+
+  {# ── Panel 2: Month buttons ── #}
+  <div class="panel" id="panel-months">
+    <div class="month-grid" id="month-grid"></div>
+  </div>
+
+  {# ── Panel 3: Game rows ── #}
+  <div class="panel" id="panel-games">
+    <div class="game-list" id="game-list"></div>
+  </div>
+
+  <div class="scale">
+    <div class="scale-title">Grade Scale</div>
+    <div class="scale-chips">
+      <span class="scale-chip" style="background:#0d9488">Elite  90+</span>
+      <span class="scale-chip" style="background:#16a34a">Great  80–89</span>
+      <span class="scale-chip" style="background:#4d7c0f">Good  70–79</span>
+      <span class="scale-chip" style="background:#b45309">Average  60–69</span>
+      <span class="scale-chip" style="background:#c2410c">Below  50–59</span>
+      <span class="scale-chip" style="background:#b91c1c">Poor  &lt;50</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Raw game data from server ──────────────────────────────────────────────
+const GAMES = {{ games | tojson }};
+
+// Month names
+// Season order: Oct → Sep (NHL season wraps calendar year)
+const MONTHS = ['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'];
+
+// Build per-team index: { abbrev -> { logo, games:[] } }
+function buildTeamIndex(games) {
+  const teams = {};
+  for (const g of games) {
+    for (const side of ['away','home']) {
+      const abbrev = g[side];
+      const logo   = g[side + '_logo'];
+      if (!abbrev || abbrev === '???') continue;
+      if (!teams[abbrev]) teams[abbrev] = { abbrev, logo, games: [] };
+      if (!teams[abbrev].games.find(x => x.id === g.id)) {
+        teams[abbrev].games.push(g);
+      }
+    }
+  }
+  return teams;
+}
+
+const TEAM_INDEX = buildTeamIndex(GAMES);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let selectedTeam = null;
+let selectedMonth = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function show(id)  { document.getElementById(id).classList.add('visible'); }
+function hide(id)  { document.getElementById(id).classList.remove('visible'); }
+
+function setBreadcrumb(items) {
+  // items: [{label, onclick}]
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+  items.forEach((item, i) => {
+    const span = document.createElement('span');
+    span.className = 'breadcrumb-item' + (i === items.length - 1 ? ' active' : '');
+    span.textContent = item.label;
+    if (item.onclick && i < items.length - 1) span.onclick = item.onclick;
+    bc.appendChild(span);
+    if (i < items.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'breadcrumb-sep';
+      sep.textContent = '›';
+      bc.appendChild(sep);
+    }
+  });
+}
+
+// ── Panel 1: Teams ─────────────────────────────────────────────────────────
+function showTeams() {
+  selectedTeam = null;
+  selectedMonth = null;
+  hide('panel-months');
+  hide('panel-games');
+  show('panel-teams');
+  setBreadcrumb([{ label: 'All Teams' }]);
+}
+
+function renderTeams() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = '';
+  const sorted = Object.values(TEAM_INDEX).sort((a, b) => a.abbrev.localeCompare(b.abbrev));
+  for (const team of sorted) {
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.onclick = () => showMonths(team.abbrev);
+    card.innerHTML = `
+      <img class="team-logo" src="${team.logo}" alt="${team.abbrev}" onerror="this.style.display='none'">
+      <div class="team-abbrev">${team.abbrev}</div>
+      <div class="team-gp">${team.games.length} game${team.games.length !== 1 ? 's' : ''}</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+// ── Panel 2: Months ────────────────────────────────────────────────────────
+function showMonths(abbrev) {
+  selectedTeam = abbrev;
+  selectedMonth = null;
+  hide('panel-teams');
+  hide('panel-games');
+
+  const team = TEAM_INDEX[abbrev];
+  // Collect unique months
+  const monthSet = new Set();
+  for (const g of team.games) {
+    // label may contain "(Apr 28)" or similar
+    const m = g.label.match(/\(([A-Za-z]{3})\s/);
+    if (m) monthSet.add(m[1]);
+  }
+  // Sort months by calendar order
+  const sorted = [...monthSet].sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b));
+
+  const grid = document.getElementById('month-grid');
+  grid.innerHTML = '';
+  for (const mon of sorted) {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn';
+    btn.textContent = mon;
+    btn.onclick = () => showGames(abbrev, mon);
+    grid.appendChild(btn);
+  }
+
+  // If only one month, skip straight to games
+  if (sorted.length === 1) {
+    showGames(abbrev, sorted[0]);
+    return;
+  }
+
+  show('panel-months');
+  setBreadcrumb([
+    { label: 'All Teams', onclick: showTeams },
+    { label: abbrev }
+  ]);
+}
+
+// ── Panel 3: Games ─────────────────────────────────────────────────────────
+function showGames(abbrev, month) {
+  selectedMonth = month;
+  hide('panel-teams');
+  hide('panel-months');
+
+  const team = TEAM_INDEX[abbrev];
+  const filtered = team.games.filter(g => g.label.includes('(' + month));
+
+  // Sort by game_id (chronological)
+  filtered.sort((a, b) => a.id - b.id);
+
+  const list = document.getElementById('game-list');
+  list.innerHTML = '';
+  for (const g of filtered) {
+    const a = document.createElement('a');
+    a.className = 'game-row';
+    a.href = `/game/${g.id}?season=20252026`;
+
+    const dateMatch = g.label.match(/\((.+?)\)/);
+    const dateStr = dateMatch ? dateMatch[1] : '';
+
+    // Determine game type label
+    let typeLine = '';
+    if (g.round > 0) {
+      typeLine = `Round ${g.round} · Game ${g.game_num}`;
+    } else {
+      typeLine = 'Regular Season';
+    }
+
+    a.innerHTML = `
+      <div class="game-row-logos">
+        <img class="game-row-logo" src="${g.away_logo}" alt="${g.away}" onerror="this.style.display='none'">
+        <span class="game-row-vs">@</span>
+        <img class="game-row-logo" src="${g.home_logo}" alt="${g.home}" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div class="game-row-label">${g.away} at ${g.home}</div>
+        <div class="game-row-sub">${typeLine}</div>
+      </div>
+      <div class="game-row-date">${dateStr}</div>
+    `;
+    list.appendChild(a);
+  }
+
+  show('panel-games');
+  setBreadcrumb([
+    { label: 'All Teams', onclick: showTeams },
+    { label: abbrev, onclick: () => showMonths(abbrev) },
+    { label: month }
+  ]);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderTeams();
+showTeams();
+</script>
+{% endblock %}

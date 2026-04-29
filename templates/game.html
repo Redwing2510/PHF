@@ -1,0 +1,695 @@
+{% extends "base.html" %}
+{% block title %} — {{ away_abbrev }} @ {{ home_abbrev }}{% endblock %}
+
+{% block style %}
+/* ── Game header ── */
+.back-link{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;color:var(--muted);
+  margin-bottom:20px;
+  transition:color .15s;
+}
+.back-link:hover{color:var(--text2)}
+
+.game-header{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  margin-bottom:28px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:28px 48px;
+}
+.gh-team{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  min-width:160px;
+}
+.gh-logo{
+  width:64px;
+  height:64px;
+  object-fit:contain;
+}
+.gh-abbrev{
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:-1px;
+  line-height:1;
+}
+.gh-name{font-size:13px;color:var(--muted);font-weight:500}
+.gh-sep{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  padding:0 48px;
+  min-width:200px;
+}
+.gh-scores{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  font-size:54px;
+  font-weight:900;
+  letter-spacing:-2px;
+  line-height:1;
+}
+.gh-dash{font-size:36px;color:var(--muted);font-weight:300}
+.gh-final{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+  color:var(--muted);
+  background:var(--surface3);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:3px 12px;
+}
+
+/* ── Filters ── */
+.filters{
+  display:flex;
+  gap:24px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.filter-group{
+  display:flex;
+  gap:4px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:3px;
+}
+.filter-btn{
+  padding:5px 14px;
+  border:none;
+  border-radius:6px;
+  background:transparent;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.3px;
+  transition:background .15s,color .15s;
+}
+.filter-btn.active{background:var(--surface3);color:var(--text)}
+.filter-btn:hover:not(.active){color:var(--text2)}
+
+/* ── Table wrapper ── */
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+}
+
+/* ── Main grades table ── */
+.grades-table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:1200px;
+  font-size:13px;
+}
+
+/* Group label row */
+.grades-table thead tr.group-row th{
+  background:var(--surface2);
+  padding:6px 0;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  color:var(--muted);
+  border-bottom:1px solid var(--border);
+  text-align:center;
+}
+.grades-table thead tr.group-row th.grade-group{
+  color:#06b6d4;
+  border-left:1px solid var(--border2);
+}
+.grades-table thead tr.group-row th.stats-group{
+  color:#a3a3a3;
+  border-left:1px solid var(--border2);
+}
+
+/* Column header row */
+.grades-table thead tr.col-row th{
+  background:var(--surface2);
+  padding:8px 10px;
+  text-align:right;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:var(--muted);
+  border-bottom:2px solid var(--border2);
+  white-space:nowrap;
+}
+.grades-table thead tr.col-row th.th-name{text-align:left}
+.grades-table thead tr.col-row th.th-grade{
+  text-align:center;
+  color:#06b6d4;
+  border-left:1px solid var(--border2);
+}
+
+/* Data rows */
+.grades-table tbody tr.player-row{
+  cursor:pointer;
+  transition:background .1s;
+  border-bottom:1px solid var(--border);
+}
+.grades-table tbody tr.player-row:hover{background:var(--surface2)}
+.grades-table tbody tr.player-row td{
+  padding:9px 10px;
+  text-align:right;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+.grades-table tbody tr.player-row td.td-rank{
+  color:var(--muted);
+  font-size:12px;
+  width:36px;
+}
+.grades-table tbody tr.player-row td.td-name{
+  text-align:left;
+  font-weight:600;
+  color:var(--text);
+  max-width:200px;
+}
+.td-name-inner{display:flex;align-items:center;gap:8px}
+.expand-icon{
+  color:var(--muted);
+  font-size:15px;
+  width:16px;
+  display:inline-block;
+  transition:transform .2s;
+  flex-shrink:0;
+}
+.expand-icon.open{transform:rotate(90deg)}
+.grades-table tbody tr.player-row td.td-team{
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+  letter-spacing:.5px;
+}
+.grades-table tbody tr.player-row td.td-pos{
+  text-align:center;
+  font-size:11px;
+  font-weight:600;
+  color:var(--muted);
+}
+.grades-table tbody tr.player-row td.td-grade{
+  text-align:center;
+  border-left:1px solid var(--border2);
+}
+.grades-table tbody tr.player-row td.td-sub{
+  text-align:center;
+}
+.grades-table tbody tr.player-row td.td-stats{
+  color:var(--text2);
+}
+.grades-table tbody tr.player-row td.td-stats-sep{
+  color:var(--text2);
+  border-left:1px solid var(--border2);
+}
+
+/* Grade badges */
+.grade-badge{
+  display:inline-flex;
+  align-items:baseline;
+  gap:5px;
+  padding:4px 10px;
+  border-radius:5px;
+  font-weight:700;
+}
+.grade-badge .g-letter{font-size:11px;opacity:.85}
+.grade-badge .g-score{font-size:15px}
+.grade-sub{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  padding:3px 7px;
+  border-radius:4px;
+  font-size:12.5px;
+  font-weight:600;
+}
+.grade-dash{color:var(--muted);font-size:15px}
+
+/* ── Sort arrows ── */
+.sort-arrow{display:inline-block;margin-left:3px;opacity:.4;font-size:9px}
+th.sorted .sort-arrow{opacity:1;color:var(--accent)}
+.grades-table thead tr.col-row th[data-col]{cursor:pointer;user-select:none}
+.grades-table thead tr.col-row th[data-col]:hover{color:var(--text2)}
+
+/* ── PBP expansion row ── */
+.pbp-row td{
+  padding:0 !important;
+  background:var(--surface2);
+  border-bottom:1px solid var(--border2);
+}
+.pbp-inner{padding:16px 24px 20px}
+.pbp-header{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text2);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.pbp-header .raw-grade{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:400;
+}
+
+.pbp-table{
+  border-collapse:collapse;
+  font-size:12.5px;
+  width:100%;
+  max-width:820px;
+}
+.pbp-table th{
+  text-align:left;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:var(--muted);
+  border-bottom:1px solid var(--border2);
+  padding:4px 10px 6px;
+}
+.pbp-table td{
+  padding:5px 10px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+.pbp-table tr:last-child td{border-bottom:none}
+.pbp-table td.mono{font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:12px}
+.pbp-table td.pos{color:#4ade80}
+.pbp-table td.neg{color:#f87171}
+.pbp-table td.muted{color:var(--muted)}
+.pbp-table td.period{color:var(--muted);font-size:11px}
+
+/* ── Microstat grades ── */
+.ms-section{
+  margin-top:16px;
+  padding:14px 16px;
+  background:var(--surface);
+  border:1px solid rgba(99,102,241,.3);
+  border-radius:8px;
+  max-width:560px;
+}
+.ms-section-header{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:#818cf8;
+  margin-bottom:10px;
+}
+.ms-section-header span{
+  opacity:.6;
+  font-weight:400;
+  text-transform:none;
+  letter-spacing:0;
+}
+.ms-grades{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.ms-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  flex:1;
+  min-width:76px;
+  padding:8px 4px;
+  background:var(--surface2);
+  border-radius:6px;
+}
+.ms-label{
+  font-size:9px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:var(--muted);
+}
+.ms-val{
+  font-size:16px;
+  font-weight:700;
+  font-family:'SF Mono',SFMono-Regular,Consolas,monospace;
+}
+.ms-val.ms-pos{color:#4ade80}
+.ms-val.ms-neu{color:var(--text2)}
+.ms-val.ms-neg{color:#f87171}
+.ms-enhanced-badge{
+  display:inline-block;
+  font-size:10px;
+  font-weight:700;
+  background:rgba(99,102,241,.12);
+  color:#818cf8;
+  padding:2px 8px;
+  border-radius:99px;
+  border:1px solid rgba(99,102,241,.3);
+  margin-top:6px;
+  letter-spacing:.3px;
+}
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/">← All Games</a>
+
+<!-- ── Game header ── -->
+<div class="game-header">
+  <div class="gh-team">
+    {% if away_logo %}<img class="gh-logo" src="{{ away_logo }}" alt="{{ away_abbrev }}">{% endif %}
+    <div class="gh-abbrev">{{ away_abbrev }}</div>
+    <div class="gh-name">{{ away }}</div>
+  </div>
+  <div class="gh-sep">
+    <div class="gh-scores">
+      <span>{{ away_score }}</span>
+      <span class="gh-dash">–</span>
+      <span>{{ home_score }}</span>
+    </div>
+    <div class="gh-final">Final</div>
+    {% if grades | selectattr('ms') | list %}
+    <div class="ms-enhanced-badge">🔬 Microstat Enhanced</div>
+    {% endif %}
+  </div>
+  <div class="gh-team">
+    {% if home_logo %}<img class="gh-logo" src="{{ home_logo }}" alt="{{ home_abbrev }}">{% endif %}
+    <div class="gh-abbrev">{{ home_abbrev }}</div>
+    <div class="gh-name">{{ home }}</div>
+  </div>
+</div>
+
+<!-- ── Filters ── -->
+<div class="filters">
+  <div class="filter-group" id="pos-filters">
+    <button class="filter-btn active" data-pos="all">All</button>
+    <button class="filter-btn" data-pos="fwd">Forwards</button>
+    <button class="filter-btn" data-pos="def">Defense</button>
+  </div>
+  <div class="filter-group" id="team-filters">
+    <button class="filter-btn active" data-team="all">Both Teams</button>
+    <button class="filter-btn" data-team="{{ away_abbrev }}">{{ away_abbrev }}</button>
+    <button class="filter-btn" data-team="{{ home_abbrev }}">{{ home_abbrev }}</button>
+  </div>
+</div>
+
+<!-- ── Grades table ── -->
+<div class="table-wrap">
+<table class="grades-table">
+  <thead>
+    <tr class="group-row">
+      <th colspan="4"></th>
+      <th colspan="5" class="grade-group">── PHF GRADE ──</th>
+      <th colspan="12" class="stats-group">── STATS ──</th>
+    </tr>
+    <tr class="col-row">
+      <th style="text-align:center" data-col="rank">#<span class="sort-arrow">↓</span></th>
+      <th class="th-name" data-col="name">NAME</th>
+      <th style="text-align:center" data-col="team">TEAM</th>
+      <th style="text-align:center" data-col="pos">POS</th>
+      <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="poss">POSS<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span></th>
+      <th data-col="toi">TOI<span class="sort-arrow">↓</span></th>
+      <th data-col="cf_pct">CF%<span class="sort-arrow">↓</span></th>
+      <th data-col="xg_pct">xG%<span class="sort-arrow">↓</span></th>
+      <th data-col="goals">G<span class="sort-arrow">↓</span></th>
+      <th data-col="assists">A<span class="sort-arrow">↓</span></th>
+      <th data-col="sog">SOG<span class="sort-arrow">↓</span></th>
+      <th data-col="hits">HIT<span class="sort-arrow">↓</span></th>
+      <th data-col="blocks">BLK<span class="sort-arrow">↓</span></th>
+      <th data-col="gva">GVA<span class="sort-arrow">↓</span></th>
+      <th data-col="tka">TKA<span class="sort-arrow">↓</span></th>
+      <th data-col="pim">PIM<span class="sort-arrow">↓</span></th>
+      <th data-col="fo_pct">FO%<span class="sort-arrow">↓</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in grades %}
+    <tr class="player-row"
+        data-pid="{{ row.player_id }}"
+        data-pos="{{ 'fwd' if row.position in ('C','L','R') else 'def' }}"
+        data-team="{{ row.team }}"
+        onclick="togglePbp({{ row.player_id }})">
+      <td class="td-rank" style="text-align:center">{{ row.rank }}</td>
+      <td class="td-name">
+        <div class="td-name-inner">
+          <span class="expand-icon" id="icon-{{ row.player_id }}">›</span>
+          {{ row.name }}
+        </div>
+      </td>
+      <td class="td-team">{{ row.team }}</td>
+      <td class="td-pos">{{ row.position }}</td>
+
+      <!-- OVERALL -->
+      <td class="td-grade" data-val="{{ '%.2f'|format(row.overall) }}">
+        <div class="grade-badge" style="background:{{ row.overall|grade_bg }};color:#fff">
+          <span class="g-letter">{{ row.overall_letter }}</span>
+          <span class="g-score">{{ "%.1f"|format(row.overall) }}</span>
+        </div>
+      </td>
+
+      <!-- OFF -->
+      <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.off) }}">
+        <div class="grade-sub" style="background:{{ row.off|grade_bg }};color:#fff">{{ "%.1f"|format(row.off) }}</div>
+      </td>
+
+      <!-- DEF -->
+      <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.dfn) }}">
+        <div class="grade-sub" style="background:{{ row.dfn|grade_bg }};color:#fff">{{ "%.1f"|format(row.dfn) }}</div>
+      </td>
+
+      <!-- POSS -->
+      <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.poss) }}">
+        <div class="grade-sub" style="background:{{ row.poss|grade_bg }};color:#fff">{{ "%.1f"|format(row.poss) }}</div>
+      </td>
+
+      <!-- FO -->
+      <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.fo) if row.fo is not none else '0' }}">
+        {% if row.fo is not none %}
+          <div class="grade-sub" style="background:{{ row.fo|grade_bg }};color:#fff">{{ "%.1f"|format(row.fo) }}</div>
+        {% else %}
+          <span class="grade-dash">—</span>
+        {% endif %}
+      </td>
+
+      <!-- Stats -->
+      <td class="td-stats-sep" data-val="{{ row.toi }}">{{ row.toi }}</td>
+      <td class="td-stats" data-val="{{ row.cf_pct if row.cf_pct != '—' else '0' }}">{{ row.cf_pct }}</td>
+      <td class="td-stats" data-val="{{ row.xg_pct if row.xg_pct != '—' else '0' }}">{{ row.xg_pct }}</td>
+      <td class="td-stats" data-val="{{ row.goals }}">{{ row.goals }}</td>
+      <td class="td-stats" data-val="{{ row.assists }}">{{ row.assists }}</td>
+      <td class="td-stats" data-val="{{ row.sog }}">{{ row.sog }}</td>
+      <td class="td-stats" data-val="{{ row.hits }}">{{ row.hits }}</td>
+      <td class="td-stats" data-val="{{ row.blocks }}">{{ row.blocks }}</td>
+      <td class="td-stats" data-val="{{ row.gva }}">{{ row.gva }}</td>
+      <td class="td-stats" data-val="{{ row.tka }}">{{ row.tka }}</td>
+      <td class="td-stats" data-val="{{ row.pim }}">{{ row.pim }}</td>
+      <td class="td-stats" data-val="{{ row.fo_pct if row.fo_pct != '—' else '0' }}">{{ row.fo_pct }}</td>
+    </tr>
+
+    <!-- PBP expansion row -->
+    <tr class="pbp-row" id="pbp-{{ row.player_id }}" style="display:none">
+      <td colspan="19">
+        <div class="pbp-inner">
+          <div class="pbp-header">
+            {{ row.name }}
+            <span class="grade-badge" style="background:{{ row.overall|grade_bg }};color:#fff;font-size:12px;padding:2px 8px">
+              {{ row.overall_letter }} {{ "%.1f"|format(row.overall) }}
+            </span>
+            <span class="raw-grade">Raw: {{ "%.2f"|format(row.raw_grade) }}</span>
+          </div>
+          {% if row.ms %}
+          <div class="ms-section">
+            <div class="ms-section-header">🔬 Microstat Grades <span>(AllThreeZones)</span></div>
+            <div class="ms-grades">
+              {% for label, val in [
+                ('Overall',   row.ms.overall),
+                ('Offense',   row.ms.offense),
+                ('Entries',   row.ms.entries),
+                ('Exits',     row.ms.exits),
+                ('Entry Def', row.ms.defense),
+                ('Forecheck', row.ms.forechecking)
+              ] %}
+              <div class="ms-item">
+                <span class="ms-label">{{ label }}</span>
+                <span class="ms-val {{ 'ms-pos' if val >= 0.5 else 'ms-neg' if val < -0.5 else 'ms-neu' }}">{{ '%+.2f'|format(val) }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          <div id="pbp-body-{{ row.player_id }}"></div>
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script>
+const PBP = {{ play_logs_json|safe }};
+
+/* ── Sorting ── */
+let sortCol = 'overall';
+let sortAsc  = false;
+
+const NUMERIC_COLS = new Set(['rank','goals','assists','sog','hits','blocks','gva','tka','pim']);
+const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','poss','fo','toi','cf_pct','xg_pct','goals','assists','sog','hits','blocks','gva','tka','pim','fo_pct'];
+function colIndex(col) { return COL_ORDER.indexOf(col); }
+
+function toiToSec(str) {
+  const parts = str.split(':');
+  if (parts.length !== 2) return 0;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function sortTable(col) {
+  if (col === sortCol) {
+    sortAsc = !sortAsc;
+  } else {
+    sortCol = col;
+    sortAsc = false;
+  }
+  document.querySelectorAll('.col-row th').forEach(th => {
+    th.classList.remove('sorted');
+    if (th.dataset.col === sortCol) th.classList.add('sorted');
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && th.dataset.col === sortCol) arrow.textContent = sortAsc ? '↑' : '↓';
+  });
+  const tbody = document.querySelector('.grades-table tbody');
+  const rows  = Array.from(tbody.querySelectorAll('.player-row'));
+  rows.sort((a, b) => {
+    const aCell = a.cells[colIndex(col)];
+    const bCell = b.cells[colIndex(col)];
+    let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
+    let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    if (col === 'toi') {
+      return sortAsc ? toiToSec(aVal) - toiToSec(bVal) : toiToSec(bVal) - toiToSec(aVal);
+    }
+    if (NUMERIC_COLS.has(col) || aCell.dataset.val !== undefined) {
+      aVal = parseFloat(aVal) || 0;
+      bVal = parseFloat(bVal) || 0;
+      return sortAsc ? aVal - bVal : bVal - aVal;
+    }
+    return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+  // Re-insert player rows while preserving their paired pbp rows
+  rows.forEach(r => {
+    tbody.appendChild(r);
+    const pbp = document.getElementById('pbp-' + r.dataset.pid);
+    if (pbp) tbody.appendChild(pbp);
+  });
+  applyFilters();
+}
+
+document.querySelectorAll('.col-row th[data-col]').forEach(th => {
+  th.addEventListener('click', () => sortTable(th.dataset.col));
+});
+
+
+/* ── Play-by-play expand/collapse ── */
+function togglePbp(pid) {
+  const row  = document.getElementById('pbp-' + pid);
+  const icon = document.getElementById('icon-' + pid);
+  if (row.style.display === 'none') {
+    row.style.display = 'table-row';
+    icon.classList.add('open');
+    const body = document.getElementById('pbp-body-' + pid);
+    if (!body.innerHTML) renderPbp(pid, body);
+  } else {
+    row.style.display = 'none';
+    icon.classList.remove('open');
+  }
+}
+
+function renderPbp(pid, el) {
+  const events = PBP[String(pid)] || [];
+  if (!events.length) {
+    el.innerHTML = '<p style="color:var(--muted);padding:6px 0">No events recorded.</p>';
+    return;
+  }
+  let html = `<table class="pbp-table">
+    <thead><tr>
+      <th>P</th><th>TIME</th><th>EVENT</th><th style="text-align:right">Δ</th><th style="text-align:right">RUNNING</th>
+    </tr></thead><tbody>`;
+  for (const e of events) {
+    const cls  = e.delta > 0 ? 'pos' : e.delta < 0 ? 'neg' : 'muted';
+    const sign = e.delta > 0 ? '+' : '';
+    html += `<tr>
+      <td class="period">${e.period}</td>
+      <td class="mono">${e.time}</td>
+      <td>${e.desc}</td>
+      <td class="mono ${cls}" style="text-align:right">${sign}${e.delta.toFixed(2)}</td>
+      <td class="mono muted" style="text-align:right">${e.running.toFixed(2)}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+/* ── Filters ── */
+let activePos  = 'all';
+let activeTeam = 'all';
+
+function applyFilters() {
+  let rank = 0;
+  document.querySelectorAll('.player-row').forEach(row => {
+    const pos    = row.dataset.pos;
+    const team   = row.dataset.team;
+    const pid    = row.dataset.pid;
+    const posOk  = activePos  === 'all' || activePos  === pos;
+    const teamOk = activeTeam === 'all' || activeTeam === team;
+    const show   = posOk && teamOk;
+    row.style.display = show ? '' : 'none';
+    const pbpRow = document.getElementById('pbp-' + pid);
+    if (!show && pbpRow) {
+      pbpRow.style.display = 'none';
+      const icon = document.getElementById('icon-' + pid);
+      if (icon) icon.classList.remove('open');
+    }
+    if (show) {
+      rank++;
+      row.querySelector('.td-rank').textContent = rank;
+    }
+  });
+}
+
+document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activePos = this.dataset.pos;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('#team-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#team-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activeTeam = this.dataset.team;
+    applyFilters();
+  });
+});
+</script>
+{% endblock %}

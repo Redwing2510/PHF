@@ -1,0 +1,775 @@
+{% extends "base.html" %}
+{% block title %} — 2025 Playoffs{% endblock %}
+
+{% block style %}
+/* ── Season header ── */
+.season-hero{
+  display:flex;
+  align-items:baseline;
+  gap:16px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.season-title{
+  font-size:26px;
+  font-weight:900;
+  letter-spacing:-1px;
+  color:var(--text);
+}
+.season-meta{
+  font-size:13px;
+  color:var(--muted);
+}
+.refresh-link{
+  margin-left:auto;
+  font-size:12px;
+  color:var(--muted);
+  padding:4px 10px;
+  border:1px solid var(--border);
+  border-radius:5px;
+  transition:color .15s,border-color .15s;
+}
+.refresh-link:hover{color:var(--text2);border-color:var(--border2)}
+
+/* ── Page layout ── */
+.page-layout{display:flex;align-items:flex-start;gap:0}
+.season-main{flex:1;min-width:0;padding-left:20px}
+
+/* ── Team sidebar ── */
+.team-sidebar{
+  width:156px;
+  flex-shrink:0;
+  position:sticky;
+  top:54px;
+  max-height:calc(100vh - 60px);
+  overflow:hidden;
+  border-right:1px solid var(--border);
+  background:var(--bg);
+  transition:width .2s ease;
+  display:flex;
+  flex-direction:column;
+}
+.team-sidebar.collapsed{width:40px}
+.sidebar-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:32px;
+  flex-shrink:0;
+  background:none;
+  border:none;
+  border-bottom:1px solid var(--border);
+  color:var(--muted);
+  font-size:13px;
+  cursor:pointer;
+  transition:color .12s,background .12s;
+}
+.sidebar-toggle:hover{color:var(--text2);background:var(--surface)}
+.sidebar-inner{overflow-y:auto;flex:1;padding:6px 0}
+.sidebar-inner::-webkit-scrollbar{width:3px}
+.sidebar-inner::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sidebar-label{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--muted);padding:4px 10px 8px;white-space:nowrap;overflow:hidden;
+  transition:opacity .15s;
+}
+.team-sidebar.collapsed .sidebar-label{opacity:0;pointer-events:none}
+.sidebar-conf{
+  display:flex;align-items:center;width:100%;
+  font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:2px;
+  color:var(--accent);padding:10px 10px;white-space:nowrap;overflow:hidden;
+  transition:opacity .15s,background .1s,color .1s;
+  background:none;border:none;cursor:pointer;text-align:left;
+}
+.sidebar-conf:hover{color:var(--text);background:var(--surface)}
+.sidebar-conf.active{background:var(--surface2);color:#fbbf24}
+.sidebar-div{
+  display:flex;align-items:center;width:100%;
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--muted);padding:6px 10px;margin-top:2px;white-space:nowrap;overflow:hidden;
+  transition:opacity .15s,background .1s,color .1s;border-top:1px solid var(--border);
+  background:none;border-top:1px solid var(--border);border-left:none;border-right:none;border-bottom:none;
+  cursor:pointer;text-align:left;
+}
+.sidebar-div:hover{color:var(--text2);background:var(--surface)}
+.sidebar-div.active{background:var(--surface2);color:var(--text)}
+.team-sidebar.collapsed .sidebar-conf,
+.team-sidebar.collapsed .sidebar-div{opacity:0;height:0;padding:0;border:none;pointer-events:none}
+.sidebar-team{
+  display:flex;align-items:center;gap:7px;
+  width:100%;padding:5px 8px;background:none;border:none;
+  color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.4px;
+  cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;
+  transition:background .1s,color .1s;
+}
+.sidebar-team:hover{background:var(--surface);color:var(--text2)}
+.sidebar-team.active{background:var(--surface2);color:var(--accent)}
+.st-logo{width:22px;height:22px;object-fit:contain;flex-shrink:0}
+.st-abbrev{flex-shrink:0;transition:opacity .1s,width .1s}
+.team-sidebar.collapsed .st-abbrev{opacity:0;width:0;overflow:hidden}
+.team-sidebar.collapsed .sidebar-team{justify-content:center;padding:7px 0}
+
+/* ── Filters ── */
+.filters{
+  display:flex;
+  gap:8px;
+  margin-bottom:14px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.player-search{
+  margin-left:auto;
+  min-width:220px;
+  max-width:320px;
+  width:100%;
+}
+.player-search input{
+  width:100%;
+  height:34px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--surface);
+  color:var(--text);
+  padding:0 12px;
+  font-size:13px;
+}
+.player-search input::placeholder{color:var(--muted)}
+.player-search input:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px rgba(240,180,41,.18);
+}
+.filter-group{
+  display:flex;
+  gap:3px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:3px;
+}
+.filter-btn{
+  padding:4px 12px;
+  border:none;
+  border-radius:5px;
+  background:transparent;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.filter-btn.active{background:var(--surface3);color:var(--text)}
+.filter-btn:hover:not(.active){color:var(--text2)}
+
+.team-info-bar{
+  display:none;
+  align-items:center;
+  gap:16px;
+  padding:8px 14px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  margin-bottom:12px;
+  font-size:13px;
+  color:var(--muted);
+}
+.team-info-bar .ti-name{font-weight:700;font-size:15px;color:var(--text)}
+.team-info-bar .ti-chip{
+  padding:2px 10px;
+  border-radius:4px;
+  background:var(--surface3);
+  border:1px solid var(--border);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.3px;
+}
+
+/* ── Table ── */
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+}
+.grades-table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:1200px;
+  font-size:13px;
+}
+.grades-table thead tr.group-row th{
+  background:var(--surface2);
+  padding:6px 0;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  color:var(--muted);
+  border-bottom:1px solid var(--border);
+  text-align:center;
+}
+.grades-table thead tr.group-row th.grade-group{
+  color:#06b6d4;
+  border-left:1px solid var(--border2);
+}
+.grades-table thead tr.group-row th.stats-group{
+  border-left:1px solid var(--border2);
+}
+.grades-table thead tr.col-row th{
+  background:var(--surface2);
+  padding:8px 10px;
+  text-align:right;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:var(--muted);
+  border-bottom:2px solid var(--border2);
+  white-space:nowrap;
+  cursor:pointer;
+  user-select:none;
+}
+.grades-table thead tr.col-row th:hover{color:var(--text2)}
+.grades-table thead tr.col-row th.th-name{text-align:left}
+.grades-table thead tr.col-row th.th-grade{
+  text-align:center;
+  color:#06b6d4;
+  border-left:1px solid var(--border2);
+}
+.grades-table thead tr.col-row th.th-stats-first{
+  border-left:1px solid var(--border2);
+}
+
+.grades-table tbody tr.player-row{
+  border-bottom:1px solid var(--border);
+  transition:background .1s;
+}
+.grades-table tbody tr.player-row:hover{background:var(--surface2)}
+.grades-table tbody tr.player-row.limited{opacity:.55}
+.grades-table tbody tr.player-row td{
+  padding:8px 10px;
+  text-align:right;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+.grades-table tbody tr.player-row td.td-rank{
+  color:var(--muted);
+  font-size:12px;
+  width:36px;
+  text-align:center;
+}
+.grades-table tbody tr.player-row td.td-name{
+  text-align:left;
+  font-weight:600;
+  color:var(--text);
+  max-width:200px;
+}
+.limited .td-name{font-style:italic}
+.grades-table tbody tr.player-row td.td-team{
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+  letter-spacing:.5px;
+}
+.grades-table tbody tr.player-row td.td-pos{
+  text-align:center;
+  font-size:11px;
+  font-weight:600;
+  color:var(--muted);
+}
+.grades-table tbody tr.player-row td.td-grade{
+  text-align:center;
+  border-left:1px solid var(--border2);
+}
+.grades-table tbody tr.player-row td.td-stats-sep{
+  color:var(--text2);
+  border-left:1px solid var(--border2);
+}
+.grades-table tbody tr.player-row td.td-stats{color:var(--text2)}
+
+/* ── Grade badges ── */
+.grade-badge{
+  display:inline-flex;
+  align-items:baseline;
+  gap:5px;
+  padding:3px 9px;
+  border-radius:5px;
+  font-weight:700;
+  color:#fff;
+}
+.grade-badge .g-letter{font-size:10px;opacity:.85}
+.grade-badge .g-score{font-size:14px}
+.grade-sub{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:42px;
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:12px;
+  font-weight:600;
+  color:#fff;
+}
+.grade-dash{color:var(--muted)}
+
+/* ── Team divider row ── */
+tr.team-divider td{
+  padding:0;
+  background:var(--surface3);
+  border-bottom:2px solid var(--border2);
+}
+tr.limit-divider{display:none}
+tr.limit-divider td{
+  padding:4px 12px;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:var(--muted);
+  background:var(--surface2);
+  border-top:1px dashed var(--border2);
+  border-bottom:1px dashed var(--border2);
+}
+
+/* ── Sort arrow ── */
+.sort-arrow{display:inline-block;margin-left:3px;opacity:.4;font-size:9px}
+th.sorted .sort-arrow{opacity:1;color:var(--accent)}
+
+/* ── MS mode toggle ── */
+.ms-toggle-btn{
+  padding:4px 14px;
+  border:1px solid rgba(99,102,241,.4);
+  border-radius:6px;
+  background:transparent;
+  color:#818cf8;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .12s,color .12s,border-color .12s;
+  white-space:nowrap;
+}
+.ms-toggle-btn:hover{border-color:#818cf8}
+.ms-toggle-btn.active{
+  background:rgba(99,102,241,.15);
+  color:#a5b4fc;
+  border-color:#818cf8;
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-layout">
+
+<!-- ── Team sidebar ── -->
+<aside class="team-sidebar" id="team-sidebar">
+  <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle team filter">‹</button>
+  <div class="sidebar-inner">
+    <button class="sidebar-team active" data-team="ALL">
+      <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/NHL_dark.svg" alt="NHL">
+      <span class="st-abbrev">All Teams</span>
+    </button>
+
+    {%- set divisions = [
+      ('EAST', [
+        ('Atlantic',     ['BOS','BUF','DET','FLA','MTL','OTT','TBL','TOR']),
+        ('Metropolitan', ['CAR','CBJ','NJD','NYI','NYR','PHI','PIT','WSH'])
+      ]),
+      ('WEST', [
+        ('Central', ['CHI','COL','DAL','MIN','NSH','STL','UTA','WPG']),
+        ('Pacific', ['ANA','CGY','EDM','LAK','SEA','SJS','VAN','VGK'])
+      ])
+    ] -%}
+    {%- set team_set = data.teams | list -%}
+    {% for conf, divs in divisions %}
+    <button class="sidebar-conf" data-conf="{{ conf }}">{{ conf }}</button>
+    {% for div_name, teams in divs %}
+    <button class="sidebar-div" data-div="{{ div_name }}">{{ div_name }}</button>
+    {% for team in teams %}{% if team in team_set %}
+    <button class="sidebar-team" data-team="{{ team }}">
+      <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ team }}_dark.svg" alt="{{ team }}" onerror="this.style.display='none'">
+      <span class="st-abbrev">{{ team }}</span>
+    </button>
+    {% endif %}{% endfor %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+</aside>
+
+<!-- ── Main content ── -->
+<div class="season-main">
+<div class="season-hero">
+  <div class="season-title">2025 NHL Playoffs</div>
+  <div class="season-meta">{{ data.total_games }} games · {{ data.players|length }} skaters</div>
+  <a class="refresh-link" href="/refresh" title="Re-fetch &amp; rebuild">↺ Refresh</a>
+</div>
+
+<!-- ── Filters + team info bar ── -->
+<div class="team-info-bar" id="team-info-bar">
+  <span class="ti-name" id="ti-name"></span>
+  <span class="ti-chip" id="ti-games"></span>
+  <span class="ti-chip" id="ti-qualifying"></span>
+</div>
+
+<div class="filters">
+  <div class="filter-group" id="pos-filters">
+    <button class="filter-btn active" data-pos="all">All</button>
+    <button class="filter-btn" data-pos="fwd">Forwards</button>
+    <button class="filter-btn" data-pos="def">Defense</button>
+  </div>
+  <button class="ms-toggle-btn" id="ms-toggle" title="Show only MS-tracked games, replace Dfn/Poss with microstat-enhanced grades">🔬 MS Mode</button>
+  <div class="player-search">
+    <input id="player-search" type="search" placeholder="Search player name..." autocomplete="off">
+  </div>
+</div>
+
+<!-- ── Grades table ── -->
+<div class="table-wrap">
+<table class="grades-table" id="grades-table">
+  <thead>
+    <tr class="group-row">
+      <th colspan="5"></th>
+      <th colspan="5" class="grade-group">── PHF GRADE ──</th>
+      <th colspan="13" class="stats-group">── STATS ──</th>
+    </tr>
+    <tr class="col-row">
+      <th style="text-align:center" data-col="rank">#<span class="sort-arrow">↓</span></th>
+      <th class="th-name" data-col="name">NAME</th>
+      <th style="text-align:center" data-col="team">TEAM</th>
+      <th style="text-align:center" data-col="position">POS</th>
+      <th style="text-align:center" data-col="gp">GP</th>
+      <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="poss">POSS<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span></th>
+      <th class="th-stats-first" data-col="toi_per_game">TOI/GM</th>
+      <th data-col="cf_pct">CF%</th>
+      <th data-col="xg_pct">xG%</th>
+      <th data-col="goals">G</th>
+      <th data-col="assists">A</th>
+      <th data-col="points">PTS</th>
+      <th data-col="sog">SOG</th>
+      <th data-col="hits">HIT</th>
+      <th data-col="blocks">BLK</th>
+      <th data-col="gva">GVA</th>
+      <th data-col="tka">TKA</th>
+      <th data-col="pim">PIM</th>
+      <th data-col="fo_pct">FO%</th>
+    </tr>
+  </thead>
+  <tbody id="table-body">
+  {% for row in data.players %}
+  <tr class="player-row{% if not row.qualified %} limited{% endif %}"
+      data-team="{{ row.team }}"
+      data-pos="{{ row.pos_group }}"
+      data-qualified="{{ 'true' if row.qualified else 'false' }}"
+      data-global-rank="{{ row.rank }}"
+      data-ms-gp="{{ row.ms_gp }}"
+      data-ms-overall="{{ '%.2f'|format(row.ms_overall) if row.ms_overall is not none else '' }}"
+      data-ms-overall-letter="{{ row.ms_overall_letter or '' }}"
+      data-ms-dfn="{{ '%.2f'|format(row.ms_dfn) if row.ms_dfn is not none else '' }}"
+      data-ms-poss="{{ '%.2f'|format(row.ms_poss) if row.ms_poss is not none else '' }}"
+      data-api-overall="{{ '%.2f'|format(row.overall) }}"
+      data-api-overall-letter="{{ row.overall_letter }}"
+      data-api-dfn="{{ '%.2f'|format(row.dfn) }}"
+      data-api-poss="{{ '%.2f'|format(row.poss) }}">
+    <td class="td-rank">{{ row.rank }}</td>
+    <td class="td-name">{{ row.name }}</td>
+    <td class="td-team">{{ row.team }}</td>
+    <td class="td-pos">{{ row.position }}</td>
+    <td class="td-stats td-gp" style="text-align:center">{{ row.gp }}</td>
+
+    <!-- OVERALL -->
+    <td class="td-grade" data-val="{{ "%.2f"|format(row.overall) }}">
+      <div class="grade-badge" style="background:{{ row.overall|grade_bg }}">
+        <span class="g-letter">{{ row.overall_letter }}</span>
+        <span class="g-score">{{ "%.1f"|format(row.overall) }}</span>
+      </div>
+    </td>
+
+    <!-- OFF -->
+    <td class="td-grade" data-val="{{ "%.2f"|format(row.off) }}">
+      <div class="grade-sub" style="background:{{ row.off|grade_bg }}">{{ "%.1f"|format(row.off) }}</div>
+    </td>
+
+    <!-- DEF -->
+    <td class="td-grade" data-val="{{ "%.2f"|format(row.dfn) }}">
+      <div class="grade-sub" style="background:{{ row.dfn|grade_bg }}">{{ "%.1f"|format(row.dfn) }}</div>
+    </td>
+
+    <!-- POSS -->
+    <td class="td-grade" data-val="{{ "%.2f"|format(row.poss) }}">
+      <div class="grade-sub" style="background:{{ row.poss|grade_bg }}">{{ "%.1f"|format(row.poss) }}</div>
+    </td>
+
+    <!-- FO -->
+    <td class="td-grade" data-val="{{ "%.2f"|format(row.fo) if row.fo is not none else '0' }}">
+      {% if row.fo is not none %}
+        <div class="grade-sub" style="background:{{ row.fo|grade_bg }}">{{ "%.1f"|format(row.fo) }}</div>
+      {% else %}
+        <span class="grade-dash">—</span>
+      {% endif %}
+    </td>
+
+    <!-- Stats -->
+    <td class="td-stats-sep td-toi">{{ row.toi_per_game }}</td>
+    <td class="td-stats td-cf" data-val="{{ row.cf_pct if row.cf_pct != '—' else '0' }}">{{ row.cf_pct }}</td>
+    <td class="td-stats td-xg" data-val="{{ row.xg_pct if row.xg_pct != '—' else '0' }}">{{ row.xg_pct }}</td>
+    <td class="td-stats td-goals">{{ row.goals }}</td>
+    <td class="td-stats td-assists">{{ row.assists }}</td>
+    <td class="td-stats td-points">{{ row.points }}</td>
+    <td class="td-stats td-sog">{{ row.sog }}</td>
+    <td class="td-stats td-hits">{{ row.hits }}</td>
+    <td class="td-stats td-blocks">{{ row.blocks }}</td>
+    <td class="td-stats td-gva">{{ row.gva }}</td>
+    <td class="td-stats td-tka">{{ row.tka }}</td>
+    <td class="td-stats td-pim">{{ row.pim }}</td>
+    <td class="td-stats td-fo-pct" data-val="{{ row.fo_pct_val if row.fo_pct_val is not none else '0' }}">{{ row.fo_pct }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script>
+const TEAM_META = {{ data.team_meta | tojson }};
+
+// Conference and division membership maps
+const TEAM_CONF = {
+  BOS:'EAST',BUF:'EAST',DET:'EAST',FLA:'EAST',MTL:'EAST',OTT:'EAST',TBL:'EAST',TOR:'EAST',
+  CAR:'EAST',CBJ:'EAST',NJD:'EAST',NYI:'EAST',NYR:'EAST',PHI:'EAST',PIT:'EAST',WSH:'EAST',
+  CHI:'WEST',COL:'WEST',DAL:'WEST',MIN:'WEST',NSH:'WEST',STL:'WEST',UTA:'WEST',WPG:'WEST',
+  ANA:'WEST',CGY:'WEST',EDM:'WEST',LAK:'WEST',SEA:'WEST',SJS:'WEST',VAN:'WEST',VGK:'WEST'
+};
+const TEAM_DIV = {
+  BOS:'Atlantic',BUF:'Atlantic',DET:'Atlantic',FLA:'Atlantic',MTL:'Atlantic',OTT:'Atlantic',TBL:'Atlantic',TOR:'Atlantic',
+  CAR:'Metropolitan',CBJ:'Metropolitan',NJD:'Metropolitan',NYI:'Metropolitan',NYR:'Metropolitan',PHI:'Metropolitan',PIT:'Metropolitan',WSH:'Metropolitan',
+  CHI:'Central',COL:'Central',DAL:'Central',MIN:'Central',NSH:'Central',STL:'Central',UTA:'Central',WPG:'Central',
+  ANA:'Pacific',CGY:'Pacific',EDM:'Pacific',LAK:'Pacific',SEA:'Pacific',SJS:'Pacific',VAN:'Pacific',VGK:'Pacific'
+};
+
+let activeTeam = 'ALL';
+let activePos  = 'all';
+let msMode     = true;
+let activeSearch = '';
+
+/* ── filter & rerank ── */
+function applyFilters() {
+  const rows    = Array.from(document.querySelectorAll('.player-row'));
+  let   rank    = 0;
+  let   lastQual = true;
+
+  rows.forEach(row => {
+    const t = row.dataset.team;
+    let teamOk;
+    if      (activeTeam === 'ALL')                        teamOk = true;
+    else if (activeTeam === 'EAST' || activeTeam === 'WEST') teamOk = TEAM_CONF[t] === activeTeam;
+    else if (['Atlantic','Metropolitan','Central','Pacific'].includes(activeTeam)) teamOk = TEAM_DIV[t] === activeTeam;
+    else                                                   teamOk = t === activeTeam;
+    const posOk  = activePos  === 'all' || row.dataset.pos  === activePos;
+    const msOk   = !msMode    || (parseInt(row.dataset.msGp  || '0') > 0 && row.dataset.qualified === 'true');
+    const nameOk = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
+    const show   = teamOk && posOk && msOk && nameOk;
+    row.style.display = show ? '' : 'none';
+    if (show) {
+      rank++;
+      row.querySelector('.td-rank').textContent = rank;
+    }
+  });
+
+  // Show/hide team info bar
+  const bar = document.getElementById('team-info-bar');
+  if (activeTeam !== 'ALL' && TEAM_META[activeTeam]) {
+    const meta = TEAM_META[activeTeam];
+    document.getElementById('ti-name').textContent = activeTeam;
+    document.getElementById('ti-games').textContent = meta.gp_max + ' games';
+    document.getElementById('ti-qualifying').textContent = 'Qualifying: ≥' + meta.min_gp + ' GP';
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+/* ── team sidebar ── */
+function _sidebarSetActive(el) {
+  document.querySelectorAll('.sidebar-team, .sidebar-conf, .sidebar-div').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+document.querySelectorAll('.sidebar-team').forEach(btn => {
+  btn.addEventListener('click', function() {
+    _sidebarSetActive(this);
+    activeTeam = this.dataset.team;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('.sidebar-conf').forEach(btn => {
+  btn.addEventListener('click', function() {
+    _sidebarSetActive(this);
+    activeTeam = this.dataset.conf;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('.sidebar-div').forEach(btn => {
+  btn.addEventListener('click', function() {
+    _sidebarSetActive(this);
+    activeTeam = this.dataset.div;
+    applyFilters();
+  });
+});
+
+/* ── sidebar collapse toggle ── */
+const _sidebar = document.getElementById('team-sidebar');
+const _sidebarBtn = document.getElementById('sidebar-toggle');
+function _setSidebarCollapsed(collapsed) {
+  _sidebar.classList.toggle('collapsed', collapsed);
+  _sidebarBtn.textContent = collapsed ? '›' : '‹';
+  try { localStorage.setItem('phf_sidebar', collapsed ? '1' : ''); } catch(e){}
+}
+_sidebarBtn.addEventListener('click', () =>
+  _setSidebarCollapsed(!_sidebar.classList.contains('collapsed'))
+);
+try { if (localStorage.getItem('phf_sidebar')) _setSidebarCollapsed(true); } catch(e){}
+
+/* ── position filter ── */
+document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activePos = this.dataset.pos;
+    applyFilters();
+  });
+});
+
+document.getElementById('player-search').addEventListener('input', function() {
+  activeSearch = this.value.trim().toLowerCase();
+  applyFilters();
+});
+
+/* ── column sort ── */
+let sortCol = 'overall';
+let sortAsc = false;
+
+const NUMERIC_COLS = new Set([
+  'rank','gp','overall','off','dfn','poss','fo',
+  'goals','assists','points','sog','hits','blocks','gva','tka'
+]);
+
+function toiToSec(str) {
+  const parts = str.split(':');
+  if (parts.length !== 2) return 0;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function sortTable(col, keepDirection = false) {
+  if (col === sortCol) {
+    if (!keepDirection) sortAsc = !sortAsc;
+  } else {
+    sortCol = col;
+    sortAsc = false;
+  }
+
+  document.querySelectorAll('.col-row th').forEach(th => {
+    th.classList.remove('sorted');
+    if (th.dataset.col === sortCol) th.classList.add('sorted');
+  });
+
+  const tbody   = document.getElementById('table-body');
+  const rows    = Array.from(tbody.querySelectorAll('.player-row'));
+
+  rows.sort((a, b) => {
+    const aCell = a.cells[colIndex(col)];
+    const bCell = b.cells[colIndex(col)];
+    // Use data-val when present (grade badges, pct columns with nested HTML)
+    let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
+    let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    if (col === 'toi_per_game') {
+      aVal = toiToSec(aVal);
+      bVal = toiToSec(bVal);
+      return sortAsc ? aVal - bVal : bVal - aVal;
+    }
+    if (NUMERIC_COLS.has(col) || aCell.dataset.val !== undefined) {
+      aVal = parseFloat(aVal) || 0;
+      bVal = parseFloat(bVal) || 0;
+      return sortAsc ? aVal - bVal : bVal - aVal;
+    }
+    return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+  applyFilters();
+}
+
+const COL_ORDER = ['rank','name','team','position','gp','overall','off','dfn','poss','fo',
+                   'toi_per_game','cf_pct','xg_pct','goals','assists','points','sog','hits','blocks','gva','tka','pim','fo_pct'];
+function colIndex(col) { return COL_ORDER.indexOf(col); }
+
+document.querySelectorAll('.col-row th[data-col]').forEach(th => {
+  th.addEventListener('click', () => sortTable(th.dataset.col));
+});
+
+/* ── MS mode toggle ── */
+function gradeBg(s) {
+  if (s >= 90) return '#0d9488';
+  if (s >= 80) return '#16a34a';
+  if (s >= 70) return '#4d7c0f';
+  if (s >= 60) return '#b45309';
+  if (s >= 50) return '#c2410c';
+  return '#b91c1c';
+}
+
+function setOverallCell(cell, score, letter) {
+  cell.dataset.val = score.toFixed(2);
+  const badge = cell.querySelector('.grade-badge');
+  badge.style.background = gradeBg(score);
+  badge.querySelector('.g-letter').textContent = letter;
+  badge.querySelector('.g-score').textContent  = score.toFixed(1);
+}
+
+function setSubCell(cell, score) {
+  const sub = cell.querySelector('.grade-sub');
+  if (!sub) return;
+  cell.dataset.val = score.toFixed(2);
+  sub.style.background = gradeBg(score);
+  sub.textContent = score.toFixed(1);
+}
+
+function applyMsMode() {
+  document.querySelectorAll('.player-row').forEach(row => {
+    const msGp = parseInt(row.dataset.msGp || '0');
+    // visibility handled by applyFilters via msOk check
+    const ovCell   = row.cells[colIndex('overall')];
+    const dfnCell  = row.cells[colIndex('dfn')];
+    const possCell = row.cells[colIndex('poss')];
+    if (msMode && msGp > 0 && row.dataset.msOverall) {
+      setOverallCell(ovCell,  parseFloat(row.dataset.msOverall), row.dataset.msOverallLetter);
+      setSubCell(dfnCell,     parseFloat(row.dataset.msDfn));
+      setSubCell(possCell,    parseFloat(row.dataset.msPoss));
+    } else {
+      setOverallCell(ovCell,  parseFloat(row.dataset.apiOverall), row.dataset.apiOverallLetter);
+      setSubCell(dfnCell,     parseFloat(row.dataset.apiDfn));
+      setSubCell(possCell,    parseFloat(row.dataset.apiPoss));
+    }
+  });
+  applyFilters();
+  if (['overall','dfn','poss'].includes(sortCol)) sortTable(sortCol, true);
+}
+
+document.getElementById('ms-toggle').addEventListener('click', function() {
+  msMode = !msMode;
+  this.classList.toggle('active', msMode);
+  applyMsMode();
+});
+
+// Default view: MS mode enabled + Overall sorted highest to lowest.
+document.getElementById('ms-toggle').classList.add('active');
+sortCol = '__init__';
+sortTable('overall');
+applyMsMode();
+</script>
+</div>{# end .season-main #}
+</div>{# end .page-layout #}
+{% endblock %}
