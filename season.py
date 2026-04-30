@@ -3,15 +3,19 @@ import os
 import sqlite3
 import time
 import statistics as _stats
+import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date as _date
 from typing import Dict, List
 
 from models import PlayerStats
 from pipeline import process_game
 from grader import normalize_by_position_group, score_to_letter
 from loader import _get
-from manual_loader import get_microstat_grade
+from manual_loader import get_microstat_grade, _norm_name as _ml_norm_name
+from play_grader import get_play_grade, get_season_def_aggregates
+from fo_grade_loader import load_fo_grades
 
 DB_PATH       = os.path.join(os.path.dirname(__file__), 'cache.db')
 SCHEDULE_TTL  = 6 * 3600   # schedules re-fetched after 6 hours
@@ -155,6 +159,7 @@ class SeasonEntry:
     ca: int = 0
     xgf: float = 0.0
     xga: float = 0.0
+    ixg: float = 0.0
     pk_xga: float = 0.0
     pk_kills: int = 0
     es_fo_won: int = 0
@@ -164,6 +169,8 @@ class SeasonEntry:
     pk_fo_won: int = 0
     pk_fo_lost: int = 0
     pim: int = 0
+    fo_weighted_sum: float = 0.0
+    fo_total: int = 0
 
     # MS tracking accumulation (only for games that have xlsx tracking data)
     ms_gp:            int   = 0
@@ -171,6 +178,7 @@ class SeasonEntry:
     ms_entries_sum:   float = 0.0
     ms_exits_sum:     float = 0.0
     ms_defense_sum:   float = 0.0
+    ms_poss_sum:      float = 0.0
     ms_fc_sum:        float = 0.0
     ms_hits:          int   = 0
     ms_blocked_shots: int   = 0
@@ -217,6 +225,7 @@ def main():
 
     # Season accumulators: {player_id: SeasonEntry}
     season: Dict[int, SeasonEntry] = {}
+    fo_grades_by_game = load_fo_grades()
 
     for i, game_id in enumerate(game_ids, 1):
         cached = game_load(game_id)
@@ -282,6 +291,7 @@ def main():
             e.ca                += stats.ca
             e.xgf               += stats.xgf
             e.xga               += stats.xga
+            e.ixg               += stats.ixg
             e.pk_xga            += stats.pk_xga
             e.es_fo_won         += stats.es_fo_won
             e.es_fo_lost        += stats.es_fo_lost
@@ -291,6 +301,10 @@ def main():
             e.pk_fo_lost        += stats.pk_fo_lost
             e.pim               += stats.pim
             e.pk_kills          += stats.pk_kills
+            fo_entry = fo_grades_by_game.get(game_id, {}).get(pid)
+            if fo_entry:
+                e.fo_weighted_sum += fo_entry[0]
+                e.fo_total        += fo_entry[1]
 
 
     print(f"\nProcessed {len(game_ids)} games. Building leaderboards...\n")
@@ -335,19 +349,16 @@ def main():
     def _sub_raw(e: 'SeasonEntry') -> tuple:
         toi_h = e.toi_seconds / 3600.0 or 1e-6
         off  = (e.goals * 3.0 + e.primary_assists * 2.0
-                + e.secondary_assists * 1.0 + e.shots_on_goal * 0.3) / toi_h
-        dfn  = (e.blocked_shots * 1.5 + e.hits * 0.3
-                + e.takeaways * 1.2 - e.giveaways * 1.5) / toi_h
+                + e.secondary_assists * 1.0
+                + e.ixg * 2.0 + (e.xgf - e.ixg) * 1.5) / toi_h
+        dfn  = (e.blocked_shots * 1.5 + e.hits * 0.3) / toi_h
         xg_total = e.xgf + e.xga
         poss = (e.xgf / xg_total * 100) if xg_total > 0 else 50.0
         if e.position == 'D':
             dfn -= (e.xga / toi_h) * 1.5       # suppression penalty
             dfn += (e.pk_kills / toi_h) * 0.8  # reward for killing penalties
             dfn += (poss - 50) * 0.4            # xG% above/below 50 folds into DEF for D-men
-        fo_total = (e.es_fo_won + e.es_fo_lost + e.pp_fo_won
-                    + e.pp_fo_lost + e.pk_fo_won + e.pk_fo_lost)
-        fo_won   = e.es_fo_won + e.pp_fo_won + e.pk_fo_won
-        fo_raw   = (fo_won / fo_total * 100) if fo_total >= 10 else None
+        fo_raw = (e.fo_weighted_sum / e.fo_total) if e.fo_total >= 10 else None
         return off, dfn, poss, fo_raw
 
     def _normalize_sub(raw_vals, positions):
@@ -480,6 +491,47 @@ def main():
         console.print()
 
 
+def _fetch_standings(season_str: str) -> dict:
+    """Return {abbrev: {w, l, otl, pts}} from the NHL standings API."""
+    import ssl
+    season_year = int(season_str[:4])
+    next_year   = season_year + 1
+    today       = _date.today()
+    if today.year < next_year or (today.year == next_year and today.month <= 4):
+        endpoint = 'now'
+    else:
+        endpoint = f'{next_year}-04-20'
+    url = f'https://api-web.nhle.com/v1/standings/{endpoint}'
+    try:
+        ctx = ssl.create_default_context()
+        try:
+            import certifi
+            ctx.load_verify_locations(certifi.where())
+        except ImportError:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        req = urllib.request.Request(url, headers={'User-Agent': 'PHF/1.0'})
+        with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
+            payload = json.loads(r.read().decode())
+        out = {}
+        target_sid = int(season_str)
+        for entry in payload.get('standings', []):
+            if int(entry.get('seasonId', 0)) != target_sid:
+                continue
+            abbrev = entry.get('teamAbbrev', {}).get('default', '')
+            if abbrev:
+                out[abbrev] = {
+                    'w':   entry.get('wins', 0),
+                    'l':   entry.get('losses', 0),
+                    'otl': entry.get('otLosses', 0),
+                    'pts': entry.get('points', 0),
+                }
+        return out
+    except Exception as exc:
+        print(f'  Warning: standings fetch failed ({exc})', flush=True)
+        return {}
+
+
 def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     """
     Process all regular season + playoff games and return structured grade data.
@@ -493,22 +545,23 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     # ── collect game IDs ──────────────────────────────────────────────────────
     all_game_ids: set[int] = set()
 
-    # Playoff games from NHL API schedule (only the 16 playoff teams)
-    for team in PLAYOFF_TEAMS:
-        games = fetch_schedule(team, season_str)
-        for g in games:
-            if g.get('gameType') == 3 and g.get('gameState') in ('OFF', 'FINAL'):
-                all_game_ids.add(g['id'])
+    # Playoff games from NHL API schedule — only for the current/active season
+    if season_str == '20252026':
+        for team in PLAYOFF_TEAMS:
+            games = fetch_schedule(team, season_str)
+            for g in games:
+                if g.get('gameType') == 3 and g.get('gameState') in ('OFF', 'FINAL'):
+                    all_game_ids.add(g['id'])
 
-    # Regular season games from xlsx files in Manual Game Logs/Regular Season/
+    # Regular season games from xlsx files in Manual Game Logs/Regular Season/{YYYY-YY}/
     from manual_loader import LOGS_DIR as _ML_LOGS_DIR
-    _rs_dir = _ML_LOGS_DIR / 'Regular Season'
+    _year = int(season_str[:4])
+    _season_folder = f"{_year}-{str(_year + 1)[-2:]}"   # e.g. "2025-26"
+    _rs_dir = _ML_LOGS_DIR / 'Regular Season' / _season_folder
     if _rs_dir.exists():
-        _year = int(season_str[:4])
         for _f in sorted(_rs_dir.glob('*.xlsx')):
             try:
                 _file_id = int(_f.stem.split()[0])   # e.g. "20001 CHI vs. FLA" → 20001
-                # Reconstruct full 10-digit NHL game ID: YYYY0NNNNN
                 _full_id = int(f"{_year}0{_file_id:05d}")
                 all_game_ids.add(_full_id)
             except (ValueError, IndexError):
@@ -520,6 +573,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
 
     # ── accumulate stats from each game ───────────────────────────────────────
     season_acc: Dict[int, SeasonEntry] = {}
+    fo_grades_by_game = load_fo_grades()
 
     for gi, game_id in enumerate(game_ids, 1):
         if gi % 25 == 0 or gi == total_games:
@@ -581,6 +635,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             e.ca                += stats.ca
             e.xgf               += stats.xgf
             e.xga               += stats.xga
+            e.ixg               += stats.ixg
             e.pk_xga            += stats.pk_xga
             e.es_fo_won         += stats.es_fo_won
             e.es_fo_lost        += stats.es_fo_lost
@@ -590,14 +645,19 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             e.pk_fo_lost        += stats.pk_fo_lost
             e.pim               += stats.pim
             e.pk_kills          += stats.pk_kills
+            fo_entry2 = fo_grades_by_game.get(game_id, {}).get(pid)
+            if fo_entry2:
+                e.fo_weighted_sum += fo_entry2[0]
+                e.fo_total        += fo_entry2[1]
 
-            ms_grade = get_microstat_grade(game_id, info.name)
+            ms_grade = get_play_grade(game_id, info.name) or get_microstat_grade(game_id, info.name)
             if ms_grade:
                 e.ms_gp             += 1
                 e.ms_offense_sum    += ms_grade.offense_100
                 e.ms_entries_sum    += ms_grade.entries_100
                 e.ms_exits_sum      += ms_grade.exits_100
                 e.ms_defense_sum    += ms_grade.defense_100
+                e.ms_poss_sum       += getattr(ms_grade, 'poss_100', 50.0)
                 e.ms_fc_sum         += ms_grade.forechecking_100
                 e.ms_hits           += stats.hits
                 e.ms_blocked_shots  += stats.blocked_shots
@@ -606,8 +666,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
                 e.ms_toi_seconds    += stats.toi_seconds
 
     if not season_acc:
-        return {'season': season_str, 'total_games': len(game_ids),
-                'players': [], 'teams': [], 'team_meta': {}}
+        _sy0 = int(season_str[:4])
+        return {'season': season_str, 'season_label': f"{_sy0}–{str(_sy0+1)[-2:]}",
+                'total_games': len(game_ids), 'players': [], 'teams': [], 'team_meta': {}}
 
     # ── Stage 2 normalization ─────────────────────────────────────────────────
     team_max_gp: Dict[str, int] = {}
@@ -662,19 +723,16 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     def _sub_raw(e):
         toi_h    = e.toi_seconds / 3600.0 or 1e-6
         off      = (e.goals * 3.0 + e.primary_assists * 2.0
-                    + e.secondary_assists + e.shots_on_goal * 0.3) / toi_h
-        dfn      = (e.blocked_shots * 1.5 + e.hits * 0.3
-                    + e.takeaways * 1.2 - e.giveaways * 1.5) / toi_h
+                    + e.secondary_assists * 1.0
+                    + e.ixg * 2.0 + (e.xgf - e.ixg) * 1.5) / toi_h
+        dfn      = (e.blocked_shots * 1.5 + e.hits * 0.3) / toi_h
         xg_total = e.xgf + e.xga
         poss     = (e.xgf / xg_total * 100) if xg_total > 0 else 50.0
         if e.position == 'D':
             dfn -= (e.xga / toi_h) * 1.5       # suppression penalty
             dfn += (e.pk_kills / toi_h) * 0.8  # reward for killing penalties
             dfn += (poss - 50) * 0.4            # xG% above/below 50 folds into DEF for D-men
-        fo_total = (e.es_fo_won + e.es_fo_lost + e.pp_fo_won
-                    + e.pp_fo_lost + e.pk_fo_won + e.pk_fo_lost)
-        fo_won   = e.es_fo_won + e.pp_fo_won + e.pk_fo_won
-        fo_raw   = (fo_won / fo_total * 100) if fo_total >= 10 else None
+        fo_raw = (e.fo_weighted_sum / e.fo_total) if e.fo_total >= 10 else None
         return off, dfn, poss, fo_raw
 
     def _norm_sub(raw_vals, positions):
@@ -701,8 +759,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     # MS sub-scores are already on 0-100 z-score scale from manual_loader.
     def _ms_api_dfn_raw(e):
         toi_h = e.ms_toi_seconds / 3600.0 or 1e-6
-        return (e.ms_blocked_shots * 1.5 + e.ms_hits * 0.3
-                + e.ms_takeaways * 1.2 - e.ms_giveaways * 1.5) / toi_h
+        return (e.ms_blocked_shots * 1.5 + e.ms_hits * 0.3 + e.ms_takeaways * 1.0) / toi_h
 
     all_pids_idx  = {p: i for i, p in enumerate(all_pids)}
     ms_pids       = [p for p in all_pids if season_acc[p].ms_gp > 0]
@@ -712,27 +769,79 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             [_ms_api_dfn_raw(season_acc[p]) for p in ms_pids],
             [season_acc[p].position         for p in ms_pids],
         )
+
+        # ── Season-level defense: aggregate raw def_s/toi across all tracked games ──
+        # More stable than averaging per-game defense_100 (single-event games skew the mean).
+        _sd_agg = get_season_def_aggregates(int(season_str[:4]))
+        def _sd_rate(pid):
+            agg = _sd_agg.get(_ml_norm_name(season_acc[pid].name))
+            if agg is None or agg[1] < 2:
+                return None
+            def_s, _def_n, toi_min, _ = agg
+            return def_s / (toi_min / 60.0) if toi_min > 0 else None
+
+        _sd_rates    = [_sd_rate(p) for p in ms_pids]
+        _sd_valid    = [r for r in _sd_rates if r is not None]
+        if len(_sd_valid) >= 3:
+            _sd_mean = sum(_sd_valid) / len(_sd_valid)
+            _sd_var  = sum((r - _sd_mean) ** 2 for r in _sd_valid) / (len(_sd_valid) - 1)
+            _sd_std  = _sd_var ** 0.5 if _sd_var > 1e-18 else None
+        else:
+            _sd_mean = _sd_std = None
+
+        def _sd_to100(rate):
+            if rate is None or _sd_mean is None or _sd_std is None:
+                return 50.0
+            z = max(-2.0, min(2.0, (rate - _sd_mean) / _sd_std))
+            return round((z + 2.0) / 4.0 * 100.0, 1)
+
+        _sd_normed = [_sd_to100(r) for r in _sd_rates]
+
+        # ── Bayesian shrinkage for MS sub-grades ────────────────────────────
+        # Shrink each player's average toward the position-group mean weighted
+        # by their tracked TOI — more games = more trust in observed rate.
+        _MS_PRIOR_MIN = 120.0  # ~6-8 tracked games before full trust
+        _fwd_set = {'C', 'L', 'R'}
+
+        def _ms_shrink(values):
+            fwd_v = [v for v, p in zip(values, ms_pids) if season_acc[p].position in _fwd_set]
+            def_v = [v for v, p in zip(values, ms_pids) if season_acc[p].position not in _fwd_set]
+            fwd_m = sum(fwd_v) / len(fwd_v) if fwd_v else 50.0
+            def_m = sum(def_v) / len(def_v) if def_v else 50.0
+            out = []
+            for v, p in zip(values, ms_pids):
+                toi_min = season_acc[p].ms_toi_seconds / 60.0
+                w = toi_min / (toi_min + _MS_PRIOR_MIN)
+                mean = fwd_m if season_acc[p].position in _fwd_set else def_m
+                out.append(w * v + (1.0 - w) * mean)
+            return out
+
+        _ms_off_shrunk  = _ms_shrink([season_acc[p].ms_offense_sum / season_acc[p].ms_gp for p in ms_pids])
+        _ms_poss_shrunk = _ms_shrink([season_acc[p].ms_poss_sum    / season_acc[p].ms_gp for p in ms_pids])
+        _ms_fc_shrunk   = _ms_shrink([season_acc[p].ms_fc_sum      / season_acc[p].ms_gp for p in ms_pids])
+        _ms_def_shrunk  = _ms_shrink(_sd_normed)
+
         for idx, p in enumerate(ms_pids):
             e        = season_acc[p]
-            ms_poss  = (e.ms_entries_sum + e.ms_exits_sum) / (2 * e.ms_gp)
-            ms_def_z = e.ms_defense_sum / e.ms_gp
-            ms_fc    = e.ms_fc_sum / e.ms_gp
-            ms_dfn   = 0.5 * ms_def_z + 0.5 * ms_api_dfn_normed[idx]
-            ms_off_z = e.ms_offense_sum / e.ms_gp
+            ms_poss  = _ms_poss_shrunk[idx]
+            ms_def_z = _ms_def_shrunk[idx]
+            ms_fc    = _ms_fc_shrunk[idx]
+            ms_dfn   = ms_def_z
+            ms_off_z = _ms_off_shrunk[idx]
             api_off  = off_normed[all_pids_idx[p]]
             off      = 0.5 * ms_off_z + 0.5 * api_off
             fo       = fo_normed.get(p)
             is_d     = e.position == 'D'
             if is_d:
                 if fo is not None:
-                    ms_ov = 0.15 * off + 0.40 * ms_dfn + 0.30 * ms_poss + 0.10 * ms_fc + 0.05 * fo
+                    ms_ov = 0.20 * off + 0.50 * ms_dfn + 0.25 * ms_poss + 0.05 * fo
                 else:
-                    ms_ov = 0.15 * off + 0.40 * ms_dfn + 0.30 * ms_poss + 0.15 * ms_fc
+                    ms_ov = 0.20 * off + 0.50 * ms_dfn + 0.30 * ms_poss
             else:
                 if fo is not None:
-                    ms_ov = 0.35 * off + 0.25 * ms_dfn + 0.25 * ms_poss + 0.10 * ms_fc + 0.05 * fo
+                    ms_ov = 0.40 * off + 0.25 * ms_dfn + 0.30 * ms_poss + 0.05 * fo
                 else:
-                    ms_ov = 0.35 * off + 0.25 * ms_dfn + 0.25 * ms_poss + 0.15 * ms_fc
+                    ms_ov = 0.40 * off + 0.25 * ms_dfn + 0.35 * ms_poss
             ms_grades_computed[p] = {
                 'ms_gp':   e.ms_gp,
                 'ms_dfn':  round(ms_dfn, 1),
@@ -751,6 +860,12 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             ms_grades_computed[p]['ms_overall']        = round(normed, 1)
             ms_grades_computed[p]['ms_overall_letter'] = score_to_letter(normed)
             del ms_grades_computed[p]['_ms_ov_raw']
+
+        # Re-normalize ms_dfn so it uses the full 0-100 range (same reason as ms_overall).
+        ms_dfn_raw = [ms_grades_computed[p]['ms_dfn'] for p in ms_pids]
+        ms_dfn_normed = normalize_by_position_group(list(zip(ms_dfn_raw, ms_ov_pos)))
+        for i, p in enumerate(ms_pids):
+            ms_grades_computed[p]['ms_dfn'] = round(ms_dfn_normed[i], 1)
 
     off_scores  = {p: off_normed[i]  for i, p in enumerate(all_pids)}
     def_scores  = {p: def_normed[i]  for i, p in enumerate(all_pids)}
@@ -776,8 +891,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'overall_letter': score_to_letter(score),
             'off':            round(off_scores.get(pid, 60.0), 1),
             'off_letter':     score_to_letter(off_scores.get(pid, 60.0)),
-            'dfn':            round(def_scores.get(pid, 60.0), 1),
-            'dfn_letter':     score_to_letter(def_scores.get(pid, 60.0)),
+            'dfn':            round(ms_grades_computed[pid]['ms_dfn'] if pid in ms_grades_computed else def_scores.get(pid, 60.0), 1),
+            'dfn_letter':     score_to_letter(ms_grades_computed[pid]['ms_dfn'] if pid in ms_grades_computed else def_scores.get(pid, 60.0)),
             'poss':           round(poss_scores.get(pid, 60.0), 1),
             'poss_letter':    score_to_letter(poss_scores.get(pid, 60.0)),
             'fo':             round(fo_score, 1) if (fo_score is not None and fo_total > 0) else None,
@@ -816,12 +931,55 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         for team in teams_present
     }
 
+    def _best_grade(p):
+        return p.get('ms_overall') if p.get('ms_overall') is not None else p.get('overall', 60.0)
+
+    def _avg(pool):
+        scores = [_best_grade(p) for p in pool]
+        return round(sum(scores) / len(scores), 1) if scores else None
+
+    def _avg_sub(pool, col):
+        vals = [p[col] for p in pool if p.get(col) is not None]
+        return round(sum(vals) / len(vals), 1) if vals else None
+
+    records = _fetch_standings(season_str)
+
+    team_grades = []
+    for team in teams_present:
+        qual  = [p for p in players if p['team'] == team and p.get('qualified')]
+        fwds  = [p for p in qual if p['pos_group'] == 'fwd']
+        defs  = [p for p in qual if p['pos_group'] == 'def']
+        fo_pl = [p for p in qual if p.get('fo') is not None]
+        rec   = records.get(team, {})
+        team_grades.append({
+            'team':    team,
+            'overall': _avg(qual),
+            'fwd':     _avg(fwds),
+            'dfn':     _avg(defs),
+            'off':     _avg_sub(qual, 'off'),
+            'def_g':   _avg_sub(qual, 'dfn'),
+            'poss':    _avg_sub(qual, 'poss'),
+            'fo_g':    _avg_sub(fo_pl, 'fo'),
+            'n_fwd':   len(fwds),
+            'n_def':   len(defs),
+            'w':       rec.get('w', 0),
+            'l':       rec.get('l', 0),
+            'otl':     rec.get('otl', 0),
+            'pts':     rec.get('pts', 0),
+        })
+    team_grades.sort(key=lambda t: t['overall'] or 0, reverse=True)
+    for i, t in enumerate(team_grades, 1):
+        t['rank'] = i
+
+    _sy = int(season_str[:4])
     return {
-        'season':      season_str,
-        'total_games': len(game_ids),
-        'players':     players,
-        'teams':       teams_present,
-        'team_meta':   team_meta,
+        'season':       season_str,
+        'season_label': f"{_sy}–{str(_sy + 1)[-2:]}",
+        'total_games':  len(game_ids),
+        'players':      players,
+        'teams':        teams_present,
+        'team_meta':    team_meta,
+        'team_grades':  team_grades,
     }
 
 

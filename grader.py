@@ -27,8 +27,8 @@ GRADE_DELTAS = {
     # SOG(0.20 xG) + bonus = 0.5 + 0.40 + 2.5 = +3.4 for a typical goal scorer.
     'goal_scorer_bonus':            2.5,   # stacks on top of the shot delta
     'empty_net_goal_bonus':         0.8,   # EN goals: still good but no goalie to beat
-    'primary_assist':               2.0,
-    'secondary_assist':             1.0,
+    'primary_assist':               1.875,
+    'secondary_assist':             0.625,
     'en_primary_assist':            0.6,   # EN primary assist
     'en_secondary_assist':          0.3,   # EN secondary assist
 

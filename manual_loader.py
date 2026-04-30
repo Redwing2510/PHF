@@ -12,7 +12,7 @@ Grades are computed by:
      Entry Defense, Forechecking
   4. Weighting categories (F/D have different weights) into an overall grade
   5. Clamping all grades to [-2, +2] and converting to 0-100 for display
-
+Should
 Usage:
     from manual_loader import get_microstat_grade
     ms = get_microstat_grade(game_id=2025030131, name="Sebastian Aho")
@@ -330,18 +330,15 @@ def _load_all_records() -> list:
 # Must sum to 1.0 for each position
 _CAT_WEIGHTS = {
     'F': {
-        'offense':       0.40,
-        'entries':       0.20,
-        'exits':         0.15,
-        'entry_defense': 0.10,
-        'forechecking':  0.15,
+        'offense':      0.45,
+        'entries':      0.20,
+        'defense':      0.35,
     },
     'D': {
-        'offense':       0.15,
+        'offense':       0.20,
         'entries':       0.15,
         'exits':         0.30,
-        'entry_defense': 0.30,
-        'forechecking':  0.10,
+        'entry_defense': 0.35,
     },
 }
 
@@ -382,11 +379,11 @@ def _compute_grades(records: list) -> dict:
         botch_p60      = [_per60(r.botched_retrievals,  r.toi_min) for r in pos_recs]
 
         denial_p60  = [_per60(r.denials, r.toi_min) for r in pos_recs]
-        denial_rate = [_rate(r.denials, r.targets)  for r in pos_recs]
+        denial_rate = [_rate(r.denials, r.targets) for r in pos_recs]
         pkdeny_p60  = [_per60(r.pk_denials,  r.toi_min) for r in pos_recs]
         exchange_p60= [_per60(r.exchanges,   r.toi_min) for r in pos_recs]
         cca_p60     = [_per60(r.carries_chance_against, r.toi_min) for r in pos_recs]
-        dica_p60    = [_per60(r.dump_in_chance_against,  r.toi_min) for r in pos_recs]
+        dica_p60    = [_per60(r.dump_in_chance_against, r.toi_min) for r in pos_recs]
 
         fc_p60      = [_per60(r.fc_pressures,  r.toi_min) for r in pos_recs]
         dzret_p60   = [_per60(r.dz_retrievals, r.toi_min) for r in pos_recs]
@@ -395,13 +392,24 @@ def _compute_grades(records: list) -> dict:
 
         for i, r in enumerate(pos_recs):
             # ── Offense ──────────────────────────────────────────────────
-            # Chances (quality) weighted highest, then shots, then assists
-            z_off = (
-                0.35 * _zscore(chances_p60[i], chances_p60) +
-                0.25 * _zscore(shots_p60[i],   shots_p60)   +
-                0.25 * _zscore(pa1_p60[i],     pa1_p60)     +
-                0.15 * _zscore(ca_p60[i],      ca_p60)
-            )
+            if pos == 'D':
+                # D-men: FC pressures count as offensive contribution
+                z_off = (
+                    0.30 * _zscore(chances_p60[i], chances_p60) +
+                    0.20 * _zscore(shots_p60[i],   shots_p60)   +
+                    0.25 * _zscore(pa1_p60[i],     pa1_p60)     +
+                    0.15 * _zscore(ca_p60[i],      ca_p60)      +
+                    0.10 * _zscore(fc_p60[i],      fc_p60)
+                )
+            else:
+                # Forwards: FC pressures count as offensive contribution
+                z_off = (
+                    0.30 * _zscore(chances_p60[i], chances_p60) +
+                    0.22 * _zscore(shots_p60[i],   shots_p60)   +
+                    0.23 * _zscore(pa1_p60[i],     pa1_p60)     +
+                    0.15 * _zscore(ca_p60[i],      ca_p60)      +
+                    0.10 * _zscore(fc_p60[i],      fc_p60)
+                )
             off_g = _clamp(z_off)
 
             # ── Zone Entries ──────────────────────────────────────────────
@@ -414,14 +422,14 @@ def _compute_grades(records: list) -> dict:
             ent_g = _clamp(z_ent)
 
             # ── Zone Exits ───────────────────────────────────────────────
-            # Quality-weighted: carry-out (best) > pass-out > clear (functional)
-            # + controlled rate + volume + retrievals - botches
+            # Emphasise rate/quality over volume — OZ-heavy players have fewer
+            # exit opportunities so per-60 volume metrics unfairly penalise them.
             z_ext = (
                 0.25 * _zscore(carry_exit_p60[i], carry_exit_p60) +
-                0.20 * _zscore(pass_exit_p60[i],  pass_exit_p60)  +
-                0.15 * _zscore(clears_p60[i],     clears_p60)     +
-                0.20 * _zscore(exit_ctrl[i],      exit_ctrl)      +
-                0.10 * _zscore(ret_exit_p60[i],   ret_exit_p60)   -
+                0.35 * _zscore(exit_ctrl[i],      exit_ctrl)      +
+                0.15 * _zscore(pass_exit_p60[i],  pass_exit_p60)  +
+                0.10 * _zscore(ret_exit_p60[i],   ret_exit_p60)   +
+                0.05 * _zscore(clears_p60[i],     clears_p60)     -
                 0.10 * _zscore(botch_p60[i],      botch_p60)
             )
             ext_g = _clamp(z_ext)
@@ -431,13 +439,32 @@ def _compute_grades(records: list) -> dict:
             # denial rate - dangerous carries allowed
             all_denials_p60 = denial_p60[i] + pkdeny_p60[i]
             all_denials_pool = [d + pk for d, pk in zip(denial_p60, pkdeny_p60)]
-            z_def = (
-                0.25 * _zscore(all_denials_p60,  all_denials_pool) +
-                0.15 * _zscore(denial_rate[i],   denial_rate)      +
-                0.10 * _zscore(exchange_p60[i],  exchange_p60)     -
-                0.35 * _zscore(cca_p60[i],        cca_p60)          -
-                0.15 * _zscore(dica_p60[i],        dica_p60)
-            )
+            # Clamp CCA/DICA z-scores before combining — their per-60 rates are
+            # extremely sparse (pool mean ~0.1), so one event in short ice time
+            # produces z-scores of 8-10 that would dominate the entire grade.
+            z_cca_c  = _clamp(_zscore(cca_p60[i],  cca_p60))
+            z_dica_c = _clamp(_zscore(dica_p60[i], dica_p60))
+            # Shift weight from volume penalties toward rate metrics —
+            # OZ-heavy players face fewer entries so each CCA carries
+            # disproportionate weight without this adjustment.
+            if pos == 'D':
+                # D-men: DZ retrievals count as defensive contribution
+                z_def = (
+                    0.25 * _zscore(denial_rate[i],   denial_rate)      +
+                    0.20 * _zscore(all_denials_p60,  all_denials_pool) +
+                    0.15 * _zscore(exchange_p60[i],  exchange_p60)     +
+                    0.20 * _zscore(dzret_p60[i],     dzret_p60)        -
+                    0.15 * z_cca_c                                      -
+                    0.05 * z_dica_c
+                )
+            else:
+                z_def = (
+                    0.30 * _zscore(denial_rate[i],   denial_rate)      +
+                    0.25 * _zscore(all_denials_p60,  all_denials_pool) +
+                    0.15 * _zscore(exchange_p60[i],  exchange_p60)     -
+                    0.20 * z_cca_c                                      -
+                    0.10 * z_dica_c
+                )
             def_g = _clamp(z_def)
 
             # ── Forechecking ──────────────────────────────────────────────
@@ -448,27 +475,38 @@ def _compute_grades(records: list) -> dict:
             fc_g = _clamp(z_fc)
 
             # ── Overall ───────────────────────────────────────────────────
-            overall_g = (
-                cw['offense']       * off_g +
-                cw['entries']       * ent_g +
-                cw['exits']         * ext_g +
-                cw['entry_defense'] * def_g +
-                cw['forechecking']  * fc_g
-            )
+            if pos == 'F':
+                # Exits (75%) + entry defense (15%) + DZ retrievals (10%)
+                dzret_g = _clamp(_zscore(dzret_p60[i], dzret_p60))
+                combined_def_g = _clamp(0.75 * ext_g + 0.15 * def_g + 0.10 * dzret_g)
+                overall_g = (
+                    cw['offense']  * off_g          +
+                    cw['entries']  * ent_g          +
+                    cw['defense']  * combined_def_g
+                )
+                display_def_g = combined_def_g
+            else:
+                overall_g = (
+                    cw['offense']       * off_g +
+                    cw['entries']       * ent_g +
+                    cw['exits']         * ext_g +
+                    cw['entry_defense'] * def_g
+                )
+                display_def_g = def_g
             overall_g = _clamp(overall_g)
 
             grade = MicrostatGrade(
-                offense=round(off_g,     2),
-                entries=round(ent_g,     2),
-                exits=round(ext_g,       2),
-                entry_defense=round(def_g, 2),
-                forechecking=round(fc_g, 2),
-                overall=round(overall_g, 2),
+                offense=round(off_g,          2),
+                entries=round(ent_g,          2),
+                exits=round(ext_g,            2),
+                entry_defense=round(def_g,    2),
+                forechecking=round(fc_g,      2),
+                overall=round(overall_g,      2),
                 overall_100=_to_100(overall_g),
                 offense_100=_to_100(off_g),
                 entries_100=_to_100(ent_g),
                 exits_100=_to_100(ext_g),
-                defense_100=_to_100(def_g),
+                defense_100=_to_100(display_def_g),
                 forechecking_100=_to_100(fc_g),
                 position=r.position,
                 toi_min=r.toi_min,

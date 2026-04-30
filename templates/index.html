@@ -2,6 +2,11 @@
 {% block title %} — Game Lookup{% endblock %}
 
 {% block style %}
+.season-tabs{display:flex;gap:6px;align-items:center;}
+.season-tab{padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--border);}
+.season-tab:hover{color:var(--text);}
+.season-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
 .lookup-wrap{
   max-width:1100px;
   margin:48px auto;
@@ -196,8 +201,14 @@
 {% block content %}
 <div class="lookup-wrap">
   <div class="lookup-header">
-    <div class="lookup-eyebrow">2025–26 NHL Season</div>
-    <div class="lookup-title">Game Lookup</div>
+    <div class="lookup-eyebrow">Game Lookup</div>
+    <div class="lookup-title">{{ dict(seasons)[active_season] }} NHL Season</div>
+    <div class="season-tabs" style="margin-top:16px;">
+      {% for s_str, s_label in seasons %}
+        <a class="season-tab{% if s_str == active_season %} active{% endif %}"
+           href="/game-lookup?season={{ s_str }}">{{ s_label }}</a>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="breadcrumb" id="breadcrumb">
@@ -234,7 +245,9 @@
 
 <script>
 // ── Raw game data from server ──────────────────────────────────────────────
-const GAMES = {{ games | tojson }};
+const ALL_GAMES    = {{ games | tojson }};
+const ACTIVE_SEASON = '{{ active_season }}';
+const GAMES = ALL_GAMES.filter(g => g.season === ACTIVE_SEASON);
 
 // Month names
 // Season order: Oct → Sep (NHL season wraps calendar year)
@@ -371,7 +384,7 @@ function showGames(abbrev, month) {
   for (const g of filtered) {
     const a = document.createElement('a');
     a.className = 'game-row';
-    a.href = `/game/${g.id}?season=20252026`;
+    a.href = `/game/${g.id}?season=${g.season}`;
 
     const dateMatch = g.label.match(/\((.+?)\)/);
     const dateStr = dateMatch ? dateMatch[1] : '';

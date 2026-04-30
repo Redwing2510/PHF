@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5001/)",
+      "Bash(python3 -c ' *)",
+      "Bash(lsof -ti:5001)",
+      "Bash(xargs kill *)",
+      "Bash(python3 app.py)",
+      "Bash(python3 fo_analysis.py)",
+      "Read(//private/tmp/**)",
+      "Bash(python /Users/nicklamanna/Documents/PHF/app.py)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s \"https://api-web.nhle.com/v1/player/8478402/landing\")",
+      "Bash(curl -s \"http://127.0.0.1:5001/api/player/8478402?season=20252026\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sqlite3; conn=sqlite3.connect\\('cache.db'\\); conn.execute\\('DELETE FROM player_bios'\\); conn.commit\\(\\); print\\('cleared', conn.execute\\('SELECT COUNT\\(*\\) FROM player_bios'\\).fetchone\\(\\)[0], 'rows'\\); conn.close\\(\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:5001/api/player/8482699?season=20252026\")",
+      "Bash(curl -sI \"https://assets.nhle.com/logos/nhl/svg/COL_dark.svg\")",
+      "Bash(curl -s \"http://localhost:5001/refresh?season=20252026\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(pkill -f \"python app.py\")",
+      "Bash(python app.py)",
+      "Bash(osascript -e ' *)",
+      "Bash(open \"http://localhost:5001/\")",
+      "Bash(kill -9 92592)"
+    ]
+  }
+}

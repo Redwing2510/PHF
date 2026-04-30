@@ -180,7 +180,6 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 zone_key = 'oz' if player_zone == 'O' else ('dz' if player_zone == 'D' else 'nz')
                 d = GRADE_DELTAS[f'giveaway_{zone_key}']
                 player_stats[pid].raw_grade   += d
-                player_stats[pid].raw_defense += d * 0.5  # half weight in DEF sub-score
                 log(pid, period, play['timeInPeriod'], f'Giveaway ({player_zone}Z)', d)
 
         # Takeaways
@@ -198,7 +197,6 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 pk_mult  = GRADE_DELTAS['pk_defensive_mult'] if my_sk_t < opp_sk_t else 1.0
                 d = GRADE_DELTAS[f'takeaway_{zone_key}'] * pk_mult
                 player_stats[pid].raw_grade   += d
-                player_stats[pid].raw_defense += d
                 label = f'Takeaway ({player_zone}Z{"  PK" if pk_mult > 1 else ""})'
                 log(pid, period, play['timeInPeriod'], label, d)
 
@@ -505,8 +503,8 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
     # Inject microstat data for fields the API cannot measure at all:
     #   poss  → replaced by entries+exits average (API has CF%/xG but not
     #            the actual zone-entry/exit mechanics behind them)
-    #   dfn   → 50% MS entry defense (denials, CCA) + 50% API defense
-    #            (blocks, takeaways, hits, PK kills) — complementary signals
+    #   dfn   → 70% MS entry defense (denials, CCA) + 30% API defense
+    #            (blocks, hits, PK kills) — manual weighted higher, same as season view
     #   overall → recomputed from sub-grades, adding forechecking as a new
     #             component (API has zero signal on forecheck pressure/DZ retrievals)
     # off and fo are left as-is — the API covers goals/xG/faceoffs well.
@@ -517,24 +515,38 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
                 continue
             ms_zone = (ms['entries_100'] + ms['exits_100']) / 2.0
             row['poss'] = ms_zone
-            row['dfn']  = 0.30 * ms['defense_100'] + 0.70 * row['dfn']
-            # Overall: off 35% | dfn 25% | poss 25% | forechecking 10% | fo 5%
-            # (forechecking omitted from main weight when FO present, absorbed into fc)
-            if row['fo'] is not None:
-                row['overall'] = (
-                    0.35 * row['off'] +
-                    0.25 * row['dfn'] +
-                    0.25 * row['poss'] +
-                    0.10 * ms['forechecking_100'] +
-                    0.05 * row['fo']
-                )
+            row['dfn']  = 0.70 * ms['defense_100'] + 0.30 * row['dfn']
+            is_d = row['position'] == 'D'
+            if is_d:
+                # Defensemen: off 20% | dfn 50% | poss 30% (fo displaces poss)
+                if row['fo'] is not None:
+                    row['overall'] = (
+                        0.20 * row['off'] +
+                        0.50 * row['dfn'] +
+                        0.25 * row['poss'] +
+                        0.05 * row['fo']
+                    )
+                else:
+                    row['overall'] = (
+                        0.20 * row['off'] +
+                        0.50 * row['dfn'] +
+                        0.30 * row['poss']
+                    )
             else:
-                row['overall'] = (
-                    0.35 * row['off'] +
-                    0.25 * row['dfn'] +
-                    0.25 * row['poss'] +
-                    0.15 * ms['forechecking_100']
-                )
+                # Forwards: off 40% | dfn 25% | poss 35% (fo displaces poss)
+                if row['fo'] is not None:
+                    row['overall'] = (
+                        0.40 * row['off'] +
+                        0.25 * row['dfn'] +
+                        0.30 * row['poss'] +
+                        0.05 * row['fo']
+                    )
+                else:
+                    row['overall'] = (
+                        0.40 * row['off'] +
+                        0.25 * row['dfn'] +
+                        0.35 * row['poss']
+                    )
             row['overall_letter'] = score_to_letter(row['overall'])
 
     rows.sort(key=lambda x: x['overall'], reverse=True)

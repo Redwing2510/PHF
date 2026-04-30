@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /Users/nicklamanna/Documents/PHF && python3 -c \"\nimport json\nwith open\\('car_ott\\.json'\\) as f:\n    data = json\\.load\\(f\\)\nplays = data\\['plays'\\]\nfor p in plays:\n    if p\\['typeDescKey'\\] == 'goal':\n        print\\('GOAL:', json\\.dumps\\(p\\.get\\('details', \\{\\}\\), indent=2\\)\\)\n        break\nfor p in plays:\n    if p\\['typeDescKey'\\] == 'hit':\n        print\\('HIT:', json\\.dumps\\(p\\.get\\('details', \\{\\}\\), indent=2\\)\\)\n        break\nfor p in plays:\n    if p\\['typeDescKey'\\] == 'blocked-shot':\n        print\\('BLOCKED-SHOT:', json\\.dumps\\(p\\.get\\('details', \\{\\}\\), indent=2\\)\\)\n        break\nfor p in plays:\n    if p\\['typeDescKey'\\] == 'shot-on-goal':\n        print\\('SHOT-ON-GOAL:', json\\.dumps\\(p\\.get\\('details', \\{\\}\\), indent=2\\)\\)\n        break\nfor p in plays:\n    if p\\['typeDescKey'\\] == 'penalty':\n        print\\('PENALTY:', json\\.dumps\\(p\\.get\\('details', \\{\\}\\), indent=2\\)\\)\n        break\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

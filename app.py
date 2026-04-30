@@ -1,16 +1,19 @@
 import json
 import sqlite3
+import requests
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from pipeline import process_game, grade_game
 from season import build_season_grades, fetch_schedule, TEAMS, SEASON
 from grader import score_to_letter
 import manual_loader
+import play_grader
+import fo_grade_loader
 
 app = Flask(__name__)
 
-# Simple in-memory cache so the season data is only computed once per run
-_season_cache = None
+# Per-season cache: {'20252026': {...}, '20242025': {...}}
+_season_cache: dict = {}
 
 
 def _grade_bg(score) -> str:
@@ -42,21 +45,32 @@ app.jinja_env.filters['delta_bg']    = _delta_bg
 app.jinja_env.filters['delta_color'] = _delta_color
 
 
+_SEASONS = [('20252026', '2025–26'), ('20242025', '2024–25')]
+
+
+def _get_season_data(season_str: str) -> dict:
+    if season_str not in _season_cache:
+        print(f'Building season grades for {season_str}...', flush=True)
+        data = build_season_grades(season_str)
+        _season_cache[season_str] = data
+        print(f"Done — {len(data['players'])} players across {data['total_games']} games.", flush=True)
+    return _season_cache[season_str]
+
+
 @app.route('/')
 def index():
-    global _season_cache
-    if _season_cache is None:
-        print('Building season grades...')
-        _season_cache = build_season_grades()
-        print(f"Done — {len(_season_cache['players'])} players across {_season_cache['total_games']} games.")
-    return render_template('season.html', data=_season_cache)
+    season_str = request.args.get('season', '20252026')
+    if season_str not in dict(_SEASONS):
+        season_str = '20252026'
+    data = _get_season_data(season_str)
+    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS)
 
 
 @app.route('/refresh')
 def refresh():
-    global _season_cache
-    _season_cache = None
-    return redirect(url_for('index'))
+    season_str = request.args.get('season', '20252026')
+    _season_cache.pop(season_str, None)
+    return redirect(url_for('index', season=season_str))
 
 
 def _ensure_game_dates():
@@ -180,16 +194,23 @@ def _get_cached_game_list():
             group = f'Regular Season \u2014 {away} vs {home}'
             label = f'{away} vs {home}  ({date_label})' if date_label else f'{away} vs {home}'
 
+        season_year = int(gid_s[:4])
+        season_str  = f"{season_year}{season_year + 1}"
         games.append({'id': gid, 'label': label, 'group': group,
                       'round': round_num, 'series': series_num, 'game_num': game_num,
                       'away': away, 'home': home,
-                      'away_logo': away_logo, 'home_logo': home_logo})
+                      'away_logo': away_logo, 'home_logo': home_logo,
+                      'season': season_str})
     return games
 
 
 @app.route('/game-lookup')
 def game_lookup():
-    return render_template('index.html', games=_get_cached_game_list())
+    active_season = request.args.get('season', '20252026')
+    if active_season not in dict(_SEASONS):
+        active_season = '20252026'
+    return render_template('index.html', games=_get_cached_game_list(),
+                           active_season=active_season, seasons=_SEASONS)
 
 
 @app.route('/game/<int:game_id>')
@@ -230,12 +251,118 @@ def game(game_id):
     )
 
 
+def _fetch_player_bio(player_id: int) -> dict:
+    """Fetch player bio from NHL API and cache in player_bios table."""
+    conn = sqlite3.connect('cache.db')
+    conn.execute('''CREATE TABLE IF NOT EXISTS player_bios
+                    (player_id INTEGER PRIMARY KEY, data TEXT NOT NULL)''')
+    conn.commit()
+    row = conn.execute('SELECT data FROM player_bios WHERE player_id=?', (player_id,)).fetchone()
+    if row:
+        conn.close()
+        return json.loads(row[0])
+    try:
+        url = f'https://api-web.nhle.com/v1/player/{player_id}/landing'
+        d = requests.get(url, timeout=8).json()
+        bio = {
+            'headshot':    d.get('headshot', ''),
+            'firstName':   d.get('firstName', {}).get('default', ''),
+            'lastName':    d.get('lastName', {}).get('default', ''),
+            'sweater':     d.get('sweaterNumber', ''),
+            'position':    d.get('position', ''),
+            'teamAbbrev':  d.get('currentTeamAbbrev', ''),
+            'teamName':    d.get('fullTeamName', {}).get('default', '') if isinstance(d.get('fullTeamName'), dict) else d.get('fullTeamName', ''),
+            'teamLogo':    f"https://assets.nhle.com/logos/nhl/svg/{d.get('currentTeamAbbrev', '')}_dark.svg" if d.get('currentTeamAbbrev') else '',
+            'heightIn':    d.get('heightInInches'),
+            'weightLbs':   d.get('weightInPounds'),
+            'birthDate':   d.get('birthDate', ''),
+            'birthCity':   d.get('birthCity', {}).get('default', '') if isinstance(d.get('birthCity'), dict) else d.get('birthCity', ''),
+            'birthProv':   d.get('birthStateProvince', {}).get('default', '') if isinstance(d.get('birthStateProvince'), dict) else d.get('birthStateProvince', ''),
+            'birthCountry':d.get('birthCountry', ''),
+            'shoots':      d.get('shootsCatches', ''),
+            'draft':       d.get('draftDetails'),
+        }
+        conn.execute('INSERT OR REPLACE INTO player_bios (player_id, data) VALUES (?,?)',
+                     (player_id, json.dumps(bio)))
+        conn.commit()
+    except Exception:
+        bio = {}
+    conn.close()
+    return bio
+
+
+@app.route('/api/headshot/<int:player_id>')
+def api_headshot(player_id):
+    bio = _fetch_player_bio(player_id)
+    url = bio.get('headshot', '')
+    if not url:
+        return '', 404
+    try:
+        resp = requests.get(url, timeout=8)
+        from flask import Response
+        return Response(resp.content, content_type=resp.headers.get('Content-Type', 'image/png'))
+    except Exception:
+        return '', 404
+
+
+@app.route('/api/player/<int:player_id>')
+def api_player(player_id):
+    season_str = request.args.get('season', '20252026')
+    bio = _fetch_player_bio(player_id)
+
+    # Pull grade data from cached season
+    grades = {}
+    if season_str in _season_cache:
+        all_players = _season_cache[season_str]['players']
+        player = next((p for p in all_players if p['player_id'] == player_id), None)
+        if player:
+            pos_group = player.get('pos_group', '')
+            ms_gp     = player.get('ms_gp', 0) or 0
+            qualified    = [p for p in all_players if p.get('qualified') and p.get('pos_group') == pos_group]
+            ms_qualified = [p for p in qualified if (p.get('ms_gp') or 0) > 0]
+            pos_total    = len(ms_qualified) if ms_gp > 0 else len(qualified)
+            def _rank(key):
+                pool   = ms_qualified if ms_gp > 0 else qualified
+                ranked = sorted(pool, key=lambda p: p.get(key) or 0, reverse=True)
+                return next((i + 1 for i, p in enumerate(ranked) if p['player_id'] == player_id), None)
+            ms_overall = player.get('ms_overall')
+            ms_dfn     = player.get('ms_dfn')
+            ms_poss    = player.get('ms_poss')
+            grades = {
+                'overall':        ms_overall if ms_gp > 0 else player.get('overall'),
+                'overall_letter': player.get('ms_overall_letter') if ms_gp > 0 else player.get('overall_letter'),
+                'off':            player.get('off'),
+                'off_letter':     player.get('off_letter'),
+                'dfn':            ms_dfn if ms_gp > 0 else player.get('dfn'),
+                'dfn_letter':     score_to_letter(ms_dfn) if ms_gp > 0 and ms_dfn is not None else player.get('dfn_letter'),
+                'poss':           ms_poss if ms_gp > 0 else player.get('poss'),
+                'poss_letter':    score_to_letter(ms_poss) if ms_gp > 0 and ms_poss is not None else player.get('poss_letter'),
+                'rank':           _rank('ms_overall') if ms_gp > 0 else player.get('rank'),
+                'pos_group':      pos_group,
+                'pos_total':      pos_total,
+                'off_rank':       _rank('off'),
+                'dfn_rank':       _rank('ms_dfn') if ms_gp > 0 else _rank('dfn'),
+                'poss_rank':      _rank('ms_poss') if ms_gp > 0 else _rank('poss'),
+                'ms_gp':          ms_gp,
+                'gp':             player.get('gp'),
+                'toi_per_game':   player.get('toi_per_game'),
+                'goals':          player.get('goals'),
+                'assists':        player.get('assists'),
+                'points':         player.get('points'),
+            }
+    return jsonify({'player_id': player_id, 'bio': bio, 'grades': grades})
+
+
 if __name__ == '__main__':
     print('Warming microstat cache...', flush=True)
     manual_loader.load_microstat_grades()
-    print('Building season grades...', flush=True)
-    _season_cache = build_season_grades()
-    print(f"Done — {len(_season_cache['players'])} players across {_season_cache['total_games']} games.", flush=True)
+    print('Warming play grade cache...', flush=True)
+    play_grader.load_play_grades()
+    print('Warming FO grade cache...', flush=True)
+    fo_grade_loader.load_fo_grades()
+    for s_str, s_label in _SEASONS:
+        print(f'Building season grades ({s_label})...', flush=True)
+        _get_season_data(s_str)
     print('Ensuring game dates...', flush=True)
     _ensure_game_dates()
     app.run(debug=True, port=5001, use_reloader=False)

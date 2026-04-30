@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %} — 2025 Playoffs{% endblock %}
+{% block title %} — 2025–26 Season{% endblock %}
 
 {% block style %}
 /* ── Season header ── */
@@ -16,6 +16,10 @@
   letter-spacing:-1px;
   color:var(--text);
 }
+.season-tabs{display:flex;gap:6px;align-items:center;}
+.season-tab{padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--border);}
+.season-tab:hover{color:var(--text);}
+.season-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .season-meta{
   font-size:13px;
   color:var(--muted);
@@ -110,6 +114,80 @@
 .team-sidebar.collapsed .st-abbrev{opacity:0;width:0;overflow:hidden}
 .team-sidebar.collapsed .sidebar-team{justify-content:center;padding:7px 0}
 
+/* ── View toggle (segmented control) ── */
+.view-toggle{
+  display:inline-flex;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:3px;
+  gap:2px;
+  margin-bottom:18px;
+}
+.view-btn{
+  padding:6px 22px;
+  border-radius:7px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  color:var(--muted);
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  transition:background .15s,color .15s,box-shadow .15s;
+}
+.view-btn:hover{color:var(--text2)}
+.view-btn.active{
+  background:var(--accent);
+  color:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+
+/* ── Teams table ── */
+#teams-view .table-wrap{max-width:900px}
+#teams-table{border-collapse:collapse;width:100%;min-width:0;font-size:13px}
+#teams-table thead tr.col-row th{
+  background:var(--surface2);padding:10px 14px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
+  border-bottom:2px solid var(--border2);white-space:nowrap;text-align:left;
+}
+#teams-table thead tr.col-row th.tg-th-grade{
+  text-align:center;color:#06b6d4;border-left:1px solid var(--border2);min-width:80px;
+  cursor:pointer;user-select:none;
+}
+#teams-table thead tr.col-row th.tg-th-grade:hover{color:var(--text2)}
+#teams-table thead tr.col-row th.tg-sorted{color:var(--accent)}
+#teams-table thead tr.col-row th.tg-th-record{
+  text-align:center;border-left:1px solid var(--border2);min-width:100px;
+}
+#teams-table thead tr.col-row th:first-child{text-align:center;width:44px;padding:10px 6px}
+.team-grade-row{border-bottom:1px solid var(--border);transition:background .1s}
+.team-grade-row:hover{background:var(--surface2)}
+.team-grade-row td{padding:11px 14px;vertical-align:middle;white-space:nowrap}
+.tg-rank{text-align:center;width:44px;padding:11px 6px !important;font-size:13px;font-weight:700;color:var(--muted)}
+.tg-rank[data-rank="1"]{color:#fbbf24}
+.tg-rank[data-rank="2"]{color:#9ca3af}
+.tg-rank[data-rank="3"]{color:#b87333}
+.tg-team-cell{min-width:220px}
+.tg-team-inner{display:flex;align-items:center;gap:12px}
+.tg-logo{width:34px;height:34px;object-fit:contain;flex-shrink:0}
+.tg-names{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.tg-full{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+.tg-abbrev{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px}
+.tg-conf-badge{
+  flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;
+}
+.tg-conf-badge.east{color:#38bdf8;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2)}
+.tg-conf-badge.west{color:#fb923c;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.2)}
+.tg-grade-cell{text-align:center;border-left:1px solid var(--border2);padding:11px 10px !important}
+.tg-record-cell{
+  text-align:center;border-left:1px solid var(--border2);padding:11px 14px;
+  font-size:13px;font-weight:700;color:var(--text);letter-spacing:.3px;
+}
+.tg-pts{font-size:11px;color:var(--muted);font-weight:600;margin-left:6px}
+
 /* ── Filters ── */
 .filters{
   display:flex;
@@ -165,25 +243,21 @@
 .team-info-bar{
   display:none;
   align-items:center;
-  gap:16px;
-  padding:8px 14px;
+  gap:14px;
+  padding:12px 16px;
   background:var(--surface2);
   border:1px solid var(--border);
-  border-radius:7px;
-  margin-bottom:12px;
-  font-size:13px;
-  color:var(--muted);
+  border-radius:10px;
+  margin-bottom:14px;
 }
-.team-info-bar .ti-name{font-weight:700;font-size:15px;color:var(--text)}
-.team-info-bar .ti-chip{
-  padding:2px 10px;
-  border-radius:4px;
-  background:var(--surface3);
-  border:1px solid var(--border);
-  font-size:11px;
-  font-weight:600;
-  letter-spacing:.3px;
-}
+.ti-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0}
+.ti-left{display:flex;flex-direction:column;gap:2px}
+.ti-name{font-weight:800;font-size:17px;color:var(--text);letter-spacing:-.3px;line-height:1.2}
+.ti-record{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px}
+.ti-sep{width:1px;height:36px;background:var(--border2);flex-shrink:0;margin:0 2px}
+.ti-grades{display:flex;align-items:center;gap:12px}
+.ti-grade-item{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ti-grade-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
 
 /* ── Table ── */
 .table-wrap{
@@ -273,6 +347,18 @@
   color:var(--muted);
   letter-spacing:.5px;
 }
+.td-team-inner{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+}
+.td-team-logo{
+  width:18px;
+  height:18px;
+  object-fit:contain;
+  flex-shrink:0;
+}
 .grades-table tbody tr.player-row td.td-pos{
   text-align:center;
   font-size:11px;
@@ -356,6 +442,28 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   color:#a5b4fc;
   border-color:#818cf8;
 }
+
+/* ── Grade chip (teams table) ── */
+.grade-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:46px;
+  padding:4px 9px;
+  border-radius:5px;
+  font-size:12px;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:.1px;
+}
+.grade-chip-lg{
+  min-width:58px;
+  padding:5px 12px;
+  font-size:15px;
+  border-radius:6px;
+  letter-spacing:-.2px;
+}
+
 {% endblock %}
 
 {% block content %}
@@ -399,18 +507,55 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <!-- ── Main content ── -->
 <div class="season-main">
 <div class="season-hero">
-  <div class="season-title">2025 NHL Playoffs</div>
+  <div class="season-title">{{ data.season_label }} NHL Season</div>
+  <div class="season-tabs">
+    {% for s_str, s_label in seasons %}
+      <a class="season-tab{% if s_str == active_season %} active{% endif %}"
+         href="/?season={{ s_str }}">{{ s_label }}</a>
+    {% endfor %}
+  </div>
   <div class="season-meta">{{ data.total_games }} games · {{ data.players|length }} skaters</div>
-  <a class="refresh-link" href="/refresh" title="Re-fetch &amp; rebuild">↺ Refresh</a>
+  <a class="refresh-link" href="/refresh?season={{ active_season }}" title="Re-fetch &amp; rebuild">↺ Refresh</a>
 </div>
 
-<!-- ── Filters + team info bar ── -->
+<!-- ── Team info bar (shown when a specific team is selected) ── -->
 <div class="team-info-bar" id="team-info-bar">
-  <span class="ti-name" id="ti-name"></span>
-  <span class="ti-chip" id="ti-games"></span>
-  <span class="ti-chip" id="ti-qualifying"></span>
+  <img class="ti-logo" id="ti-logo" src="" alt="">
+  <div class="ti-left">
+    <span class="ti-name" id="ti-name"></span>
+    <span class="ti-record" id="ti-record"></span>
+  </div>
+  <div class="ti-sep"></div>
+  <div class="ti-grades">
+    <div class="ti-grade-item">
+      <span class="ti-grade-label">OVERALL</span>
+      <span class="grade-chip grade-chip-lg" id="ti-overall"></span>
+    </div>
+    <div class="ti-grade-item">
+      <span class="ti-grade-label">OFF</span>
+      <span class="grade-chip" id="ti-off"></span>
+    </div>
+    <div class="ti-grade-item">
+      <span class="ti-grade-label">DEF</span>
+      <span class="grade-chip" id="ti-def-g"></span>
+    </div>
+    <div class="ti-grade-item">
+      <span class="ti-grade-label">POSS</span>
+      <span class="grade-chip" id="ti-poss"></span>
+    </div>
+    <div class="ti-grade-item">
+      <span class="ti-grade-label">FO</span>
+      <span class="grade-chip" id="ti-fo-g"></span>
+    </div>
+  </div>
 </div>
 
+<div class="view-toggle">
+  <button class="view-btn active" id="view-players-btn" onclick="setView('players')">Players</button>
+  <button class="view-btn"        id="view-teams-btn"   onclick="setView('teams')">Teams</button>
+</div>
+
+<div id="players-view">
 <div class="filters">
   <div class="filter-group" id="pos-filters">
     <button class="filter-btn active" data-pos="all">All</button>
@@ -461,6 +606,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   <tbody id="table-body">
   {% for row in data.players %}
   <tr class="player-row{% if not row.qualified %} limited{% endif %}"
+      onclick="openPlayerModal({{ row.player_id }})"
+      style="cursor:pointer;"
       data-team="{{ row.team }}"
       data-pos="{{ row.pos_group }}"
       data-qualified="{{ 'true' if row.qualified else 'false' }}"
@@ -476,7 +623,12 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-api-poss="{{ '%.2f'|format(row.poss) }}">
     <td class="td-rank">{{ row.rank }}</td>
     <td class="td-name">{{ row.name }}</td>
-    <td class="td-team">{{ row.team }}</td>
+    <td class="td-team">
+      <div class="td-team-inner">
+        <img class="td-team-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" alt="{{ row.team }}" onerror="this.style.display='none'">
+        <span>{{ row.team }}</span>
+      </div>
+    </td>
     <td class="td-pos">{{ row.position }}</td>
     <td class="td-stats td-gp" style="text-align:center">{{ row.gp }}</td>
 
@@ -531,9 +683,168 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   </tbody>
 </table>
 </div>
+</div>{# end #players-view #}
+
+<!-- ── Teams ranking view (shown when All Teams selected) ── -->
+{%- set TEAM_FULL = {
+  'ANA':'Anaheim Ducks','BOS':'Boston Bruins','BUF':'Buffalo Sabres',
+  'CAR':'Carolina Hurricanes','CBJ':'Columbus Blue Jackets','CGY':'Calgary Flames',
+  'CHI':'Chicago Blackhawks','COL':'Colorado Avalanche','DAL':'Dallas Stars',
+  'DET':'Detroit Red Wings','EDM':'Edmonton Oilers','FLA':'Florida Panthers',
+  'LAK':'Los Angeles Kings','MIN':'Minnesota Wild','MTL':'Montréal Canadiens',
+  'NJD':'New Jersey Devils','NSH':'Nashville Predators','NYI':'New York Islanders',
+  'NYR':'New York Rangers','OTT':'Ottawa Senators','PHI':'Philadelphia Flyers',
+  'PIT':'Pittsburgh Penguins','SEA':'Seattle Kraken','SJS':'San Jose Sharks',
+  'STL':'St. Louis Blues','TBL':'Tampa Bay Lightning','TOR':'Toronto Maple Leafs',
+  'UTA':'Utah Hockey Club','VAN':'Vancouver Canucks','VGK':'Vegas Golden Knights',
+  'WSH':'Washington Capitals','WPG':'Winnipeg Jets'
+} -%}
+{%- set TEAM_CONF_T = {
+  'BOS':'east','BUF':'east','DET':'east','FLA':'east','MTL':'east','OTT':'east','TBL':'east','TOR':'east',
+  'CAR':'east','CBJ':'east','NJD':'east','NYI':'east','NYR':'east','PHI':'east','PIT':'east','WSH':'east',
+  'CHI':'west','COL':'west','DAL':'west','MIN':'west','NSH':'west','STL':'west','UTA':'west','WPG':'west',
+  'ANA':'west','CGY':'west','EDM':'west','LAK':'west','SEA':'west','SJS':'west','VAN':'west','VGK':'west'
+} -%}
+<div id="teams-view">
+<div class="table-wrap">
+<table id="teams-table">
+  <thead>
+    <tr class="col-row">
+      <th>#</th>
+      <th>TEAM</th>
+      <th class="tg-th-record">RECORD</th>
+      <th class="tg-th-grade tg-sorted" data-col="overall" onclick="sortTeams('overall')">OVERALL<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="off"   onclick="sortTeams('off')">OFF<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="def_g" onclick="sortTeams('def_g')">DEF<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="poss"  onclick="sortTeams('poss')">POSS<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="fo_g"  onclick="sortTeams('fo_g')">FO<span class="sort-arrow">↓</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in data.team_grades %}
+  <tr class="team-grade-row"
+      data-team="{{ t.team }}"
+      data-overall="{{ t.overall or 0 }}"
+      data-off="{{ t.off or 0 }}"
+      data-def_g="{{ t.def_g or 0 }}"
+      data-poss="{{ t.poss or 0 }}"
+      data-fo_g="{{ t.fo_g or 0 }}">
+    <td class="tg-rank" data-rank="{{ t.rank }}">{{ t.rank }}</td>
+    <td class="tg-team-cell">
+      <div class="tg-team-inner">
+        <img class="tg-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ t.team }}_dark.svg" alt="{{ t.team }}" onerror="this.style.display='none'">
+        <div class="tg-names">
+          <span class="tg-full">{{ TEAM_FULL.get(t.team, t.team) }}</span>
+          <span class="tg-abbrev">{{ t.team }}</span>
+        </div>
+        <span class="tg-conf-badge {{ TEAM_CONF_T.get(t.team, 'east') }}">{{ 'EAST' if TEAM_CONF_T.get(t.team) == 'east' else 'WEST' }}</span>
+      </div>
+    </td>
+    <td class="tg-record-cell">
+      {% if t.w or t.l %}
+      {{ t.w }}-{{ t.l }}-{{ t.otl }}<span class="tg-pts">{{ t.pts }}pts</span>
+      {% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.overall is not none %}<span class="grade-chip grade-chip-lg" style="background:{{ t.overall | grade_bg }}">{{ t.overall }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.off is not none %}<span class="grade-chip" style="background:{{ t.off | grade_bg }}">{{ t.off }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.def_g is not none %}<span class="grade-chip" style="background:{{ t.def_g | grade_bg }}">{{ t.def_g }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.poss is not none %}<span class="grade-chip" style="background:{{ t.poss | grade_bg }}">{{ t.poss }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.fo_g is not none %}<span class="grade-chip" style="background:{{ t.fo_g | grade_bg }}">{{ t.fo_g }}</span>{% else %}—{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>{# end #teams-view #}
 
 <script>
 const TEAM_META = {{ data.team_meta | tojson }};
+const TEAM_GRADE_MAP = Object.fromEntries(
+  ({{ data.team_grades | tojson }}).map(t => [t.team, t])
+);
+const TEAM_NAMES = {
+  ANA:'Anaheim Ducks',BOS:'Boston Bruins',BUF:'Buffalo Sabres',
+  CAR:'Carolina Hurricanes',CBJ:'Columbus Blue Jackets',CGY:'Calgary Flames',
+  CHI:'Chicago Blackhawks',COL:'Colorado Avalanche',DAL:'Dallas Stars',
+  DET:'Detroit Red Wings',EDM:'Edmonton Oilers',FLA:'Florida Panthers',
+  LAK:'Los Angeles Kings',MIN:'Minnesota Wild',MTL:'Montréal Canadiens',
+  NJD:'New Jersey Devils',NSH:'Nashville Predators',NYI:'New York Islanders',
+  NYR:'New York Rangers',OTT:'Ottawa Senators',PHI:'Philadelphia Flyers',
+  PIT:'Pittsburgh Penguins',SEA:'Seattle Kraken',SJS:'San Jose Sharks',
+  STL:'St. Louis Blues',TBL:'Tampa Bay Lightning',TOR:'Toronto Maple Leafs',
+  UTA:'Utah Hockey Club',VAN:'Vancouver Canucks',VGK:'Vegas Golden Knights',
+  WSH:'Washington Capitals',WPG:'Winnipeg Jets'
+};
+
+function gradeColor(s) {
+  if (s == null) return '#374151';
+  if (s >= 90) return '#0d9488';
+  if (s >= 80) return '#16a34a';
+  if (s >= 70) return '#4d7c0f';
+  if (s >= 60) return '#b45309';
+  if (s >= 50) return '#c2410c';
+  return '#b91c1c';
+}
+
+function setView(v) {
+  document.getElementById('players-view').style.display = v === 'players' ? '' : 'none';
+  document.getElementById('teams-view').style.display   = v === 'teams'   ? '' : 'none';
+  document.getElementById('view-players-btn').classList.toggle('active', v === 'players');
+  document.getElementById('view-teams-btn').classList.toggle('active',   v === 'teams');
+}
+
+const _isGroup = t => t === 'ALL' || t === 'EAST' || t === 'WEST' ||
+  ['Atlantic','Metropolitan','Central','Pacific'].includes(t);
+
+function _filterTeamsTable() {
+  const rows = document.querySelectorAll('.team-grade-row');
+  let rank = 1;
+  rows.forEach(row => {
+    const t = row.dataset.team;
+    let show = true;
+    if      (activeTeam === 'ALL')   show = true;
+    else if (activeTeam === 'EAST' || activeTeam === 'WEST') show = TEAM_CONF[t] === activeTeam;
+    else if (['Atlantic','Metropolitan','Central','Pacific'].includes(activeTeam)) show = TEAM_DIV[t] === activeTeam;
+    else show = false;
+    row.style.display = show ? '' : 'none';
+    if (show) { row.cells[0].textContent = rank; row.cells[0].dataset.rank = rank++; }
+  });
+}
+
+function _updateToggleVisibility() {
+  const group = _isGroup(activeTeam);
+  document.querySelector('.view-toggle').style.display = group ? '' : 'none';
+  if (!group) {
+    document.getElementById('players-view').style.display = '';
+    document.getElementById('teams-view').style.display   = 'none';
+  } else {
+    _filterTeamsTable();
+  }
+}
+
+let teamSortCol = 'overall';
+function sortTeams(col) {
+  teamSortCol = col;
+  document.querySelectorAll('#teams-table th.tg-th-grade').forEach(th => {
+    th.classList.toggle('tg-sorted', th.dataset.col === col);
+  });
+  const tbody = document.querySelector('#teams-table tbody');
+  const rows  = Array.from(tbody.querySelectorAll('.team-grade-row'));
+  rows.sort((a, b) => (parseFloat(b.dataset[col]) || 0) - (parseFloat(a.dataset[col]) || 0));
+  rows.forEach(r => tbody.appendChild(r));
+  _filterTeamsTable();
+}
+
 
 // Conference and division membership maps
 const TEAM_CONF = {
@@ -556,6 +867,7 @@ let activeSearch = '';
 
 /* ── filter & rerank ── */
 function applyFilters() {
+  _updateToggleVisibility();
   const rows    = Array.from(document.querySelectorAll('.player-row'));
   let   rank    = 0;
   let   lastQual = true;
@@ -581,10 +893,31 @@ function applyFilters() {
   // Show/hide team info bar
   const bar = document.getElementById('team-info-bar');
   if (activeTeam !== 'ALL' && TEAM_META[activeTeam]) {
-    const meta = TEAM_META[activeTeam];
-    document.getElementById('ti-name').textContent = activeTeam;
-    document.getElementById('ti-games').textContent = meta.gp_max + ' games';
-    document.getElementById('ti-qualifying').textContent = 'Qualifying: ≥' + meta.min_gp + ' GP';
+    const grade = TEAM_GRADE_MAP[activeTeam] || {};
+    document.getElementById('ti-logo').src = `https://assets.nhle.com/logos/nhl/svg/${activeTeam}_dark.svg`;
+    document.getElementById('ti-name').textContent = TEAM_NAMES[activeTeam] || activeTeam;
+    const rec = grade.w != null ? `${grade.w}-${grade.l}-${grade.otl}  ·  ${grade.pts} pts` : '';
+    document.getElementById('ti-record').textContent = rec;
+    function _teamRank(col) {
+      const sorted = Object.values(TEAM_GRADE_MAP)
+        .filter(t => t[col] != null)
+        .sort((a, b) => b[col] - a[col]);
+      const idx = sorted.findIndex(t => t.team === activeTeam);
+      return idx >= 0 ? idx + 1 : null;
+    }
+    function _rankChip(id, col) {
+      const el    = document.getElementById(id);
+      const rnk   = _teamRank(col);
+      const total = Object.values(TEAM_GRADE_MAP).filter(t => t[col] != null).length;
+      el.textContent = rnk != null ? `#${rnk}` : '—';
+      const pct = rnk != null && total > 1 ? 100 - ((rnk - 1) / (total - 1)) * 100 : null;
+      el.style.background = pct != null ? gradeColor(pct) : '#374151';
+    }
+    _rankChip('ti-overall', 'overall');
+    _rankChip('ti-off',     'off');
+    _rankChip('ti-def-g',   'def_g');
+    _rankChip('ti-poss',    'poss');
+    _rankChip('ti-fo-g',    'fo_g');
     bar.style.display = 'flex';
   } else {
     bar.style.display = 'none';
@@ -596,6 +929,19 @@ function _sidebarSetActive(el) {
   document.querySelectorAll('.sidebar-team, .sidebar-conf, .sidebar-div').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
 }
+
+function _selectTeam(abbrev) {
+  const sidebarBtn = document.querySelector(`.sidebar-team[data-team="${abbrev}"]`);
+  if (sidebarBtn) _sidebarSetActive(sidebarBtn);
+  activeTeam = abbrev;
+  setView('players');
+  applyFilters();
+}
+
+document.querySelectorAll('.team-grade-row').forEach(row => {
+  row.style.cursor = 'pointer';
+  row.addEventListener('click', () => _selectTeam(row.dataset.team));
+});
 
 document.querySelectorAll('.sidebar-team').forEach(btn => {
   btn.addEventListener('click', function() {
@@ -764,7 +1110,8 @@ document.getElementById('ms-toggle').addEventListener('click', function() {
   applyMsMode();
 });
 
-// Default view: MS mode enabled + Overall sorted highest to lowest.
+// Default: players view, MS mode on.
+setView('players');
 document.getElementById('ms-toggle').classList.add('active');
 sortCol = '__init__';
 sortTable('overall');
@@ -772,4 +1119,138 @@ applyMsMode();
 </script>
 </div>{# end .season-main #}
 </div>{# end .page-layout #}
+
+{# ── Player card modal ────────────────────────────────────────────────────── #}
+<div id="player-modal-overlay" onclick="closePlayerModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;"></div>
+<div id="player-modal" style="display:none;position:fixed;top:0;right:0;height:100%;width:380px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border2);z-index:901;overflow-y:auto;box-shadow:-8px 0 32px rgba(0,0,0,.4);transition:transform .25s ease;">
+  <div id="pm-header" style="padding:24px 24px 0;">
+    <button onclick="closePlayerModal()" style="float:right;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    <div style="display:flex;align-items:flex-start;gap:16px;">
+      <img id="pm-headshot" src="" alt="" style="width:80px;height:80px;border-radius:10px;object-fit:cover;background:var(--surface);" onerror="this.style.display='none'">
+      <div style="flex:1;min-width:0;">
+        <div id="pm-name" style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--text);line-height:1.2;"></div>
+        <div id="pm-meta" style="font-size:13px;color:var(--muted);margin-top:4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <img id="pm-teamlogo" src="" alt="" style="height:28px;object-fit:contain;" onerror="this.style.display='none'">
+          <span id="pm-team" style="font-size:13px;font-weight:700;color:var(--text2);"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:20px 24px 0;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">Player Info</div>
+    <div id="pm-bio" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;"></div>
+  </div>
+  <div id="pm-draft-wrap" style="padding:12px 24px 0;display:none;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;">Draft</div>
+    <div id="pm-draft" style="font-size:13px;color:var(--text2);"></div>
+  </div>
+  <div style="margin:20px 24px 0;border-top:1px solid var(--border);"></div>
+  <div style="padding:20px 24px 0;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:14px;">Season Grades</div>
+    <div id="pm-grades"></div>
+  </div>
+  <div style="padding:16px 24px 32px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">Season Stats</div>
+    <div id="pm-stats" style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;"></div>
+  </div>
+</div>
+
+<style>
+.pm-bio-item{display:flex;flex-direction:column;gap:2px;}
+.pm-bio-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.pm-bio-value{font-size:13px;font-weight:600;color:var(--text2);}
+.pm-grade-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pm-grade-label{font-size:12px;font-weight:700;color:var(--muted);width:52px;flex-shrink:0;}
+.pm-grade-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;}
+.pm-grade-bar{height:100%;border-radius:4px;transition:width .4s ease;}
+.pm-grade-val{font-size:13px;font-weight:800;width:36px;text-align:right;flex-shrink:0;}
+.pm-grade-letter{font-size:11px;font-weight:700;width:22px;text-align:right;color:var(--muted);flex-shrink:0;}
+.pm-stat-cell{flex:1;padding:12px 8px;text-align:center;border-right:1px solid var(--border);}
+.pm-stat-cell:last-child{border-right:none;}
+.pm-stat-val{font-size:17px;font-weight:800;color:var(--text);}
+.pm-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:2px;}
+</style>
+
+<script>
+function _gradeColor(v){
+  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#4d7c0f';
+  if(v>=60)return'#b45309';if(v>=50)return'#c2410c';return'#b91c1c';
+}
+function _fmtHeight(inches){
+  if(!inches)return'—';return`${Math.floor(inches/12)}′${inches%12}″`;
+}
+function _fmtAge(dob){
+  if(!dob)return'';
+  const b=new Date(dob),n=new Date();
+  let age=n.getFullYear()-b.getFullYear();
+  const m=n.getMonth()-b.getMonth();
+  if(m<0||(m===0&&n.getDate()<b.getDate()))age--;
+  return age;
+}
+function _fmtDob(dob){
+  if(!dob)return'—';
+  const[y,mo,d]=dob.split('-');return`${parseInt(mo)}/${parseInt(d)}/${y}`;
+}
+function _ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+
+function openPlayerModal(playerId){
+  const seasonStr = '{{ active_season }}';
+  document.getElementById('player-modal-overlay').style.display='block';
+  const modal=document.getElementById('player-modal');
+  modal.style.display='block';
+  modal.style.transform='translateX(100%)';
+  setTimeout(()=>modal.style.transform='translateX(0)',10);
+  document.getElementById('pm-name').textContent='Loading…';
+  ['pm-meta','pm-bio','pm-grades','pm-stats'].forEach(id=>document.getElementById(id).innerHTML='');
+  document.getElementById('pm-headshot').src='';
+  document.getElementById('pm-teamlogo').src='';
+  document.getElementById('pm-team').textContent='';
+  document.getElementById('pm-draft-wrap').style.display='none';
+  fetch(`/api/player/${playerId}?season=${seasonStr}`)
+    .then(r=>r.json()).then(_renderPlayerModal);
+}
+function closePlayerModal(){
+  const modal=document.getElementById('player-modal');
+  modal.style.transform='translateX(100%)';
+  setTimeout(()=>{modal.style.display='none';document.getElementById('player-modal-overlay').style.display='none';},250);
+}
+function _renderPlayerModal(data){
+  const bio=data.bio||{},g=data.grades||{};
+  const hsEl=document.getElementById('pm-headshot');
+  hsEl.style.display='';
+  hsEl.src=bio.headshot?`/api/headshot/${data.player_id}`:'';
+  document.getElementById('pm-name').textContent=`${bio.firstName||''} ${bio.lastName||''}`.trim()||'—';
+  document.getElementById('pm-meta').textContent=[bio.position,bio.sweater?`#${bio.sweater}`:''].filter(Boolean).join('  ·  ');
+  const logoEl=document.getElementById('pm-teamlogo');
+  logoEl.style.display='';
+  logoEl.src=bio.teamLogo||'';
+  document.getElementById('pm-team').textContent=bio.teamName||bio.teamAbbrev||'';
+  const age=_fmtAge(bio.birthDate);
+  const bp=[bio.birthCity,bio.birthProv,bio.birthCountry].filter(Boolean).join(', ');
+  const bioItems=[['Height',_fmtHeight(bio.heightIn)],['Weight',bio.weightLbs?`${bio.weightLbs} lb`:'—'],
+    ['Born',bio.birthDate?`${_fmtDob(bio.birthDate)}${age?` (Age: ${age})`:''}`:'—'],
+    ['Birthplace',bp||'—'],['Shoots',bio.shoots||'—']];
+  document.getElementById('pm-bio').innerHTML=bioItems.map(([l,v])=>
+    `<div class="pm-bio-item"><span class="pm-bio-label">${l}</span><span class="pm-bio-value">${v}</span></div>`).join('');
+  const dr=bio.draft;
+  if(dr){document.getElementById('pm-draft-wrap').style.display='block';
+    document.getElementById('pm-draft').textContent=`${dr.year}, ${dr.teamAbbrev} (${_ordinal(dr.overallPick)} overall), Round ${dr.round}, Pick ${dr.pickInRound}`;}
+  const posLabel=g.pos_group==='fwd'?'F':g.pos_group==='def'?'D':'';
+  const gradeRows=[['Overall',g.overall,g.overall_letter,g.rank],['Offense',g.off,g.off_letter,g.off_rank],['Defense',g.dfn,g.dfn_letter,g.dfn_rank],['Poss',g.poss,g.poss_letter,g.poss_rank]];
+  document.getElementById('pm-grades').innerHTML=gradeRows.map(([lbl,val,letter,rank])=>{
+    if(val==null)return'';
+    const color=_gradeColor(val);
+    const rankBadge=rank?`<span style="font-size:10px;color:var(--muted);margin-left:4px;">${_ordinal(rank)} / ${g.pos_total} ${posLabel}</span>`:'';
+    return`<div class="pm-grade-row">
+      <span class="pm-grade-label">${lbl}</span>
+      <div class="pm-grade-bar-wrap"><div class="pm-grade-bar" style="width:${val}%;background:${color};"></div></div>
+      <span class="pm-grade-val" style="color:${color};">${val.toFixed(1)}</span>
+      <span class="pm-grade-letter">${letter||''}</span>${rankBadge}</div>`;}).join('');
+  const stats=[['GP',g.gp],['TOI',g.toi_per_game],['G',g.goals],['A',g.assists],['PTS',g.points]];
+  document.getElementById('pm-stats').innerHTML=stats.map(([l,v])=>
+    `<div class="pm-stat-cell"><div class="pm-stat-val">${v??'—'}</div><div class="pm-stat-lbl">${l}</div></div>`).join('');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePlayerModal();});
+</script>
 {% endblock %}
