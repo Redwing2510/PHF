@@ -22,7 +22,20 @@
       "Bash(python app.py)",
       "Bash(osascript -e ' *)",
       "Bash(open \"http://localhost:5001/\")",
-      "Bash(kill -9 92592)"
+      "Bash(kill -9 92592)",
+      "Bash(ngrok version *)",
+      "Bash(ngrok http *)",
+      "Bash(echo \"ngrok PID: $!\")",
+      "Bash(pkill -f ngrok)",
+      "Bash(curl -sk -o /dev/null -w \"%{http_code}\" \"https://unsignalized-untribal-kori.ngrok-free.dev\")",
+      "Bash(cloudflared --version)",
+      "Bash(brew list *)",
+      "Bash(brew install *)",
+      "Bash(cloudflared tunnel *)",
+      "Bash(echo \"cloudflared PID: $!\")",
+      "Bash(curl -sk -o /dev/null -w \"%{http_code}\" \"https://again-sons-motorcycles-thou.trycloudflare.com\")",
+      "Bash(echo \"Server PID: $!\")",
+      "Bash(pkill -f cloudflared)"
     ]
   }
 }

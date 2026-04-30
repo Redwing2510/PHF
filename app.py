@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import requests
 from datetime import datetime
@@ -12,8 +13,55 @@ import fo_grade_loader
 
 app = Flask(__name__)
 
+
+@app.route('/apple-touch-icon.png')
+def apple_touch_icon():
+    from flask import send_from_directory
+    return send_from_directory('static', 'apple-touch-icon.png')
+
 # Per-season cache: {'20252026': {...}, '20242025': {...}}
 _season_cache: dict = {}
+
+_CACHE_DIR = os.path.join(os.path.dirname(__file__), 'season_cache')
+
+
+def _disk_cache_path(season_str: str) -> str:
+    os.makedirs(_CACHE_DIR, exist_ok=True)
+    return os.path.join(_CACHE_DIR, f'{season_str}.json')
+
+
+def _game_count(season_str: str) -> int:
+    prefix = season_str[:4]
+    conn = sqlite3.connect('cache.db')
+    n = conn.execute(
+        "SELECT COUNT(*) FROM games WHERE CAST(game_id AS TEXT) LIKE ?",
+        (f'{prefix}%',)
+    ).fetchone()[0]
+    conn.close()
+    return n
+
+
+def _load_disk_cache(season_str: str) -> dict | None:
+    path = _disk_cache_path(season_str)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            cached = json.load(f)
+        if cached.get('_game_count') != _game_count(season_str):
+            return None
+        return cached
+    except Exception:
+        return None
+
+
+def _save_disk_cache(season_str: str, data: dict) -> None:
+    path = _disk_cache_path(season_str)
+    try:
+        with open(path, 'w') as f:
+            json.dump(dict(data, _game_count=_game_count(season_str)), f)
+    except Exception as e:
+        print(f'  Warning: could not save season cache ({e})', flush=True)
 
 
 def _grade_bg(score) -> str:
@@ -50,10 +98,16 @@ _SEASONS = [('20252026', '2025–26'), ('20242025', '2024–25')]
 
 def _get_season_data(season_str: str) -> dict:
     if season_str not in _season_cache:
-        print(f'Building season grades for {season_str}...', flush=True)
-        data = build_season_grades(season_str)
-        _season_cache[season_str] = data
-        print(f"Done — {len(data['players'])} players across {data['total_games']} games.", flush=True)
+        cached = _load_disk_cache(season_str)
+        if cached:
+            print(f'  Loaded {season_str} from disk cache ({len(cached["players"])} players).', flush=True)
+            _season_cache[season_str] = cached
+        else:
+            print(f'Building season grades for {season_str}...', flush=True)
+            data = build_season_grades(season_str)
+            _season_cache[season_str] = data
+            print(f"Done — {len(data['players'])} players across {data['total_games']} games.", flush=True)
+            _save_disk_cache(season_str, data)
     return _season_cache[season_str]
 
 
@@ -70,6 +124,9 @@ def index():
 def refresh():
     season_str = request.args.get('season', '20252026')
     _season_cache.pop(season_str, None)
+    path = _disk_cache_path(season_str)
+    if os.path.exists(path):
+        os.remove(path)
     return redirect(url_for('index', season=season_str))
 
 

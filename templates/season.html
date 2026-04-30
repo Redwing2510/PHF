@@ -19,7 +19,7 @@
 .season-tabs{display:flex;gap:6px;align-items:center;}
 .season-tab{padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--border);}
 .season-tab:hover{color:var(--text);}
-.season-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.season-tab.active{background:#c9a227;color:#fff;border-color:#c9a227;}
 .season-meta{
   font-size:13px;
   color:var(--muted);
@@ -87,7 +87,7 @@
   background:none;border:none;cursor:pointer;text-align:left;
 }
 .sidebar-conf:hover{color:var(--text);background:var(--surface)}
-.sidebar-conf.active{background:var(--surface2);color:#fbbf24}
+.sidebar-conf.active{background:var(--surface2);color:#c9a227}
 .sidebar-div{
   display:flex;align-items:center;width:100%;
   font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
@@ -139,7 +139,7 @@
 }
 .view-btn:hover{color:var(--text2)}
 .view-btn.active{
-  background:var(--accent);
+  background:#c9a227;
   color:#fff;
   box-shadow:0 1px 4px rgba(0,0,0,.35);
 }
@@ -166,7 +166,7 @@
 .team-grade-row:hover{background:var(--surface2)}
 .team-grade-row td{padding:11px 14px;vertical-align:middle;white-space:nowrap}
 .tg-rank{text-align:center;width:44px;padding:11px 6px !important;font-size:13px;font-weight:700;color:var(--muted)}
-.tg-rank[data-rank="1"]{color:#fbbf24}
+.tg-rank[data-rank="1"]{color:#c9a227}
 .tg-rank[data-rank="2"]{color:#9ca3af}
 .tg-rank[data-rank="3"]{color:#b87333}
 .tg-team-cell{min-width:220px}
@@ -443,6 +443,59 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   border-color:#818cf8;
 }
 
+/* ── Mobile ── */
+.mobile-filter-btn{
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding:7px 14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text2);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  margin-bottom:14px;
+  width:100%;
+}
+.mobile-filter-btn svg{flex-shrink:0}
+.sidebar-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:49;
+}
+@media(max-width:768px){
+  .page{padding:12px 10px}
+  .mobile-filter-btn{display:flex}
+  .sidebar-backdrop.open{display:block}
+  .page-layout{gap:0}
+  .season-main{padding-left:0}
+  .team-sidebar{
+    position:fixed;
+    left:0;top:54px;
+    height:calc(100% - 54px);
+    z-index:50;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,.5);
+    width:180px !important;
+  }
+  .team-sidebar.mobile-open{transform:translateX(0)}
+  .team-sidebar.collapsed{width:180px !important}
+  .sidebar-toggle{display:none}
+  .season-hero{gap:8px}
+  .season-title{font-size:20px}
+  .refresh-link{display:none}
+  .team-info-bar{flex-wrap:wrap;gap:10px}
+  .ti-grades{flex-wrap:wrap;gap:8px}
+  .ti-sep{display:none}
+  .season-meta{display:none}
+  .player-search{margin-left:0;min-width:0;max-width:none;width:100%;order:10}
+}
+
 /* ── Grade chip (teams table) ── */
 .grade-chip{
   display:inline-flex;
@@ -518,6 +571,12 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   <a class="refresh-link" href="/refresh?season={{ active_season }}" title="Re-fetch &amp; rebuild">↺ Refresh</a>
 </div>
 
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileSidebar()">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v1.5H1zm2.5 4h9v1.5h-9zm2.5 4h4v1.5H6z"/></svg>
+  Filter by Team
+</button>
+
 <!-- ── Team info bar (shown when a specific team is selected) ── -->
 <div class="team-info-bar" id="team-info-bar">
   <img class="ti-logo" id="ti-logo" src="" alt="">
@@ -574,7 +633,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   <thead>
     <tr class="group-row">
       <th colspan="5"></th>
-      <th colspan="5" class="grade-group">── PHF GRADE ──</th>
+      <th colspan="5" class="grade-group">── PHG GRADE ──</th>
       <th colspan="13" class="stats-group">── STATS ──</th>
     </tr>
     <tr class="col-row">
@@ -1116,6 +1175,22 @@ document.getElementById('ms-toggle').classList.add('active');
 sortCol = '__init__';
 sortTable('overall');
 applyMsMode();
+
+/* ── Mobile sidebar ── */
+function toggleMobileSidebar() {
+  const sb = document.getElementById('team-sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  const open = sb.classList.toggle('mobile-open');
+  bd.classList.toggle('open', open);
+}
+document.getElementById('sidebar-backdrop').addEventListener('click', toggleMobileSidebar);
+
+// Close sidebar after team selection on mobile
+document.querySelectorAll('.sidebar-team, .sidebar-conf, .sidebar-div').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (window.innerWidth <= 768) toggleMobileSidebar();
+  });
+});
 </script>
 </div>{# end .season-main #}
 </div>{# end .page-layout #}
