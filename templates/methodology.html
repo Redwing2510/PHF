@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %} | Methodology{% endblock %}
+
+{% block style %}
+.meth-wrap{max-width:800px;margin:0 auto}
+.meth-hero{margin-bottom:40px}
+.meth-hero h1{font-size:28px;font-weight:800;color:var(--text);margin-bottom:10px}
+.meth-hero p{color:var(--muted);font-size:15px;line-height:1.7}
+.meth-section{margin-bottom:44px}
+.meth-section h2{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.meth-body{font-size:14px;color:var(--text2);line-height:1.75}
+.meth-body p{margin-bottom:14px}
+.meth-body p:last-child{margin-bottom:0}
+.meth-body strong{color:var(--text)}
+.grade-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:10px;display:flex;gap:16px;align-items:flex-start}
+.grade-card-label{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);min-width:60px;padding-top:2px}
+.grade-card-body h3{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.grade-card-body p{font-size:13px;color:var(--text2);line-height:1.6}
+.scale-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px}
+.scale-chip{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;flex:1;text-align:center;white-space:nowrap}
+.example-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 18px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+.example-box strong{color:var(--text)}
+.event-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.event-table th{text-align:left;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:6px 12px;border-bottom:1px solid var(--border)}
+.event-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.event-table tr:last-child td{border-bottom:none}
+.pos-val{color:#4ade80;font-weight:700}
+.neg-val{color:#f87171;font-weight:700}
+
+/* Grade scale visual */
+.gs-outer{position:relative;padding:120px 0 130px;margin:32px 0 42px}
+.gs-track{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:8px;background:linear-gradient(to right,#b91c1c 0%,#b45309 25%,#4d7c0f 50%,#16a34a 75%,#0d9488 100%);border-radius:4px}
+.gs-nodes{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:space-between}
+.gs-node{width:26px;height:26px;border-radius:50%;border:2px solid #4b5563;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--muted);position:relative;z-index:2}
+.gs-node.gs-mid{background:var(--surface3)}
+.gs-node.gs-end-neg{background:#b91c1c;border-color:#b91c1c;width:32px;height:32px;font-size:11px;font-weight:800;color:#fff}
+.gs-node.gs-end-pos{background:#0d9488;border-color:#0d9488;width:32px;height:32px;font-size:11px;font-weight:800;color:#fff}
+.gs-node.gs-zero{background:var(--surface3);border-color:#9ca3af;width:30px;height:30px;font-size:11px;font-weight:800;color:var(--text)}
+/* Annotations — children of their node for perfect alignment */
+.gs-node-ann{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:140px;pointer-events:none;z-index:10}
+.gs-node-ann.below{top:100%;padding-top:4px}
+.gs-node-ann.above{bottom:100%;padding-bottom:4px;flex-direction:column-reverse}
+.gs-ann-line{width:1px;height:22px;background:var(--border2);flex-shrink:0}
+.gs-ann-box{border-radius:7px;padding:7px 10px;font-size:11px;line-height:1.5;color:var(--text2);text-align:center;width:140px}
+.gs-ann-box strong{display:block;margin-bottom:2px;font-size:12px}
+.gs-ann-step{display:none;flex-shrink:0}
+.gs-ann-step-desk{display:none;flex-shrink:0}
+@media(min-width:601px){
+  .gs-end-neg .gs-node-ann.below{left:0;transform:none;align-items:flex-start}
+  .gs-end-neg .gs-node-ann.below .gs-ann-line{display:none}
+  .gs-end-neg .gs-node-ann.below .gs-ann-step-desk{display:block}
+}
+@media(max-width:600px),(max-height:500px) and (orientation:landscape){
+  .gs-outer{padding-top:150px;padding-bottom:160px;margin-bottom:58px}
+  .gs-node-ann{width:100px}
+  .gs-ann-box{width:100px;font-size:10px;padding:6px 8px}
+  .gs-end-neg .gs-node-ann.below{left:0;transform:none;align-items:flex-start}
+  .gs-end-neg .gs-node-ann.below .gs-ann-line{display:none}
+  .gs-end-neg .gs-node-ann.below .gs-ann-step{display:block}
+}
+{% endblock %}
+
+{% block content %}
+<div class="meth-wrap">
+
+  <div class="meth-hero">
+    <h1>Learn About PHG Scores</h1>
+    <p>PHG scores have been built on the same principle PFF pioneered in football: grade every player on every play, not just the outcomes that show up in the box score. Every shot, hit, turnover, faceoff, and on-ice event contributes to a player's score. The result is a more complete picture of how a player actually performed, regardless of whether the bounces went their way.</p>
+  </div>
+
+  <div class="meth-section">
+    <h2>What We Do</h2>
+    <div class="meth-body">
+      <p>The PHG scoring system evaluates every skater on every play-by-play event in a game. We believe every shift counts, and that granular event-level data reveals things that traditional stats cannot. The system is built on grading <strong>contribution to production</strong> on a given play, not just the end result.</p>
+      <p>Did a player create a high-danger shot chance that the goalie robbed? That player contributed positively and receives credit for the quality of the opportunity, even though it didn't go in. Did a defenseman give the puck away in his own zone directly leading to a scoring chance? That turnover gets penalized regardless of whether the opposing team scored.</p>
+      <p>This approach eliminates luck from the equation. A goal scored on a weak shot from the perimeter receives less credit than a goal scored from in tight. A blocked shot on a high-danger chance is worth more than one blocked at the point. The grade reflects the actual impact of the play, not just whether it appeared on the scoresheet.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>The Grading Scale</h2>
+    <div class="meth-body">
+      <p>Each player receives a grade delta on every play-by-play event, with 0 representing a neutral or expected play. Most events fall within a <strong>-2.0 to +2.0</strong> range. Goals are the exception. A goal bonus stacks on top of the shot delta, reflecting that scoring is the highest-impact play in hockey, the same way a touchdown carries outsized weight in football. A typical goal results in a combined delta of around <strong>+3.4</strong>. Raw deltas are accumulated across all events in a game, then normalized to a 0-100 scale where <strong>60 = league average</strong> and one standard deviation equals 12 points.</p>
+      <p>Forwards and defensemen are normalized separately against their own position group, so a defenseman's score reflects how he performed relative to other defensemen, not forwards.</p>
+    </div>
+
+    <!-- Visual grade scale -->
+    <div class="gs-outer">
+      <div class="gs-track"></div>
+      <div class="gs-nodes">
+        <div class="gs-node gs-end-neg">-2
+          <div class="gs-node-ann below">
+            <div class="gs-ann-line"></div>
+            <svg class="gs-ann-step-desk" width="80" height="26" style="overflow:visible">
+              <polyline points="16,0 16,10 70,10 70,26" fill="none" stroke="#3d444d" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <svg class="gs-ann-step" width="60" height="26" style="overflow:visible">
+              <polyline points="16,0 16,10 50,10 50,26" fill="none" stroke="#3d444d" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <div class="gs-ann-box" style="background:rgba(185,28,28,.15);border:1px solid #b91c1c">
+              <strong style="color:#f87171">DZ Giveaway (-2.0)</strong>
+              Turnover in own zone, highest-danger area to lose possession
+            </div>
+          </div>
+        </div>
+        <div class="gs-node gs-mid" style="background:#b6410f;border-color:#b6410f;color:#fff">-1
+          <div class="gs-node-ann above">
+            <div class="gs-ann-line"></div>
+            <div class="gs-ann-box" style="background:rgba(182,65,15,.08);border:1px solid #b6410f">
+              <strong style="color:#fdba74">NZ Giveaway (-1.0)</strong>
+              Turnover in open ice, opponent gains zone entry
+            </div>
+          </div>
+        </div>
+        <div class="gs-node gs-mid" style="background:#92610b;border-color:#92610b;color:#fff">-.5</div>
+        <div class="gs-node gs-zero" style="background:#4d7c0f;border-color:#4d7c0f;color:#fff">0</div>
+        <div class="gs-node gs-mid" style="background:#289636;border-color:#289636;color:#fff">+.5
+          <div class="gs-node-ann above">
+            <div class="gs-ann-line"></div>
+            <div class="gs-ann-box" style="background:rgba(40,150,54,.08);border:1px solid #289636">
+              <strong style="color:#86efac">OZ Faceoff Win (+0.5)</strong>
+              Sets up offensive zone possession at even strength
+            </div>
+          </div>
+        </div>
+        <div class="gs-node gs-mid" style="background:#139e5f;border-color:#139e5f;color:#fff">+1
+          <div class="gs-node-ann below">
+            <div class="gs-ann-line"></div>
+            <div class="gs-ann-box" style="background:rgba(19,158,95,.12);border:1px solid #139e5f">
+              <strong style="color:#6ee7b7">NZ Takeaway (+1.0)</strong>
+              Wins puck battle in open ice, creates offensive rush
+            </div>
+          </div>
+        </div>
+        <div class="gs-node gs-end-pos">+2</div>
+      </div>
+    </div>
+
+    <div class="meth-body">
+      <p>Here are examples of how individual events translate to grade deltas:</p>
+    </div>
+
+    <table class="event-table">
+      <thead><tr><th>Event</th><th>Grade Delta</th></tr></thead>
+      <tbody>
+        <tr><td>Goal (0.20 xG shot)</td><td class="pos-val">+3.4 total (shot + bonus)</td></tr>
+        <tr><td>Primary assist</td><td class="pos-val">+1.875</td></tr>
+        <tr><td>Shot on goal (0.30 xG)</td><td class="pos-val">+1.1</td></tr>
+        <tr><td>Takeaway in defensive zone</td><td class="pos-val">+1.5</td></tr>
+        <tr><td>Block on high-danger shot (0.25 xG)</td><td class="pos-val">+0.875</td></tr>
+        <tr><td>Penalty drawn</td><td class="pos-val">+0.8</td></tr>
+        <tr><td>Hit in defensive zone</td><td class="pos-val">+0.45</td></tr>
+        <tr><td>Penalty taken</td><td class="neg-val">-1.5</td></tr>
+        <tr><td>Giveaway in defensive zone</td><td class="neg-val">-2.0</td></tr>
+        <tr><td>Giveaway in neutral zone</td><td class="neg-val">-1.0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="scale-row" style="margin-top:24px">
+      <span class="scale-chip" style="background:#b91c1c">F  &nbsp;&lt; 50</span>
+      <span class="scale-chip" style="background:#b45309">D- / D / D+  &nbsp;50–59</span>
+      <span class="scale-chip" style="background:#4d7c0f">C- / C / C+  &nbsp;60–69</span>
+      <span class="scale-chip" style="background:#16a34a">B- / B / B+  &nbsp;70–79</span>
+      <span class="scale-chip" style="background:#0d9488">A- / A / A+  &nbsp;80–100</span>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Zone and Situation Awareness</h2>
+    <div class="meth-body">
+      <p>Not all plays of the same type are equal. PHG adjusts grade deltas based on where on the ice the event occurred and what the game situation was. A giveaway in your own defensive zone is graded far more harshly than one at the offensive blue line. A hit protecting your net carries more weight than a forecheck hit in the offensive zone.</p>
+      <p>The same logic applies to faceoffs. Winning a defensive zone draw while shorthanded is one of the most valuable plays a center can make, worth up to <strong>+1.20</strong>. Losing that same faceoff is penalized at <strong>-1.50</strong>. Powerplay faceoffs in the offensive zone are also amplified since losing one squanders the man advantage before it even starts.</p>
+      <p>Shorthanded situations apply a <strong>1.5x multiplier</strong> to defensive plays like blocks, hits, and takeaways, reflecting the higher stakes of those actions while a team is killing a penalty.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Grade Components</h2>
+    <div class="meth-body" style="margin-bottom:16px">
+      <p>The Overall score is built from every play-by-play event. Sub-grades break performance into four specific areas, each normalized separately so they can be compared across position groups.</p>
+    </div>
+
+    <div class="grade-card">
+      <div class="grade-card-label">OVERALL</div>
+      <div class="grade-card-body">
+        <h3>Overall Score</h3>
+        <p>{{ desc.overall }}</p>
+      </div>
+    </div>
+    <div class="grade-card">
+      <div class="grade-card-label">OFF</div>
+      <div class="grade-card-body">
+        <h3>Offensive Score</h3>
+        <p>{{ desc.off }}</p>
+      </div>
+    </div>
+    <div class="grade-card">
+      <div class="grade-card-label">DEF</div>
+      <div class="grade-card-body">
+        <h3>Defensive Score</h3>
+        <p>{{ desc.dfn }}</p>
+      </div>
+    </div>
+    <div class="grade-card">
+      <div class="grade-card-label">POSS</div>
+      <div class="grade-card-body">
+        <h3>Possession Score</h3>
+        <p>{{ desc.poss }}</p>
+      </div>
+    </div>
+    <div class="grade-card">
+      <div class="grade-card-label">FO</div>
+      <div class="grade-card-body">
+        <h3>Faceoff Score</h3>
+        <p>{{ desc.fo }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Why Not Just Use Goals and Assists?</h2>
+    <div class="meth-body">
+      <p>Traditional stats reward players who score, but hockey is a team sport where most players never lead the league in points. A shutdown defenseman who suppresses high-danger chances all game, kills penalties, and blocks shots contributes enormously without showing up in the box score. A fourth-line center who wins every key defensive-zone faceoff doesn't get credit in a goal column.</p>
+      <p>Points are also noisy. A player who scores on a 5% shooting night got lucky. A player who consistently creates high-danger chances but doesn't get the bounces deserves credit too. PHG measures the <strong>quality and impact of every action</strong>, not just whether the puck crossed the line.</p>
+      <p>The result: players who consistently do the right things grade out well even in low-scoring stretches, and players riding shooting luck or powerplay time don't get inflated scores they don't deserve.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Qualifications</h2>
+    <div class="meth-body">
+      <p>Players must appear in at least <strong>50% of their team's games</strong> to qualify for season rankings. Players below this threshold are still shown but excluded from rank calculations. Faceoff scores require a minimum of <strong>10 faceoffs</strong> taken across the season.</p>
+      <p>Season grades are not simply an average of game grades. A player who posts consistent scores game after game will grade out higher than one who has a single outstanding night surrounded by poor performances. Sustained performance across a full season is harder to maintain and is reflected accordingly.</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

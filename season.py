@@ -532,6 +532,17 @@ def _fetch_standings(season_str: str) -> dict:
         return {}
 
 
+# ── Grade descriptions ────────────────────────────────────────────────────────
+# Update these whenever the algorithm changes so tooltips stay accurate.
+GRADE_DESCRIPTIONS = {
+    'overall': 'Play-by-play score across all situations. Every shot, hit, turnover, faceoff, and on-ice event contributes. 60 = league average.',
+    'off':     'Goals, assists, and individual expected goals (iXG) per 60 min, plus on-ice shot generation. Measures direct offensive contribution.',
+    'dfn':     'Blocked shots and hits per 60 min. For defensemen, also includes shot suppression (xGA against), penalty killing, and possession impact.',
+    'poss':    'On-ice expected goals percentage (xGF%). Above 50 means your team controls play when you\'re on the ice.',
+    'fo':      'Faceoff score weighted by zone and situation. DZ wins worth more than OZ wins; shorthanded wins valued highest. Requires 10+ faceoffs.',
+}
+
+
 def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     """
     Process all regular season + playoff games and return structured grade data.

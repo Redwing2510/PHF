@@ -81,6 +81,7 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
   <div class="nav-divider"></div>
   <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">Season</a>
   <a class="nav-link {% if request.endpoint == 'game_lookup' %}active{% endif %}" href="/game-lookup">Game Lookup</a>
+  <a class="nav-link {% if request.endpoint == 'methodology' %}active{% endif %}" href="/methodology">Methodology</a>
 </nav>
 <div class="page">
 {% block content %}{% endblock %}

@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from pipeline import process_game, grade_game
-from season import build_season_grades, fetch_schedule, TEAMS, SEASON
+from season import build_season_grades, fetch_schedule, TEAMS, SEASON, GRADE_DESCRIPTIONS
 from grader import score_to_letter
 import manual_loader
 import play_grader
@@ -117,7 +117,7 @@ def index():
     if season_str not in dict(_SEASONS):
         season_str = '20252026'
     data = _get_season_data(season_str)
-    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS)
+    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS)
 
 
 @app.route('/refresh')
@@ -259,6 +259,11 @@ def _get_cached_game_list():
                       'away_logo': away_logo, 'home_logo': home_logo,
                       'season': season_str})
     return games
+
+
+@app.route('/methodology')
+def methodology():
+    return render_template('methodology.html', desc=GRADE_DESCRIPTIONS)
 
 
 @app.route('/game-lookup')
