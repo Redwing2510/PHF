@@ -353,6 +353,36 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 .ms-val.ms-pos{color:#4ade80}
 .ms-val.ms-neu{color:var(--text2)}
 .ms-val.ms-neg{color:#f87171}
+.ms-raw-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px solid var(--border);
+}
+.ms-raw-item{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:3px 8px;
+  background:var(--surface3);
+  border-radius:4px;
+}
+.ms-raw-label{
+  font-size:9px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  color:var(--muted);
+}
+.ms-raw-val{
+  font-size:13px;
+  font-weight:700;
+  font-family:'SF Mono',SFMono-Regular,Consolas,monospace;
+  color:var(--text2);
+}
+
 .ms-enhanced-badge{
   display:inline-block;
   font-size:10px;
@@ -535,6 +565,23 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
               </div>
               {% endfor %}
             </div>
+            {% set ms = row.ms %}
+            {% if ms.secondary_assists or ms.pass_entries or ms.shots_off_rush or ms.shots_off_forecheck or ms.dz_breakout %}
+            <div class="ms-raw-stats">
+              {% for label, val in [
+                ('2ndA',   ms.secondary_assists),
+                ('Pass In', ms.pass_entries),
+                ('Rush Sh', ms.shots_off_rush),
+                ('FC Sh',   ms.shots_off_forecheck),
+                ('DZ Brk',  ms.dz_breakout)
+              ] %}
+              <div class="ms-raw-item">
+                <span class="ms-raw-label">{{ label }}</span>
+                <span class="ms-raw-val">{{ val }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
           {% endif %}
           <div id="pbp-body-{{ row.player_id }}"></div>

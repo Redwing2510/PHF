@@ -55,15 +55,16 @@ C_SOG       = 8   # Shots On Goal
 C_CHANCES   = 9   # Scoring Chances
 # C_PASSES  = 10
 C_PA1       = 11  # Primary Shot Assists
-# C_PA2     = 12
-# C_PA3     = 13
+C_PA2       = 12  # Secondary Shot Assists
+C_PA3       = 13  # Tertiary Shot Assists
 C_CA        = 14  # Chance Assists
-# C_HP      = 15
-# ...
+C_SHOTS_RUSH  = 21  # Shots off rush
+C_SHOTS_FC    = 23  # Shots off forecheck
+C_SHOTS_CYCLE = 25  # Shots off cycle
 C_ENTRIES   = 28  # Zone Entries (total)
 C_CARRIES   = 29  # Carries (controlled entries)
 C_FAILED_E  = 30  # Failed Entry attempts
-# C_PASS_E  = 31
+C_PASS_E    = 31  # Entries via passing play
 # C_RECOVERIES = 32
 C_CWC       = 33  # Carries with Scoring Chances
 C_DIC       = 34  # Dump-in Chances
@@ -92,6 +93,7 @@ C_PASSES_AG = 53  # Passes Allowed (entries against)
 C_CCA       = 54  # Carries with Chance Against (negative)
 C_DICA      = 55  # Dump-in with Chance Against (negative)
 C_PK_DENY   = 60  # 4v5 Carry Denials (PK entry defense)
+C_DZ_BREAKOUT = 86  # DZ Controlled Breakout
 
 
 @dataclass
@@ -108,12 +110,18 @@ class MicrostatRecord:
     sog: int = 0
     chances: int = 0
     primary_assists: int = 0
+    secondary_assists: int = 0
+    tertiary_assists: int = 0
     chance_assists: int = 0
+    shots_off_rush: int = 0
+    shots_off_forecheck: int = 0
+    shots_off_cycle: int = 0
 
     # Zone entries
     zone_entries: int = 0
     carries: int = 0
     failed_entries: int = 0
+    pass_entries: int = 0
     carries_w_chances: int = 0
     dump_in_chances: int = 0
 
@@ -139,6 +147,7 @@ class MicrostatRecord:
     # Forechecking
     fc_pressures: int = 0
     dz_retrievals: int = 0
+    dz_controlled_breakout: int = 0
 
 
 @dataclass
@@ -162,6 +171,13 @@ class MicrostatGrade:
 
     position: str = 'F'
     toi_min: float = 0.0
+
+    # Raw counts for the newly wired columns (shown in game expanded row)
+    raw_secondary_assists: int = 0
+    raw_pass_entries: int = 0
+    raw_shots_off_rush: int = 0
+    raw_shots_off_forecheck: int = 0
+    raw_dz_breakout: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -273,10 +289,16 @@ def _load_records_from_file(path: Path, file_game_id: int) -> list:
             sog=_safe_int(row[C_SOG]),
             chances=_safe_int(row[C_CHANCES]),
             primary_assists=_safe_int(row[C_PA1]),
+            secondary_assists=_safe_int(row[C_PA2]),
+            tertiary_assists=_safe_int(row[C_PA3]),
             chance_assists=_safe_int(row[C_CA]),
+            shots_off_rush=_safe_int(row[C_SHOTS_RUSH]),
+            shots_off_forecheck=_safe_int(row[C_SHOTS_FC]),
+            shots_off_cycle=_safe_int(row[C_SHOTS_CYCLE]),
             zone_entries=_safe_int(row[C_ENTRIES]),
             carries=_safe_int(row[C_CARRIES]),
             failed_entries=_safe_int(row[C_FAILED_E]),
+            pass_entries=_safe_int(row[C_PASS_E]),
             carries_w_chances=_safe_int(row[C_CWC]),
             dump_in_chances=_safe_int(row[C_DIC]),
             zone_exits=_safe_int(row[C_EXITS]),
@@ -296,6 +318,7 @@ def _load_records_from_file(path: Path, file_game_id: int) -> list:
             dump_in_chance_against=_safe_int(row[C_DICA]),
             fc_pressures=_safe_int(row[C_FC_PRESS]),
             dz_retrievals=_safe_int(row[C_DZ_RET]),
+            dz_controlled_breakout=_safe_int(row[C_DZ_BREAKOUT]),
         )
         records.append(rec)
     return records
@@ -361,22 +384,28 @@ def _compute_grades(records: list) -> dict:
         pos = pos_recs[0].position
 
         # Build per-60 and rate vectors for the entire position pool
-        shots_p60   = [_per60(r.shots,             r.toi_min) for r in pos_recs]
-        chances_p60 = [_per60(r.chances,           r.toi_min) for r in pos_recs]
-        pa1_p60     = [_per60(r.primary_assists,   r.toi_min) for r in pos_recs]
-        ca_p60      = [_per60(r.chance_assists,    r.toi_min) for r in pos_recs]
+        shots_p60    = [_per60(r.shots,              r.toi_min) for r in pos_recs]
+        chances_p60  = [_per60(r.chances,            r.toi_min) for r in pos_recs]
+        pa1_p60      = [_per60(r.primary_assists,    r.toi_min) for r in pos_recs]
+        pa2_p60      = [_per60(r.secondary_assists,  r.toi_min) for r in pos_recs]
+        pa3_p60      = [_per60(r.tertiary_assists,   r.toi_min) for r in pos_recs]
+        ca_p60       = [_per60(r.chance_assists,     r.toi_min) for r in pos_recs]
+        rush_rate    = [_rate(r.shots_off_rush,      r.shots)   for r in pos_recs]
+        fc_shot_rate = [_rate(r.shots_off_forecheck, r.shots)   for r in pos_recs]
 
-        carry_p60   = [_per60(r.carries,           r.toi_min) for r in pos_recs]
-        entry_eff   = [_rate(r.carries, r.carries + r.failed_entries) for r in pos_recs]
-        cwc_p60     = [_per60(r.carries_w_chances, r.toi_min) for r in pos_recs]
+        carry_p60      = [_per60(r.carries,            r.toi_min) for r in pos_recs]
+        pass_entry_p60 = [_per60(r.pass_entries,       r.toi_min) for r in pos_recs]
+        entry_eff      = [_rate(r.carries, r.carries + r.failed_entries) for r in pos_recs]
+        ctrl_rate      = [_rate(r.carries + r.pass_entries, r.zone_entries) for r in pos_recs]
+        cwc_p60        = [_per60(r.carries_w_chances,  r.toi_min) for r in pos_recs]
 
         exit_ctrl      = [_rate(r.exits_w_possession, r.zone_exits) for r in pos_recs]
-        exit_p60       = [_per60(r.zone_exits,         r.toi_min) for r in pos_recs]
-        carry_exit_p60 = [_per60(r.carry_exits,         r.toi_min) for r in pos_recs]
-        pass_exit_p60  = [_per60(r.pass_exits,          r.toi_min) for r in pos_recs]
-        clears_p60     = [_per60(r.clears,              r.toi_min) for r in pos_recs]
+        carry_exit_p60 = [_per60(r.carry_exits,        r.toi_min) for r in pos_recs]
+        pass_exit_p60  = [_per60(r.pass_exits,         r.toi_min) for r in pos_recs]
+        clears_p60     = [_per60(r.clears,             r.toi_min) for r in pos_recs]
         ret_exit_p60   = [_per60(r.retrievals_leading_to_exits, r.toi_min) for r in pos_recs]
-        botch_p60      = [_per60(r.botched_retrievals,  r.toi_min) for r in pos_recs]
+        botch_p60      = [_per60(r.botched_retrievals, r.toi_min) for r in pos_recs]
+        breakout_p60   = [_per60(r.dz_controlled_breakout, r.toi_min) for r in pos_recs]
 
         denial_p60  = [_per60(r.denials, r.toi_min) for r in pos_recs]
         denial_rate = [_rate(r.denials, r.targets) for r in pos_recs]
@@ -393,44 +422,50 @@ def _compute_grades(records: list) -> dict:
         for i, r in enumerate(pos_recs):
             # ── Offense ──────────────────────────────────────────────────
             if pos == 'D':
-                # D-men: FC pressures count as offensive contribution
                 z_off = (
-                    0.30 * _zscore(chances_p60[i], chances_p60) +
-                    0.20 * _zscore(shots_p60[i],   shots_p60)   +
-                    0.25 * _zscore(pa1_p60[i],     pa1_p60)     +
-                    0.15 * _zscore(ca_p60[i],      ca_p60)      +
-                    0.10 * _zscore(fc_p60[i],      fc_p60)
+                    0.25 * _zscore(chances_p60[i],    chances_p60)  +
+                    0.15 * _zscore(shots_p60[i],      shots_p60)    +
+                    0.20 * _zscore(pa1_p60[i],        pa1_p60)      +
+                    0.06 * _zscore(pa2_p60[i],        pa2_p60)      +
+                    0.03 * _zscore(pa3_p60[i],        pa3_p60)      +
+                    0.12 * _zscore(ca_p60[i],         ca_p60)       +
+                    0.04 * _zscore(rush_rate[i],      rush_rate)    +
+                    0.03 * _zscore(fc_shot_rate[i],   fc_shot_rate) +
+                    0.12 * _zscore(fc_p60[i],         fc_p60)
                 )
             else:
-                # Forwards: FC pressures count as offensive contribution
                 z_off = (
-                    0.30 * _zscore(chances_p60[i], chances_p60) +
-                    0.22 * _zscore(shots_p60[i],   shots_p60)   +
-                    0.23 * _zscore(pa1_p60[i],     pa1_p60)     +
-                    0.15 * _zscore(ca_p60[i],      ca_p60)      +
-                    0.10 * _zscore(fc_p60[i],      fc_p60)
+                    0.25 * _zscore(chances_p60[i],    chances_p60)  +
+                    0.18 * _zscore(shots_p60[i],      shots_p60)    +
+                    0.19 * _zscore(pa1_p60[i],        pa1_p60)      +
+                    0.07 * _zscore(pa2_p60[i],        pa2_p60)      +
+                    0.03 * _zscore(pa3_p60[i],        pa3_p60)      +
+                    0.12 * _zscore(ca_p60[i],         ca_p60)       +
+                    0.06 * _zscore(rush_rate[i],      rush_rate)    +
+                    0.04 * _zscore(fc_shot_rate[i],   fc_shot_rate) +
+                    0.06 * _zscore(fc_p60[i],         fc_p60)
                 )
             off_g = _clamp(z_off)
 
             # ── Zone Entries ──────────────────────────────────────────────
-            # Efficiency (not getting stuffed) + volume + danger
             z_ent = (
-                0.40 * _zscore(entry_eff[i],   entry_eff)   +
-                0.35 * _zscore(carry_p60[i],   carry_p60)   +
-                0.25 * _zscore(cwc_p60[i],     cwc_p60)
+                0.30 * _zscore(ctrl_rate[i],       ctrl_rate)       +
+                0.25 * _zscore(carry_p60[i],        carry_p60)       +
+                0.20 * _zscore(cwc_p60[i],          cwc_p60)         +
+                0.15 * _zscore(pass_entry_p60[i],   pass_entry_p60)  +
+                0.10 * _zscore(entry_eff[i],         entry_eff)
             )
             ent_g = _clamp(z_ent)
 
             # ── Zone Exits ───────────────────────────────────────────────
-            # Emphasise rate/quality over volume — OZ-heavy players have fewer
-            # exit opportunities so per-60 volume metrics unfairly penalise them.
             z_ext = (
-                0.25 * _zscore(carry_exit_p60[i], carry_exit_p60) +
-                0.35 * _zscore(exit_ctrl[i],      exit_ctrl)      +
-                0.15 * _zscore(pass_exit_p60[i],  pass_exit_p60)  +
-                0.10 * _zscore(ret_exit_p60[i],   ret_exit_p60)   +
-                0.05 * _zscore(clears_p60[i],     clears_p60)     -
-                0.10 * _zscore(botch_p60[i],      botch_p60)
+                0.23 * _zscore(carry_exit_p60[i], carry_exit_p60) +
+                0.30 * _zscore(exit_ctrl[i],       exit_ctrl)      +
+                0.13 * _zscore(pass_exit_p60[i],   pass_exit_p60)  +
+                0.10 * _zscore(ret_exit_p60[i],    ret_exit_p60)   +
+                0.10 * _zscore(breakout_p60[i],    breakout_p60)   +
+                0.04 * _zscore(clears_p60[i],      clears_p60)     -
+                0.10 * _zscore(botch_p60[i],       botch_p60)
             )
             ext_g = _clamp(z_ext)
 
@@ -510,6 +545,11 @@ def _compute_grades(records: list) -> dict:
                 forechecking_100=_to_100(fc_g),
                 position=r.position,
                 toi_min=r.toi_min,
+                raw_secondary_assists=r.secondary_assists,
+                raw_pass_entries=r.pass_entries,
+                raw_shots_off_rush=r.shots_off_rush,
+                raw_shots_off_forecheck=r.shots_off_forecheck,
+                raw_dz_breakout=r.dz_controlled_breakout,
             )
             result[(r.game_file_id, r.name)] = grade
 

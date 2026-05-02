@@ -498,6 +498,11 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
                     'defense_100':  ms.defense_100,
                     'forechecking_100': ms.forechecking_100,
                     'position':     ms.position,
+                    'secondary_assists':   getattr(ms, 'raw_secondary_assists',  0),
+                    'pass_entries':        getattr(ms, 'raw_pass_entries',        0),
+                    'shots_off_rush':      getattr(ms, 'raw_shots_off_rush',      0),
+                    'shots_off_forecheck': getattr(ms, 'raw_shots_off_forecheck', 0),
+                    'dz_breakout':         getattr(ms, 'raw_dz_breakout',         0),
                 }
 
     # Inject microstat data for fields the API cannot measure at all:
