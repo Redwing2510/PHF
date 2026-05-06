@@ -58,14 +58,24 @@ C_PA1       = 11  # Primary Shot Assists
 C_PA2       = 12  # Secondary Shot Assists
 C_PA3       = 13  # Tertiary Shot Assists
 C_CA        = 14  # Chance Assists
-C_SHOTS_RUSH  = 21  # Shots off rush
-C_SHOTS_FC    = 23  # Shots off forecheck
-C_SHOTS_CYCLE = 25  # Shots off cycle
+C_HOME_PLATE     = 15   # Home Plate assists
+C_LOW_HIGH       = 16   # Low-to-High assists
+C_BEHIND_NET     = 17   # Behind Net assists
+C_CENTER_LANE    = 18   # Center Lane Assists
+C_NZ_ASSIST      = 19   # NZ Assist (pass from NZ)
+C_DZ_ASSIST      = 20   # DZ Assist (passer standing in DZ)
+C_SHOTS_RUSH     = 21   # Shots off rush
+C_ASSISTS_RUSH   = 22   # Assists off Rush
+C_SHOTS_FC       = 23   # Shots off Forecheck or Cycle
+C_ASSISTS_FC     = 24   # Assists off Forecheck
+C_SHOTS_CYCLE    = 25   # Shots off cycle
+C_ASSISTS_CYCLE  = 26   # Assists off Cycle
+C_SHOTS_HD       = 27   # Shots off HD Passes
 C_ENTRIES   = 28  # Zone Entries (total)
 C_CARRIES   = 29  # Carries (controlled entries)
 C_FAILED_E  = 30  # Failed Entry attempts
 C_PASS_E    = 31  # Entries via passing play
-# C_RECOVERIES = 32
+C_RECOVERIES     = 32   # OZ Recoveries
 C_CWC       = 33  # Carries with Scoring Chances
 C_DIC       = 34  # Dump-in Chances
 C_FC_PRESS  = 35  # Forecheck Pressures
@@ -73,27 +83,30 @@ C_FC_PRESS  = 35  # Forecheck Pressures
 C_DZ_RET    = 37  # DZ Retrievals
 C_EXITS     = 38  # Zone Exits (total)
 C_EWP       = 39  # Exits with Possession
-# C_CARRY_EXIT = 40
-# C_PASS_EXIT  = 41
-# C_CLEARS     = 42
-# C_MISSED_PASS = 43
+C_CARRY_EXIT = 40  # Carry-outs (controlled exits by skating)
+C_PASS_EXIT  = 41  # Pass-exits (controlled exits by passing)
+C_CLEARS     = 42  # Clears (dump-outs, any exit under pressure)
+C_MISSED_PASS    = 43   # Missed Passes (DZ exit attempt)
 C_RET_EXIT  = 44  # Retrievals Leading to Exits
 C_BOTCH     = 45  # Botched Retrievals (negative)
 C_EXCHANGE  = 46  # Exchanges (contested entries, partial denial credit)
 C_FAIL_EXIT = 47  # Failed Exits (negative)
-C_CARRY_EXIT = 40  # Carry-outs (controlled exits by skating)
-C_PASS_EXIT  = 41  # Pass-exits (controlled exits by passing)
-C_CLEARS     = 42  # Clears (dump-outs, any exit under pressure)
 # C_RUSHED    = 48
 # C_2ND_TOUCH = 49
 C_TARGETS   = 50  # Entry Targets (entries against)
-# C_CARRIES_AG = 51
+C_CARRIES_AG     = 51   # Carries (entry defense umbrella)
 C_DENIALS   = 52  # Carry Denials
 C_PASSES_AG = 53  # Passes Allowed (entries against)
 C_CCA       = 54  # Carries with Chance Against (negative)
 C_DICA      = 55  # Dump-in with Chance Against (negative)
-C_PK_DENY   = 60  # 4v5 Carry Denials (PK entry defense)
-C_DZ_BREAKOUT = 86  # DZ Controlled Breakout
+C_OT_SHOTS       = 69   # One-timer shots
+C_REBOUNDS       = 70   # Rebound shots
+C_DEFLECTIONS    = 71   # Deflection shots
+C_OT_ASSIST      = 72   # One-timer Assists
+C_REB_ASSIST     = 73   # Rebound Assists
+C_DEFLECT_ASSIST = 74   # Deflection Assists
+C_NZ_ASSISTS     = 79   # NZ Assists (play originated from NZ)
+C_DZ_ASSISTS     = 80   # DZ Assists (play originated from DZ)
 
 
 @dataclass
@@ -138,7 +151,7 @@ class MicrostatRecord:
     # Entry defense
     targets: int = 0
     denials: int = 0
-    pk_denials: int = 0
+    pk_denials: int = 0        # kept for backwards compatibility (default 0)
     exchanges: int = 0
     passes_allowed: int = 0
     carries_chance_against: int = 0
@@ -147,7 +160,44 @@ class MicrostatRecord:
     # Forechecking
     fc_pressures: int = 0
     dz_retrievals: int = 0
-    dz_controlled_breakout: int = 0
+    dz_controlled_breakout: int = 0   # kept for backwards compatibility (default 0)
+
+    # Passing — chance assist subtypes
+    home_plate_assists: int = 0
+    low_high_assists: int = 0
+    behind_net_assists: int = 0
+    center_lane_assists: int = 0
+    assists_off_rush: int = 0
+    assists_off_forecheck: int = 0
+    assists_off_cycle: int = 0
+    onetimer_assists: int = 0
+    rebound_assists: int = 0
+    deflect_assists: int = 0
+    nz_assist: int = 0       # passer was in NZ (col 19)
+    dz_assist: int = 0       # passer was in DZ (col 20)
+    nz_assists: int = 0      # play originated from NZ (col 79)
+    dz_assists: int = 0      # play originated from DZ (col 80)
+
+    # Shooting — shot types
+    onetimers: int = 0
+    rebounds: int = 0
+    deflections: int = 0
+    shots_off_hd: int = 0
+
+    # Goals (computed from Tracking sheet)
+    goals: int = 0
+    primary_goal_assists: int = 0
+    secondary_goal_assists: int = 0
+    tertiary_goal_assists: int = 0
+
+    # OZ Activity
+    recoveries: int = 0
+
+    # DZ Exit
+    missed_passes: int = 0
+
+    # Entry Defense
+    carries_against: int = 0   # entry defense umbrella
 
 
 @dataclass
@@ -187,6 +237,14 @@ class MicrostatGrade:
 def _norm_name(name: str) -> str:
     """Normalize player name: strip non-breaking spaces, lowercase."""
     return name.replace('\xa0', ' ').strip().lower()
+
+
+_TEAM_ALIASES = {'L.A': 'LAK', 'N.J': 'NJD', 'S.J': 'SJS', 'T.B': 'TBL'}
+
+def _norm_team(team: str) -> str:
+    """Normalize team abbreviation to NHL API format."""
+    t = team.strip().upper()
+    return _TEAM_ALIASES.get(t, t)
 
 
 def _safe_int(v) -> int:
@@ -264,6 +322,49 @@ def _load_records_from_file(path: Path, file_game_id: int) -> list:
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
     if 'Player List' not in wb.sheetnames:
         return []
+
+    # Build goal/goal-assist counts from Tracking sheet
+    goal_counts = {}  # (jersey_int, team_str) -> [goals, pa1_goals, pa2_goals, pa3_goals]
+    if 'Tracking' in wb.sheetnames:
+        ws_track = wb['Tracking']
+        # Tracking sheet columns (0-based):
+        # C=2: situation, D=3: team, E=4: shooter jersey
+        # G=6: A1 jersey, H=7: A2 jersey, I=8: A3 jersey, T=19: goal flag
+        for trow in ws_track.iter_rows(min_row=2, values_only=True):
+            if not trow or len(trow) < 20:
+                continue
+            situation = trow[2]
+            if situation != '5v5':
+                continue
+            goal_flag = trow[19]
+            if str(goal_flag).lower() != 'y':
+                continue
+            team = str(trow[3]) if trow[3] else ''
+            shooter = trow[4]
+            a1 = trow[6]
+            a2 = trow[7]
+            a3 = trow[8]
+            if shooter is not None:
+                k = (int(shooter), team)
+                if k not in goal_counts:
+                    goal_counts[k] = [0, 0, 0, 0]
+                goal_counts[k][0] += 1
+            if a1 is not None:
+                k = (int(a1), team)
+                if k not in goal_counts:
+                    goal_counts[k] = [0, 0, 0, 0]
+                goal_counts[k][1] += 1
+            if a2 is not None:
+                k = (int(a2), team)
+                if k not in goal_counts:
+                    goal_counts[k] = [0, 0, 0, 0]
+                goal_counts[k][2] += 1
+            if a3 is not None:
+                k = (int(a3), team)
+                if k not in goal_counts:
+                    goal_counts[k] = [0, 0, 0, 0]
+                goal_counts[k][3] += 1
+
     ws = wb['Player List']
     records = []
     for row in ws.iter_rows(min_row=2, values_only=True):
@@ -279,10 +380,14 @@ def _load_records_from_file(path: Path, file_game_id: int) -> list:
         if toi_f <= 0:
             continue
 
+        jersey_int = _safe_int(row[C_JERSEY])
+        team_str = str(row[C_TEAM]) if row[C_TEAM] else ''
+        gc = goal_counts.get((jersey_int, team_str), [0, 0, 0, 0])
+
         rec = MicrostatRecord(
             game_file_id=file_game_id,
             name=_norm_name(name),
-            team=str(row[C_TEAM]) if row[C_TEAM] else '',
+            team=team_str,
             position=_pos_group(str(pos)),
             toi_min=toi_f,
             shots=_safe_int(row[C_SHOTS]),
@@ -311,14 +416,37 @@ def _load_records_from_file(path: Path, file_game_id: int) -> list:
             failed_exits=_safe_int(row[C_FAIL_EXIT]),
             targets=_safe_int(row[C_TARGETS]),
             denials=_safe_int(row[C_DENIALS]),
-            pk_denials=_safe_int(row[C_PK_DENY]),
             exchanges=_safe_int(row[C_EXCHANGE]),
             passes_allowed=_safe_int(row[C_PASSES_AG]),
             carries_chance_against=_safe_int(row[C_CCA]),
             dump_in_chance_against=_safe_int(row[C_DICA]),
             fc_pressures=_safe_int(row[C_FC_PRESS]),
             dz_retrievals=_safe_int(row[C_DZ_RET]),
-            dz_controlled_breakout=_safe_int(row[C_DZ_BREAKOUT]),
+            home_plate_assists=_safe_int(row[C_HOME_PLATE]),
+            low_high_assists=_safe_int(row[C_LOW_HIGH]),
+            behind_net_assists=_safe_int(row[C_BEHIND_NET]),
+            center_lane_assists=_safe_int(row[C_CENTER_LANE]),
+            assists_off_rush=_safe_int(row[C_ASSISTS_RUSH]),
+            assists_off_forecheck=_safe_int(row[C_ASSISTS_FC]),
+            assists_off_cycle=_safe_int(row[C_ASSISTS_CYCLE]),
+            onetimer_assists=_safe_int(row[C_OT_ASSIST]),
+            rebound_assists=_safe_int(row[C_REB_ASSIST]),
+            deflect_assists=_safe_int(row[C_DEFLECT_ASSIST]),
+            nz_assist=_safe_int(row[C_NZ_ASSIST]),
+            dz_assist=_safe_int(row[C_DZ_ASSIST]),
+            nz_assists=_safe_int(row[C_NZ_ASSISTS]),
+            dz_assists=_safe_int(row[C_DZ_ASSISTS]),
+            onetimers=_safe_int(row[C_OT_SHOTS]),
+            rebounds=_safe_int(row[C_REBOUNDS]),
+            deflections=_safe_int(row[C_DEFLECTIONS]),
+            shots_off_hd=_safe_int(row[C_SHOTS_HD]),
+            goals=gc[0],
+            primary_goal_assists=gc[1],
+            secondary_goal_assists=gc[2],
+            tertiary_goal_assists=gc[3],
+            recoveries=_safe_int(row[C_RECOVERIES]),
+            missed_passes=_safe_int(row[C_MISSED_PASS]),
+            carries_against=_safe_int(row[C_CARRIES_AG]),
         )
         records.append(rec)
     return records
@@ -566,42 +694,65 @@ def _xlsx_fingerprint() -> float:
 
 # ---------------------------------------------------------------------------
 # Module-level cache (loaded once per server process)
+# Pickle format: {'grades': {(id,name): MicrostatGrade}, 'records': {(id,name): MicrostatRecord}}
 # ---------------------------------------------------------------------------
-_CACHE: Optional[dict] = None
+_CACHE:         Optional[dict] = None  # grades dict
+_RECORD_CACHE:  Optional[dict] = None  # records dict
 
 
-def load_microstat_grades() -> dict:
-    """
-    Load and grade all xlsx files.
-    Results are persisted to a pickle cache on disk so subsequent restarts
-    are near-instant. The cache is invalidated whenever any xlsx file is
-    newer than the cache file.
-    Returns dict keyed by (game_file_id: int, name_normalized: str).
-    """
-    global _CACHE
-    if _CACHE is not None:
-        return _CACHE
+def _load_both_caches() -> None:
+    """Populate _CACHE and _RECORD_CACHE from disk or by parsing xlsx files."""
+    global _CACHE, _RECORD_CACHE
 
-    # Check if disk cache is still valid
     if _CACHE_FILE.exists():
         cache_mtime = _CACHE_FILE.stat().st_mtime
         xlsx_mtime  = _xlsx_fingerprint()
         if xlsx_mtime <= cache_mtime:
             print("  Loading microstat grades from cache...", flush=True)
             with open(_CACHE_FILE, 'rb') as f:
-                _CACHE = pickle.load(f)
-            print(f"  Cache loaded ({len(_CACHE)} player-game records).", flush=True)
-            return _CACHE
+                payload = pickle.load(f)
+            # Support both old format (raw grades dict) and new format (dict with keys)
+            if isinstance(payload, dict) and 'grades' in payload:
+                _CACHE        = payload['grades']
+                _RECORD_CACHE = payload.get('records', {})
+            else:
+                # Old format — invalidate so we rebuild with records included
+                _CACHE = None
+                _RECORD_CACHE = None
+            if _CACHE is not None:
+                print(f"  Cache loaded ({len(_CACHE)} player-game records).", flush=True)
+                return
 
-    # Cache miss — parse all xlsx files
+    # Cache miss or old format — parse all xlsx files
     records = _load_all_records()
-    _CACHE = _compute_grades(records)
+    _CACHE        = _compute_grades(records)
+    # Key includes team + position to disambiguate same-name players on the same team
+    _RECORD_CACHE = {(r.game_file_id, r.name, _norm_team(r.team), r.position): r for r in records}
 
-    # Save to disk
+    payload = {'grades': _CACHE, 'records': _RECORD_CACHE}
     with open(_CACHE_FILE, 'wb') as f:
-        pickle.dump(_CACHE, f)
+        pickle.dump(payload, f)
     print(f"  Microstat cache saved ({len(_CACHE)} player-game records).", flush=True)
+
+
+def load_microstat_grades() -> dict:
+    """
+    Returns grades dict keyed by (game_file_id: int, name_normalized: str) -> MicrostatGrade.
+    """
+    global _CACHE
+    if _CACHE is None:
+        _load_both_caches()
     return _CACHE
+
+
+def load_microstat_records() -> dict:
+    """
+    Returns records dict keyed by (game_file_id: int, name_normalized: str) -> MicrostatRecord.
+    """
+    global _RECORD_CACHE
+    if _RECORD_CACHE is None:
+        _load_both_caches()
+    return _RECORD_CACHE
 
 
 def get_microstat_grade(game_id: int, name: str) -> Optional[MicrostatGrade]:
@@ -612,16 +763,37 @@ def get_microstat_grade(game_id: int, name: str) -> Optional[MicrostatGrade]:
     name:    player name (any casing, non-breaking spaces OK)
     """
     grades = load_microstat_grades()
-    norm = _norm_name(name)
-    # The xlsx filename uses the last 5 digits of the NHL game ID
-    # e.g. 2025030131 → 30131
+    norm  = _norm_name(name)
     short = int(str(game_id)[-5:])
     return grades.get((short, norm))
 
 
+def get_microstat_record(game_id: int, name: str, team: str = '', position: str = '') -> Optional[MicrostatRecord]:
+    """
+    Look up the raw MicrostatRecord (event counts) for a player in a game.
+
+    game_id:  full NHL game ID (e.g. 2025030131)
+    name:     player name (any casing, non-breaking spaces OK)
+    team:     team abbreviation — recommended to avoid same-name collisions
+    position: player position ('C','L','R','D') — used to disambiguate same-name players on the same team
+    """
+    records = load_microstat_records()
+    norm  = _norm_name(name)
+    short = int(str(game_id)[-5:])
+    pos_grp = _pos_group(position) if position else ''
+    if team and pos_grp:
+        return records.get((short, norm, _norm_team(team), pos_grp))
+    # Fallback: find any record matching game+name
+    for (gid, n, _t, _p), r in records.items():
+        if gid == short and n == norm:
+            return r
+    return None
+
+
 def invalidate_cache() -> None:
     """Call this after adding new xlsx files so grades are recomputed."""
-    global _CACHE
+    global _CACHE, _RECORD_CACHE
     _CACHE = None
+    _RECORD_CACHE = None
     if _CACHE_FILE.exists():
         _CACHE_FILE.unlink()

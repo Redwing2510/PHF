@@ -456,7 +456,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span></th>
       <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span></th>
       <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span></th>
-      <th class="th-grade" data-col="poss">POSS<span class="sort-arrow">↓</span></th>
       <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span></th>
       <th data-col="toi">TOI<span class="sort-arrow">↓</span></th>
       <th data-col="cf_pct">CF%<span class="sort-arrow">↓</span></th>
@@ -505,11 +504,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <!-- DEF -->
       <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.dfn) }}">
         <div class="grade-sub" style="background:{{ row.dfn|grade_bg }};color:#fff">{{ "%.1f"|format(row.dfn) }}</div>
-      </td>
-
-      <!-- POSS -->
-      <td class="td-sub td-grade" data-val="{{ '%.2f'|format(row.poss) }}">
-        <div class="grade-sub" style="background:{{ row.poss|grade_bg }};color:#fff">{{ "%.1f"|format(row.poss) }}</div>
       </td>
 
       <!-- FO -->
@@ -601,7 +595,7 @@ let sortCol = 'overall';
 let sortAsc  = false;
 
 const NUMERIC_COLS = new Set(['rank','goals','assists','sog','hits','blocks','gva','tka','pim']);
-const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','poss','fo','toi','cf_pct','xg_pct','goals','assists','sog','hits','blocks','gva','tka','pim','fo_pct'];
+const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','fo','toi','cf_pct','xg_pct','goals','assists','sog','hits','blocks','gva','tka','pim','fo_pct'];
 function colIndex(col) { return COL_ORDER.indexOf(col); }
 
 function toiToSec(str) {

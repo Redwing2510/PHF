@@ -619,10 +619,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <span class="grade-chip" id="ti-def-g"></span>
     </div>
     <div class="ti-grade-item">
-      <span class="ti-grade-label">POSS</span>
-      <span class="grade-chip" id="ti-poss"></span>
-    </div>
-    <div class="ti-grade-item">
       <span class="ti-grade-label">FO</span>
       <span class="grade-chip" id="ti-fo-g"></span>
     </div>
@@ -653,7 +649,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   <thead>
     <tr class="group-row">
       <th colspan="5" class="stats-group">── PLAYERS ──</th>
-      <th colspan="5" class="grade-group">── PHG SCORE ──</th>
+      <th colspan="4" class="grade-group">── PHG SCORE ──</th>
       <th colspan="13" class="stats-group">── STATS ──</th>
     </tr>
     <tr class="col-row">
@@ -665,7 +661,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.overall }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.off }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.dfn }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
-      <th class="th-grade" data-col="poss">POSS<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.poss }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.fo }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-stats-first" data-col="toi_per_game">TOI/GM</th>
       <th data-col="cf_pct">CF%</th>
@@ -691,15 +686,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-pos="{{ row.pos_group }}"
       data-qualified="{{ 'true' if row.qualified else 'false' }}"
       data-global-rank="{{ row.rank }}"
-      data-ms-gp="{{ row.ms_gp }}"
-      data-ms-overall="{{ '%.2f'|format(row.ms_overall) if row.ms_overall is not none else '' }}"
-      data-ms-overall-letter="{{ row.ms_overall_letter or '' }}"
-      data-ms-dfn="{{ '%.2f'|format(row.ms_dfn) if row.ms_dfn is not none else '' }}"
-      data-ms-poss="{{ '%.2f'|format(row.ms_poss) if row.ms_poss is not none else '' }}"
-      data-api-overall="{{ '%.2f'|format(row.overall) }}"
-      data-api-overall-letter="{{ row.overall_letter }}"
-      data-api-dfn="{{ '%.2f'|format(row.dfn) }}"
-      data-api-poss="{{ '%.2f'|format(row.poss) }}">
+      data-ms-gp="{{ row.ms_gp }}">
     <td class="td-rank">{{ row.rank }}</td>
     <td class="td-name">{{ row.name }}</td>
     <td class="td-team">
@@ -709,7 +696,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       </div>
     </td>
     <td class="td-pos">{{ row.position }}</td>
-    <td class="td-stats td-gp" style="text-align:center">{{ row.gp }}</td>
+    <td class="td-stats td-gp" style="text-align:center">{{ row.ms_gp }}</td>
 
     <!-- OVERALL -->
     <td class="td-grade" data-val="{{ "%.2f"|format(row.overall) }}">
@@ -727,11 +714,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     <!-- DEF -->
     <td class="td-grade" data-val="{{ "%.2f"|format(row.dfn) }}">
       <div class="grade-sub" style="background:{{ row.dfn|grade_bg }}">{{ "%.1f"|format(row.dfn) }}</div>
-    </td>
-
-    <!-- POSS -->
-    <td class="td-grade" data-val="{{ "%.2f"|format(row.poss) }}">
-      <div class="grade-sub" style="background:{{ row.poss|grade_bg }}">{{ "%.1f"|format(row.poss) }}</div>
     </td>
 
     <!-- FO -->
@@ -795,7 +777,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th class="tg-th-grade tg-sorted" data-col="overall" onclick="sortTeams('overall')">OVERALL<span class="sort-arrow">↓</span></th>
       <th class="tg-th-grade" data-col="off"   onclick="sortTeams('off')">OFF<span class="sort-arrow">↓</span></th>
       <th class="tg-th-grade" data-col="def_g" onclick="sortTeams('def_g')">DEF<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="poss"  onclick="sortTeams('poss')">POSS<span class="sort-arrow">↓</span></th>
       <th class="tg-th-grade" data-col="fo_g"  onclick="sortTeams('fo_g')">FO<span class="sort-arrow">↓</span></th>
     </tr>
   </thead>
@@ -806,7 +787,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-overall="{{ t.overall or 0 }}"
       data-off="{{ t.off or 0 }}"
       data-def_g="{{ t.def_g or 0 }}"
-      data-poss="{{ t.poss or 0 }}"
       data-fo_g="{{ t.fo_g or 0 }}">
     <td class="tg-rank" data-rank="{{ t.rank }}">{{ t.rank }}</td>
     <td class="tg-team-cell">
@@ -832,9 +812,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     </td>
     <td class="tg-grade-cell">
       {% if t.def_g is not none %}<span class="grade-chip" style="background:{{ t.def_g | grade_bg }}">{{ t.def_g }}</span>{% else %}—{% endif %}
-    </td>
-    <td class="tg-grade-cell">
-      {% if t.poss is not none %}<span class="grade-chip" style="background:{{ t.poss | grade_bg }}">{{ t.poss }}</span>{% else %}—{% endif %}
     </td>
     <td class="tg-grade-cell">
       {% if t.fo_g is not none %}<span class="grade-chip" style="background:{{ t.fo_g | grade_bg }}">{{ t.fo_g }}</span>{% else %}—{% endif %}
@@ -958,12 +935,13 @@ function applyFilters() {
     else if (activeTeam === 'EAST' || activeTeam === 'WEST') teamOk = TEAM_CONF[t] === activeTeam;
     else if (['Atlantic','Metropolitan','Central','Pacific'].includes(activeTeam)) teamOk = TEAM_DIV[t] === activeTeam;
     else                                                   teamOk = t === activeTeam;
-    const posOk  = activePos  === 'all' || row.dataset.pos  === activePos;
-    const msOk   = !msMode    || (parseInt(row.dataset.msGp  || '0') > 0 && row.dataset.qualified === 'true');
-    const nameOk = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
-    const show   = teamOk && posOk && msOk && nameOk;
+    const posOk    = activePos === 'all' || row.dataset.pos === activePos;
+    const msOk     = !msMode  || (parseInt(row.dataset.msGp || '0') > 0 && row.dataset.qualified === 'true');
+    const filterOk = teamOk && posOk && msOk;
+    const nameOk   = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
+    const show     = filterOk && nameOk;
     row.style.display = show ? '' : 'none';
-    if (show) {
+    if (filterOk) {
       rank++;
       row.querySelector('.td-rank').textContent = rank;
     }
@@ -995,7 +973,6 @@ function applyFilters() {
     _rankChip('ti-overall', 'overall');
     _rankChip('ti-off',     'off');
     _rankChip('ti-def-g',   'def_g');
-    _rankChip('ti-poss',    'poss');
     _rankChip('ti-fo-g',    'fo_g');
     bar.style.display = 'flex';
   } else {
@@ -1079,7 +1056,7 @@ let sortCol = 'overall';
 let sortAsc = false;
 
 const NUMERIC_COLS = new Set([
-  'rank','gp','overall','off','dfn','poss','fo',
+  'rank','gp','overall','off','dfn','fo',
   'goals','assists','points','sog','hits','blocks','gva','tka'
 ]);
 
@@ -1128,7 +1105,7 @@ function sortTable(col, keepDirection = false) {
   applyFilters();
 }
 
-const COL_ORDER = ['rank','name','team','position','gp','overall','off','dfn','poss','fo',
+const COL_ORDER = ['rank','name','team','position','gp','overall','off','dfn','fo',
                    'toi_per_game','cf_pct','xg_pct','goals','assists','points','sog','hits','blocks','gva','tka','pim','fo_pct'];
 function colIndex(col) { return COL_ORDER.indexOf(col); }
 
@@ -1146,41 +1123,8 @@ function gradeBg(s) {
   return '#b91c1c';
 }
 
-function setOverallCell(cell, score, letter) {
-  cell.dataset.val = score.toFixed(2);
-  const badge = cell.querySelector('.grade-badge');
-  badge.style.background = gradeBg(score);
-  badge.querySelector('.g-letter').textContent = letter;
-  badge.querySelector('.g-score').textContent  = score.toFixed(1);
-}
-
-function setSubCell(cell, score) {
-  const sub = cell.querySelector('.grade-sub');
-  if (!sub) return;
-  cell.dataset.val = score.toFixed(2);
-  sub.style.background = gradeBg(score);
-  sub.textContent = score.toFixed(1);
-}
-
 function applyMsMode() {
-  document.querySelectorAll('.player-row').forEach(row => {
-    const msGp = parseInt(row.dataset.msGp || '0');
-    // visibility handled by applyFilters via msOk check
-    const ovCell   = row.cells[colIndex('overall')];
-    const dfnCell  = row.cells[colIndex('dfn')];
-    const possCell = row.cells[colIndex('poss')];
-    if (msMode && msGp > 0 && row.dataset.msOverall) {
-      setOverallCell(ovCell,  parseFloat(row.dataset.msOverall), row.dataset.msOverallLetter);
-      setSubCell(dfnCell,     parseFloat(row.dataset.msDfn));
-      setSubCell(possCell,    parseFloat(row.dataset.msPoss));
-    } else {
-      setOverallCell(ovCell,  parseFloat(row.dataset.apiOverall), row.dataset.apiOverallLetter);
-      setSubCell(dfnCell,     parseFloat(row.dataset.apiDfn));
-      setSubCell(possCell,    parseFloat(row.dataset.apiPoss));
-    }
-  });
   applyFilters();
-  if (['overall','dfn','poss'].includes(sortCol)) sortTable(sortCol, true);
 }
 
 document.getElementById('ms-toggle').addEventListener('click', function() {
@@ -1378,7 +1322,7 @@ function _renderPlayerModal(data){
   if(dr){document.getElementById('pm-draft-wrap').style.display='block';
     document.getElementById('pm-draft').textContent=`${dr.year}, ${dr.teamAbbrev} (${_ordinal(dr.overallPick)} overall), Round ${dr.round}, Pick ${dr.pickInRound}`;}
   const posLabel=g.pos_group==='fwd'?'F':g.pos_group==='def'?'D':'';
-  const gradeRows=[['Overall',g.overall,g.overall_letter,g.rank],['Offense',g.off,g.off_letter,g.off_rank],['Defense',g.dfn,g.dfn_letter,g.dfn_rank],['Poss',g.poss,g.poss_letter,g.poss_rank]];
+  const gradeRows=[['Overall',g.overall,g.overall_letter,g.rank],['Offense',g.off,g.off_letter,g.off_rank],['Defense',g.dfn,g.dfn_letter,g.dfn_rank]];
   document.getElementById('pm-grades').innerHTML=gradeRows.map(([lbl,val,letter,rank])=>{
     if(val==null)return'';
     const color=_gradeColor(val);
@@ -1388,7 +1332,7 @@ function _renderPlayerModal(data){
       <div class="pm-grade-bar-wrap"><div class="pm-grade-bar" style="width:${val}%;background:${color};"></div></div>
       <span class="pm-grade-val" style="color:${color};">${val.toFixed(1)}</span>
       <span class="pm-grade-letter">${letter||''}</span>${rankBadge}</div>`;}).join('');
-  const stats=[['GP',g.gp],['TOI',g.toi_per_game],['G',g.goals],['A',g.assists],['PTS',g.points]];
+  const stats=[['GP',g.ms_gp],['TOI',g.toi_per_game],['G',g.goals],['A',g.assists],['PTS',g.points]];
   document.getElementById('pm-stats').innerHTML=stats.map(([l,v])=>
     `<div class="pm-stat-cell"><div class="pm-stat-val">${v??'—'}</div><div class="pm-stat-lbl">${l}</div></div>`).join('');
 }

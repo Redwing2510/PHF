@@ -4,86 +4,130 @@ from typing import List, Tuple
 
 
 # ─── Play-by-play grade deltas (PFF-style, -2 to +2 per play) ────────────────
-# Applied per discrete event in pipeline.py.
+# Separate tables for forwards and defensemen.
 # Raw grade totals are normalized to mean = 60 across all players at output time.
 
-GRADE_DELTAS = {
-    # Shots — base delta + xG weight so shot quality drives the score
-    # A 0.30 xG shot-on-goal = 0.5 + 0.30*2.0 = +1.1  (well above average)
-    # A 0.05 xG perimeter shot = 0.5 + 0.05*2.0 = +0.6  (modest credit)
-    'shot_on_goal_base':            0.5,
-    'shot_xg_multiplier':           2.0,
-    'missed_shot_base':             0.1,
-    'missed_shot_xg_mult':          1.5,
-    'blocked_shot_shooter_base':    0.05,   # shooter loses most credit
-    'blocked_shot_xg_mult':         1.0,
+# Faceoff rows are identical in both tables; FACEOFF_POS_MULTIPLIER handles
+# position scaling (0.65× for F, 1.0× for D). pk_defensive_mult is shared (1.5×).
 
-    # Shot blocking (the defender)
-    'blocked_shot_blocker_base':    0.5,
-    'blocked_shot_blocker_xg_mult': 1.5,   # blocking a high-danger chance = more credit
-
-    # Scoring events — PFF treats TDs as +3 (breaks the normal -2/+2 ceiling).
-    # A goal is hockey's equivalent: bonus stacks on top of the shot delta.
-    # SOG(0.20 xG) + bonus = 0.5 + 0.40 + 2.5 = +3.4 for a typical goal scorer.
-    'goal_scorer_bonus':            2.5,   # stacks on top of the shot delta
-    'empty_net_goal_bonus':         0.8,   # EN goals: still good but no goalie to beat
-    'primary_assist':               1.875,
-    'secondary_assist':             0.625,
-    'en_primary_assist':            0.6,   # EN primary assist
-    'en_secondary_assist':          0.3,   # EN secondary assist
-
-    # Puck battles — zone-aware (zone from the player's own perspective)
-    'giveaway_oz':                 -0.50,  # minor: far from your net
-    'giveaway_nz':                 -1.00,  # neutral zone turnover
-    'giveaway_dz':                 -2.00,  # catastrophic: direct scoring chance
-    'takeaway_oz':                  0.75,  # pressuring in their zone
-    'takeaway_nz':                  1.00,  # neutral zone battle won
-    'takeaway_dz':                  1.50,  # saved a clear danger
-
-    # Physical play — zone-aware
-    'hit_dz':                       0.45,  # DZ hit: protecting your net
-    'hit':                          0.30,  # NZ hit
-    'hit_oz':                       0.15,  # OZ hit: forecheck, less critical
-    'hit_taken':                   -0.15,  # being physically dominated
-
-    # On-ice possession — every shot attempt while on ice contributes
-    # so CF%/xG% feed directly into raw_grade for all skaters, not just shooters.
-    # A high-danger shot for you on ice (xG=0.25): +0.10 + 0.30*0.25 = +0.175
-    # A perimeter shot for you on ice (xG=0.04):  +0.10 + 0.30*0.04 = +0.112
-    'on_ice_shot_for_base':         0.10,
-    'on_ice_shot_for_xg_mult':      0.30,
-    'on_ice_shot_against_base':    -0.10,
-    'on_ice_shot_against_xg_mult': -0.30,
-
-    # Penalties
-    'penalty_taken':               -1.5,
-    'penalty_drawn':                0.8,
-    'pk_kill':                      0.8,   # bonus for being on ice when a PK is successfully killed
-    'pk_defensive_mult':            1.5,   # blocks, hits, takeaways are worth 1.5x while shorthanded
-
-    # Faceoffs — situation × zone matrix
-    # ES: standard zone weights
+_FO_AND_PK = {
+    'pk_defensive_mult':            1.5,
     'fo_es_win_oz':                 0.50,
     'fo_es_win_dz':                 0.80,
     'fo_es_win_nz':                 0.30,
     'fo_es_loss_oz':               -0.50,
     'fo_es_loss_dz':               -0.80,
     'fo_es_loss_nz':               -0.30,
-    # PK: DZ amplified — losing it while shorthanded is critical
-    'fo_pk_win_oz':                 0.60,   # sustained pressure while killing
-    'fo_pk_win_dz':                 1.20,   # cleared danger while shorthanded
+    'fo_pk_win_oz':                 0.60,
+    'fo_pk_win_dz':                 1.20,
     'fo_pk_win_nz':                 0.40,
-    'fo_pk_loss_oz':               -0.30,   # at least it's far from your net
-    'fo_pk_loss_dz':               -1.50,   # shorthanded + puck in your zone = worst case
+    'fo_pk_loss_oz':               -0.30,
+    'fo_pk_loss_dz':               -1.50,
     'fo_pk_loss_nz':               -0.60,
-    # PP: OZ amplified — losing it squanders the power play
-    'fo_pp_win_oz':                 0.70,   # sets up the man advantage properly
-    'fo_pp_win_dz':                 0.60,   # clearing while on PP
+    'fo_pp_win_oz':                 0.70,
+    'fo_pp_win_dz':                 0.60,
     'fo_pp_win_nz':                 0.30,
-    'fo_pp_loss_oz':               -0.90,   # squandering the PP setup
-    'fo_pp_loss_dz':               -0.50,   # expected they'll try to clear it
+    'fo_pp_loss_oz':               -0.90,
+    'fo_pp_loss_dz':               -0.50,
     'fo_pp_loss_nz':               -0.40,
 }
+
+GRADE_DELTAS_F = {
+    **_FO_AND_PK,
+
+    # Shots — now handled by tracking_grader
+    'shot_on_goal_base':            0.00,
+    'shot_xg_multiplier':           0.00,
+    'missed_shot_base':             0.00,
+    'missed_shot_xg_mult':          0.00,
+    'blocked_shot_shooter_base':    0.00,
+    'blocked_shot_xg_mult':         0.00,
+    'blocked_shot_blocker_base':    0.00,
+    'blocked_shot_blocker_xg_mult': 0.00,
+
+    # Scoring — now handled by tracking_grader
+    'goal_scorer_bonus':            0.00,
+    'empty_net_goal_bonus':         0.00,
+    'primary_assist':               0.00,
+    'secondary_assist':             0.00,
+    'en_primary_assist':            0.00,
+    'en_secondary_assist':          0.00,
+
+    # Giveaways/takeaways — removed
+    'giveaway_oz':                  0.00,
+    'giveaway_nz':                  0.00,
+    'giveaway_dz':                  0.00,
+    'takeaway_oz':                  0.00,
+    'takeaway_nz':                  0.00,
+    'takeaway_dz':                  0.00,
+
+    # Physical — F only get OZ hit credit; DZ and NZ hits dropped
+    'hit_dz':                       0.00,
+    'hit':                          0.00,
+    'hit_oz':                       0.08,
+    'hit_taken':                    0.00,
+
+    # On-ice possession — dropped
+    'on_ice_shot_for_base':         0.00,
+    'on_ice_shot_for_xg_mult':      0.00,
+    'on_ice_shot_against_base':     0.00,
+    'on_ice_shot_against_xg_mult':  0.00,
+
+    # Penalties
+    'penalty_taken':               -1.00,
+    'penalty_drawn':                0.80,
+    'pk_kill':                      0.00,
+}
+
+GRADE_DELTAS_D = {
+    **_FO_AND_PK,
+
+    # Shots — now handled by tracking_grader
+    'shot_on_goal_base':            0.00,
+    'shot_xg_multiplier':           0.00,
+    'missed_shot_base':             0.00,
+    'missed_shot_xg_mult':          0.00,
+    'blocked_shot_shooter_base':    0.00,
+    'blocked_shot_xg_mult':         0.00,
+    'blocked_shot_blocker_base':    0.00,
+    'blocked_shot_blocker_xg_mult': 0.00,
+
+    # Scoring — now handled by tracking_grader
+    'goal_scorer_bonus':            0.00,
+    'empty_net_goal_bonus':         0.00,
+    'primary_assist':               0.00,
+    'secondary_assist':             0.00,
+    'en_primary_assist':            0.00,
+    'en_secondary_assist':          0.00,
+
+    # Giveaways/takeaways — removed
+    'giveaway_oz':                  0.00,
+    'giveaway_nz':                  0.00,
+    'giveaway_dz':                  0.00,
+    'takeaway_oz':                  0.00,
+    'takeaway_nz':                  0.00,
+    'takeaway_dz':                  0.00,
+
+    # Physical — D only get DZ hit credit; OZ hits dropped
+    'hit_dz':                       0.08,
+    'hit':                          0.00,
+    'hit_oz':                       0.00,
+    'hit_taken':                    0.00,
+
+    # On-ice possession — dropped
+    'on_ice_shot_for_base':         0.00,
+    'on_ice_shot_for_xg_mult':      0.00,
+    'on_ice_shot_against_base':     0.00,
+    'on_ice_shot_against_xg_mult':  0.00,
+
+    # Penalties
+    'penalty_taken':               -0.75,
+    'penalty_drawn':                0.50,
+    'pk_kill':                      0.00,
+}
+
+# Backwards-compatible alias used for position-neutral lookups (faceoffs, pk_defensive_mult).
+GRADE_DELTAS = GRADE_DELTAS_F
 
 
 # ─── Position faceoff multiplier ────────────────────────────────────────────

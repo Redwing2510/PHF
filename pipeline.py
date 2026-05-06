@@ -2,9 +2,14 @@ import json
 from collections import defaultdict
 from models import PlayerStats, PlayerInfo
 from loader import load_all, is_on_ice, time_to_seconds
-from grader import GRADE_DELTAS, FACEOFF_POS_MULTIPLIER, normalize_grades, normalize_by_position_group, score_to_letter
+from grader import GRADE_DELTAS, GRADE_DELTAS_D, FACEOFF_POS_MULTIPLIER, normalize_grades, normalize_by_position_group, score_to_letter
+
+def _gd(key: str, pos: str) -> float:
+    """Return the position-specific grade delta for key."""
+    return (GRADE_DELTAS_D if pos == 'D' else GRADE_DELTAS)[key]
 from xg import compute_xg
-from manual_loader import get_microstat_grade
+from manual_loader import get_microstat_grade, get_microstat_record
+from tracking_grader import compute_tracking_grade, compute_tracking_split
 
 # Shot event types (goals count as shot attempts in Corsi)
 SHOT_EVENTS = {'goal', 'shot-on-goal', 'missed-shot', 'blocked-shot'}
@@ -109,7 +114,7 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 zone_key = 'oz' if player_zone == 'O' else ('dz' if player_zone == 'D' else 'nz')
                 delta_key = f"fo_{sit.lower()}_{'win' if is_winner else 'loss'}_{zone_key}"
                 fo_mult = FACEOFF_POS_MULTIPLIER.get(info.position, 1.0)
-                d = GRADE_DELTAS[delta_key] * fo_mult
+                d = _gd(delta_key, info.position) * fo_mult
                 stats.raw_grade   += d
                 stats.raw_faceoff += d
                 log(pid, period, play['timeInPeriod'], f"Faceoff {'win' if is_winner else 'loss'} ({sit}, {player_zone}Z)", d)
@@ -132,38 +137,37 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                         if info.team == ctx.home_team_abbrev and shooting_team == ctx.home_team_id or info.team == ctx.away_team_abbrev and shooting_team != ctx.home_team_id:
                             stats.cf += 1
                             stats.xgf += xg_val
-                            d = GRADE_DELTAS['on_ice_shot_for_base'] + xg_val * GRADE_DELTAS['on_ice_shot_for_xg_mult']
-                            grade_d = d * (1.5 if info.position == 'D' else 1.0)
-                            stats.raw_grade     += grade_d
-                            stats.raw_possession += d
+                            grade_d = _gd('on_ice_shot_for_base', info.position) + xg_val * _gd('on_ice_shot_for_xg_mult', info.position)
+                            stats.raw_grade      += grade_d
+                            stats.raw_possession += grade_d
                             log(pid, period, play['timeInPeriod'], f'On-ice shot for (xG={xg_val:.3f})', grade_d)
                         else:
                             stats.ca += 1
                             stats.xga += xg_val
-                            # Track PK-specific xGA — player is on PK if his side has fewer skaters
                             away_sk = int(situation[1]); home_sk = int(situation[2])
                             is_home_p = info.team == ctx.home_team_abbrev
                             my_sk = home_sk if is_home_p else away_sk
                             opp_sk = away_sk if is_home_p else home_sk
                             if my_sk < opp_sk:
                                 stats.pk_xga += xg_val
-                            d = GRADE_DELTAS['on_ice_shot_against_base'] + xg_val * GRADE_DELTAS['on_ice_shot_against_xg_mult']
-                            grade_d = d * (1.5 if info.position == 'D' else 1.0)
-                            stats.raw_grade     += grade_d
-                            stats.raw_possession += d
+                            grade_d = _gd('on_ice_shot_against_base', info.position) + xg_val * _gd('on_ice_shot_against_xg_mult', info.position)
+                            stats.raw_grade      += grade_d
+                            stats.raw_possession += grade_d
                             if info.position == 'D':
-                                stats.raw_defense += d  # suppression counts toward DEF for D-men
+                                stats.raw_defense += grade_d
                             log(pid, period, play['timeInPeriod'], f'On-ice shot against (xG={xg_val:.3f})', grade_d)
 
         # Missed shots
         if event == 'missed-shot':
             pid = details.get('shootingPlayerId')
             if pid and pid in player_stats:
+                _miss_info = all_players.get(pid)
+                _miss_pos  = _miss_info.position if _miss_info else 'F'
                 xg_miss = compute_xg(
                     details.get('xCoord'), details.get('yCoord'),
                     details.get('shotType'), 'missed-shot'
                 )
-                d = GRADE_DELTAS['missed_shot_base'] + xg_miss * GRADE_DELTAS['missed_shot_xg_mult']
+                d = _gd('missed_shot_base', _miss_pos) + xg_miss * _gd('missed_shot_xg_mult', _miss_pos)
                 player_stats[pid].raw_grade   += d
                 player_stats[pid].raw_offense += d
                 log(pid, period, play['timeInPeriod'], f"Missed shot (xG={xg_miss:.3f})", d)
@@ -178,7 +182,7 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 is_home = info and info.team == ctx.home_team_abbrev
                 player_zone = raw_zone if is_home else ('O' if raw_zone == 'D' else ('D' if raw_zone == 'O' else 'N'))
                 zone_key = 'oz' if player_zone == 'O' else ('dz' if player_zone == 'D' else 'nz')
-                d = GRADE_DELTAS[f'giveaway_{zone_key}']
+                d = _gd(f'giveaway_{zone_key}', info.position if info else 'F')
                 player_stats[pid].raw_grade   += d
                 log(pid, period, play['timeInPeriod'], f'Giveaway ({player_zone}Z)', d)
 
@@ -195,7 +199,7 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 my_sk_t  = int(situation[2]) if is_home else int(situation[1])
                 opp_sk_t = int(situation[1]) if is_home else int(situation[2])
                 pk_mult  = GRADE_DELTAS['pk_defensive_mult'] if my_sk_t < opp_sk_t else 1.0
-                d = GRADE_DELTAS[f'takeaway_{zone_key}'] * pk_mult
+                d = _gd(f'takeaway_{zone_key}', info.position if info else 'F') * pk_mult
                 player_stats[pid].raw_grade   += d
                 label = f'Takeaway ({player_zone}Z{"  PK" if pk_mult > 1 else ""})'
                 log(pid, period, play['timeInPeriod'], label, d)
@@ -209,29 +213,35 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
             is_empty_net = 'goalieInNetId' not in details
             if scorer and scorer in player_stats:
                 player_stats[scorer].goals += 1
+                _sc_info = all_players.get(scorer)
+                _sc_pos  = _sc_info.position if _sc_info else 'F'
                 xg_goal = compute_xg(
                     details.get('xCoord'), details.get('yCoord'),
                     details.get('shotType'), 'shot-on-goal'
                 )
                 player_stats[scorer].ixg += xg_goal
                 bonus_key = 'empty_net_goal_bonus' if is_empty_net else 'goal_scorer_bonus'
-                d = GRADE_DELTAS['shot_on_goal_base'] + xg_goal * GRADE_DELTAS['shot_xg_multiplier'] + GRADE_DELTAS[bonus_key]
+                d = _gd('shot_on_goal_base', _sc_pos) + xg_goal * _gd('shot_xg_multiplier', _sc_pos) + _gd(bonus_key, _sc_pos)
                 player_stats[scorer].raw_grade   += d
                 player_stats[scorer].raw_offense += d
                 label = 'Empty net goal' if is_empty_net else f'Goal (xG={xg_goal:.3f})'
                 log(scorer, period, play['timeInPeriod'], label, d)
             if assist1 and assist1 in player_stats:
                 player_stats[assist1].primary_assists += 1
+                _a1_info = all_players.get(assist1)
+                _a1_pos  = _a1_info.position if _a1_info else 'F'
                 a1_key = 'en_primary_assist' if is_empty_net else 'primary_assist'
-                d = GRADE_DELTAS[a1_key]
+                d = _gd(a1_key, _a1_pos)
                 player_stats[assist1].raw_grade   += d
                 player_stats[assist1].raw_offense += d
                 label = 'Primary assist (EN)' if is_empty_net else 'Primary assist'
                 log(assist1, period, play['timeInPeriod'], label, d)
             if assist2 and assist2 in player_stats:
                 player_stats[assist2].secondary_assists += 1
+                _a2_info = all_players.get(assist2)
+                _a2_pos  = _a2_info.position if _a2_info else 'F'
                 a2_key = 'en_secondary_assist' if is_empty_net else 'secondary_assist'
-                d = GRADE_DELTAS[a2_key]
+                d = _gd(a2_key, _a2_pos)
                 player_stats[assist2].raw_grade   += d
                 player_stats[assist2].raw_offense += d
                 label = 'Secondary assist (EN)' if is_empty_net else 'Secondary assist'
@@ -252,12 +262,14 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
             pid = details.get('shootingPlayerId')
             if pid and pid in player_stats:
                 player_stats[pid].shots_on_goal += 1
+                _sog_info = all_players.get(pid)
+                _sog_pos  = _sog_info.position if _sog_info else 'F'
                 xg_sog = compute_xg(
                     details.get('xCoord'), details.get('yCoord'),
                     details.get('shotType'), 'shot-on-goal'
                 )
                 player_stats[pid].ixg += xg_sog
-                d = GRADE_DELTAS['shot_on_goal_base'] + xg_sog * GRADE_DELTAS['shot_xg_multiplier']
+                d = _gd('shot_on_goal_base', _sog_pos) + xg_sog * _gd('shot_xg_multiplier', _sog_pos)
                 player_stats[pid].raw_grade   += d
                 player_stats[pid].raw_offense += d
                 log(pid, period, play['timeInPeriod'], f'Shot on goal (xG={xg_sog:.3f})', d)
@@ -277,8 +289,10 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 my_sk_b  = int(situation[2]) if is_home_b else int(situation[1])
                 opp_sk_b = int(situation[1]) if is_home_b else int(situation[2])
                 pk_mult  = GRADE_DELTAS['pk_defensive_mult'] if my_sk_b < opp_sk_b else 1.0
-                blk_xg_mult = GRADE_DELTAS['blocked_shot_blocker_xg_mult'] * (1.5 if blocker_pos == 'D' else 1.0) * pk_mult
-                blk_base    = GRADE_DELTAS['blocked_shot_blocker_base']    * (1.5 if blocker_pos == 'D' else 1.0) * pk_mult
+                if pk_mult > 1.0:
+                    player_stats[blocker].pk_blocked_shots += 1
+                blk_xg_mult = _gd('blocked_shot_blocker_xg_mult', blocker_pos) * pk_mult
+                blk_base    = _gd('blocked_shot_blocker_base',    blocker_pos) * pk_mult
                 d = blk_base + xg_blocked * blk_xg_mult
                 player_stats[blocker].raw_grade   += d
                 player_stats[blocker].raw_defense += d
@@ -286,7 +300,9 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 log(blocker, period, play['timeInPeriod'], label, d)
             shooter = details.get('shootingPlayerId')
             if shooter and shooter in player_stats:
-                d = GRADE_DELTAS['blocked_shot_shooter_base'] + xg_blocked * GRADE_DELTAS['blocked_shot_xg_mult']
+                _sh_info = all_players.get(shooter)
+                _sh_pos  = _sh_info.position if _sh_info else 'F'
+                d = _gd('blocked_shot_shooter_base', _sh_pos) + xg_blocked * _gd('blocked_shot_xg_mult', _sh_pos)
                 player_stats[shooter].raw_grade   += d
                 player_stats[shooter].raw_offense += d
                 log(shooter, period, play['timeInPeriod'], f'Shot blocked (xG={xg_blocked:.3f})', d)
@@ -294,10 +310,12 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
         # Hits
         if event == 'hit':
             zone = details.get('zoneCode', 'N')
-            hit_delta = {'D': GRADE_DELTAS['hit_dz'], 'O': GRADE_DELTAS['hit_oz']}.get(zone, GRADE_DELTAS['hit'])
             pid = details.get('hittingPlayerId')
             if pid and pid in player_stats:
                 hitter_info = all_players.get(pid)
+                _hit_pos    = hitter_info.position if hitter_info else 'F'
+                _hit_key    = 'hit_dz' if zone == 'D' else ('hit_oz' if zone == 'O' else 'hit')
+                hit_delta   = _gd(_hit_key, _hit_pos)
                 is_home_h   = hitter_info and hitter_info.team == ctx.home_team_abbrev
                 my_sk_h  = int(situation[2]) if is_home_h else int(situation[1])
                 opp_sk_h = int(situation[1]) if is_home_h else int(situation[2])
@@ -310,7 +328,9 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                 log(pid, period, play['timeInPeriod'], label, hit_d)
             hittee = details.get('hitteePlayerId')
             if hittee and hittee in player_stats:
-                d = GRADE_DELTAS['hit_taken']
+                _ht_info = all_players.get(hittee)
+                _ht_pos  = _ht_info.position if _ht_info else 'F'
+                d = _gd('hit_taken', _ht_pos)
                 player_stats[hittee].raw_grade   += d
                 player_stats[hittee].raw_defense += d
                 log(hittee, period, play['timeInPeriod'], f'Hit taken ({zone}Z)', d)
@@ -319,19 +339,30 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
         if event == 'penalty':
             taker = details.get('committedByPlayerId')
             drawer = details.get('drawnByPlayerId')
+            raw_zone = details.get('zoneCode', 'N')
             if taker and taker in player_stats:
                 player_stats[taker].penalties_taken += 1
                 player_stats[taker].pim += details.get('duration', 2)
-                d = GRADE_DELTAS['penalty_taken']
+                taker_info = all_players.get(taker)
+                d = _gd('penalty_taken', taker_info.position if taker_info else 'F')
                 player_stats[taker].raw_grade   += d
                 player_stats[taker].raw_defense += d
-                log(taker, period, play['timeInPeriod'], 'Penalty taken', d)
+                is_home_t = taker_info and taker_info.team == ctx.home_team_abbrev
+                t_zone = raw_zone if is_home_t else ('O' if raw_zone == 'D' else ('D' if raw_zone == 'O' else 'N'))
+                if t_zone == 'O':   player_stats[taker].oz_pen_taken += 1
+                elif t_zone == 'D': player_stats[taker].dz_pen_taken += 1
+                log(taker, period, play['timeInPeriod'], f'Penalty taken ({t_zone}Z)', d)
             if drawer and drawer in player_stats:
                 player_stats[drawer].penalties_drawn += 1
-                d = GRADE_DELTAS['penalty_drawn']
+                _dr_info = all_players.get(drawer)
+                d = _gd('penalty_drawn', _dr_info.position if _dr_info else 'F')
                 player_stats[drawer].raw_grade   += d
                 player_stats[drawer].raw_offense += d
-                log(drawer, period, play['timeInPeriod'], 'Penalty drawn', d)
+                is_home_dr = _dr_info and _dr_info.team == ctx.home_team_abbrev
+                dr_zone = raw_zone if is_home_dr else ('O' if raw_zone == 'D' else ('D' if raw_zone == 'O' else 'N'))
+                if dr_zone == 'O':   player_stats[drawer].oz_pen_drawn += 1
+                elif dr_zone == 'D': player_stats[drawer].dz_pen_drawn += 1
+                log(drawer, period, play['timeInPeriod'], f'Penalty drawn ({dr_zone}Z)', d)
 
     # Calculate TOI per player — use shift chart if available, else boxscore fallback
     for pid in player_stats:
@@ -346,7 +377,6 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
     # For each penalty that expires without a PP goal against the penalized team,
     # reward skaters on ice at the kill moment with a pk_kill grade bonus.
     if has_shifts:
-        pk_kill_bonus = GRADE_DELTAS['pk_kill']
         _pk_pens = []   # (period, start_sec, expiry_sec, penalized_team_id)
         _pp_goals = []  # (period, sec) — only uneven-strength goals matter
 
@@ -384,10 +414,11 @@ def process_game(game_id: int, season: str = '20252026', from_file: str = None, 
                         continue
                     on_pk_team = (info.team == ctx.home_team_abbrev) == (pen_team_id == ctx.home_team_id)
                     if on_pk_team and is_on_ice_fast(pid, pen_period, check_sec):
+                        kill_d = _gd('pk_kill', info.position)
                         stats.pk_kills    += 1
-                        stats.raw_grade   += pk_kill_bonus
-                        stats.raw_defense += pk_kill_bonus
-                        log(pid, pen_period, t_str, 'Penalty kill', pk_kill_bonus)
+                        stats.raw_grade   += kill_d
+                        stats.raw_defense += kill_d
+                        log(pid, pen_period, t_str, 'Penalty kill', kill_d)
 
     return player_stats, all_players, ctx, game_data, play_log
 
@@ -432,11 +463,39 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
             scaled.append(w * raw + (1 - w) * mean_raw)
         return normalize_by_position_group(list(zip(scaled, positions)))
 
-    overall_norm = scale_and_normalize([s.raw_grade      for _, s in graded_players])
-    offense_norm = scale_and_normalize([s.raw_offense    for _, s in graded_players])
-    defense_norm = normalize_raw(      [s.raw_defense    for _, s in graded_players])
-    possess_norm = scale_and_normalize([s.raw_possession for _, s in graded_players])
-    faceoff_norm = scale_and_normalize([s.raw_faceoff    for _, s in graded_players])
+    # Add tracking grade to raw_grade (overall) and populate sub-grade components
+    for info, stats in graded_players:
+        # Zone-specific penalty contributions (from API, every game)
+        pen_off = stats.oz_pen_drawn * 0.45 + stats.oz_pen_taken * (-0.60)
+        pen_dfn = stats.dz_pen_drawn * 0.40 + stats.dz_pen_taken * (-0.50)
+        stats.raw_tracking_off     += pen_off
+        stats.raw_tracking_dz_exit += pen_dfn
+
+    if game_id:
+        for info, stats in graded_players:
+            trk = get_microstat_record(game_id, info.name, info.team, info.position)
+            if trk:
+                off_pts, dz_exit_pts, entry_dfn_pts = compute_tracking_split(trk, info.position)
+                stats.raw_grade            += off_pts + dz_exit_pts + entry_dfn_pts
+                stats.raw_tracking_off     += off_pts
+                stats.raw_tracking_dz_exit += dz_exit_pts
+                stats.raw_tracking_entry_dfn += entry_dfn_pts
+
+    offense_norm   = scale_and_normalize([s.raw_tracking_off       for _, s in graded_players])
+    dz_exit_norm   = scale_and_normalize([s.raw_tracking_dz_exit   for _, s in graded_players])
+    entry_dfn_norm = scale_and_normalize([s.raw_tracking_entry_dfn for _, s in graded_players])
+    defense_norm   = normalize_by_position_group(list(zip(
+                       [(dz + ed) / 2 for dz, ed in zip(dz_exit_norm, entry_dfn_norm)],
+                       positions)))
+    faceoff_norm   = scale_and_normalize([s.raw_faceoff            for _, s in graded_players])
+
+    # Overall: F = 75% OFF + 25% DFN, D = 25% OFF + 75% DFN
+    # FO shown as standalone column but does not affect overall
+    overall_norm = []
+    for i, (info, stats) in enumerate(graded_players):
+        is_d = info.position == 'D'
+        off_w, dfn_w = (0.80, 0.20) if not is_d else (0.20, 0.80)
+        overall_norm.append(round(off_w * offense_norm[i] + dfn_w * defense_norm[i], 1))
 
     rows = []
     for i, (info, stats) in enumerate(graded_players):
@@ -451,13 +510,11 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
             'team':           info.team,
             'position':       info.position,
             'overall':        overall_norm[i],
-            'overall_letter': score_to_letter(overall_norm[i]),
+            'overall_letter': score_to_letter(float(overall_norm[i])),
             'off':            offense_norm[i],
             'off_letter':     score_to_letter(offense_norm[i]),
             'dfn':            defense_norm[i],
             'dfn_letter':     score_to_letter(defense_norm[i]),
-            'poss':           possess_norm[i],
-            'poss_letter':    score_to_letter(possess_norm[i]),
             'fo':             faceoff_norm[i] if has_fo_grade else None,
             'fo_letter':      score_to_letter(faceoff_norm[i]) if has_fo_grade else None,
             'toi':            stats.toi_str,
@@ -475,84 +532,7 @@ def grade_game(player_stats: dict, all_players: dict, game_id: int = 0) -> list:
             'pk_kills':       stats.pk_kills,
             'raw_grade':      stats.raw_grade,
             'fo_pct':         f"{stats.faceoff_pct}%" if has_fo_pct else '—',
-            # Microstat grades (None when no xlsx log exists for this game)
-            'ms':             None,
         })
-
-    # Attach microstat grades where an xlsx log exists for this game
-    if game_id:
-        for row in rows:
-            ms = get_microstat_grade(game_id, row['name'])
-            if ms:
-                row['ms'] = {
-                    'overall':     ms.overall,
-                    'offense':     ms.offense,
-                    'entries':     ms.entries,
-                    'exits':       ms.exits,
-                    'defense':     ms.entry_defense,
-                    'forechecking': ms.forechecking,
-                    'overall_100':  ms.overall_100,
-                    'offense_100':  ms.offense_100,
-                    'entries_100':  ms.entries_100,
-                    'exits_100':    ms.exits_100,
-                    'defense_100':  ms.defense_100,
-                    'forechecking_100': ms.forechecking_100,
-                    'position':     ms.position,
-                    'secondary_assists':   getattr(ms, 'raw_secondary_assists',  0),
-                    'pass_entries':        getattr(ms, 'raw_pass_entries',        0),
-                    'shots_off_rush':      getattr(ms, 'raw_shots_off_rush',      0),
-                    'shots_off_forecheck': getattr(ms, 'raw_shots_off_forecheck', 0),
-                    'dz_breakout':         getattr(ms, 'raw_dz_breakout',         0),
-                }
-
-    # Inject microstat data for fields the API cannot measure at all:
-    #   poss  → replaced by entries+exits average (API has CF%/xG but not
-    #            the actual zone-entry/exit mechanics behind them)
-    #   dfn   → 70% MS entry defense (denials, CCA) + 30% API defense
-    #            (blocks, hits, PK kills) — manual weighted higher, same as season view
-    #   overall → recomputed from sub-grades, adding forechecking as a new
-    #             component (API has zero signal on forecheck pressure/DZ retrievals)
-    # off and fo are left as-is — the API covers goals/xG/faceoffs well.
-    if game_id:
-        for row in rows:
-            ms = row.get('ms')
-            if not ms:
-                continue
-            ms_zone = (ms['entries_100'] + ms['exits_100']) / 2.0
-            row['poss'] = ms_zone
-            row['dfn']  = 0.70 * ms['defense_100'] + 0.30 * row['dfn']
-            is_d = row['position'] == 'D'
-            if is_d:
-                # Defensemen: off 20% | dfn 50% | poss 30% (fo displaces poss)
-                if row['fo'] is not None:
-                    row['overall'] = (
-                        0.20 * row['off'] +
-                        0.50 * row['dfn'] +
-                        0.25 * row['poss'] +
-                        0.05 * row['fo']
-                    )
-                else:
-                    row['overall'] = (
-                        0.20 * row['off'] +
-                        0.50 * row['dfn'] +
-                        0.30 * row['poss']
-                    )
-            else:
-                # Forwards: off 40% | dfn 25% | poss 35% (fo displaces poss)
-                if row['fo'] is not None:
-                    row['overall'] = (
-                        0.40 * row['off'] +
-                        0.25 * row['dfn'] +
-                        0.30 * row['poss'] +
-                        0.05 * row['fo']
-                    )
-                else:
-                    row['overall'] = (
-                        0.40 * row['off'] +
-                        0.25 * row['dfn'] +
-                        0.35 * row['poss']
-                    )
-            row['overall_letter'] = score_to_letter(row['overall'])
 
     rows.sort(key=lambda x: x['overall'], reverse=True)
     for i, row in enumerate(rows, 1):

@@ -32,6 +32,7 @@ _FO_DELTA: Dict[Tuple[str, str], float] = {
 }
 
 _CACHE: Optional[Dict[int, Dict[int, Tuple[float, int]]]] = None
+_DZ_FO_CACHE: Optional[Dict[int, Dict[int, Tuple[int, int]]]] = None
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
@@ -41,6 +42,15 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
             player_id   INTEGER NOT NULL,
             weighted    REAL    NOT NULL,
             total_fo    INTEGER NOT NULL,
+            PRIMARY KEY (game_id, player_id)
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS dz_fo_counts (
+            game_id     INTEGER NOT NULL,
+            player_id   INTEGER NOT NULL,
+            dz_won      INTEGER NOT NULL,
+            dz_lost     INTEGER NOT NULL,
             PRIMARY KEY (game_id, player_id)
         )
     ''')
@@ -64,7 +74,11 @@ def _strength(situation: str, winner_id: int, home_id: int) -> str:
 def _build_fo_grades(conn: sqlite3.Connection) -> None:
     """Parse PBP cache and populate fo_grades table for all uncached games."""
     cached_games = {r[0] for r in conn.execute('SELECT DISTINCT game_id FROM fo_grades').fetchall()}
-    pbp_rows     = conn.execute('SELECT game_id, data FROM pbp').fetchall()
+    # pbp table may not exist if cache.db was freshly created
+    try:
+        pbp_rows = conn.execute('SELECT game_id, data FROM pbp').fetchall()
+    except sqlite3.OperationalError:
+        pbp_rows = []
     missing      = [(gid, d) for gid, d in pbp_rows if gid not in cached_games]
 
     if not missing:
@@ -162,3 +176,87 @@ def load_fo_grades() -> Dict[int, Dict[int, Tuple[float, int]]]:
 def get_fo_grade(game_id: int, player_id: int) -> Optional[Tuple[float, int]]:
     """Return (weighted_sum, total_fo) for a player in a game, or None."""
     return load_fo_grades().get(game_id, {}).get(player_id)
+
+
+def _build_dz_fo_counts(conn: sqlite3.Connection) -> None:
+    """Parse PBP cache and populate dz_fo_counts for all uncached games."""
+    cached = {r[0] for r in conn.execute('SELECT DISTINCT game_id FROM dz_fo_counts').fetchall()}
+    try:
+        pbp_rows = conn.execute('SELECT game_id, data FROM pbp').fetchall()
+    except sqlite3.OperationalError:
+        return
+    missing = [(gid, d) for gid, d in pbp_rows if gid not in cached]
+    if not missing:
+        return
+
+    print(f'  Building DZ faceoff counts for {len(missing)} games...', flush=True)
+    rows = []
+    for gid, data_str in missing:
+        data    = json.loads(data_str)
+        plays   = data.get('plays', [])
+        home_id = data.get('homeTeam', {}).get('id')
+        if not home_id:
+            continue
+
+        acc: Dict[int, list] = {}
+        for play in plays:
+            if play.get('typeDescKey') != 'faceoff':
+                continue
+            det       = play.get('details', {})
+            winner_id = det.get('winningPlayerId')
+            loser_id  = det.get('losingPlayerId')
+            zone      = det.get('zoneCode', 'N')
+            owner_id  = det.get('eventOwnerTeamId')
+
+            if zone not in ('O', 'N', 'D'):
+                continue
+
+            for pid, is_win in ((winner_id, True), (loser_id, False)):
+                if pid is None:
+                    continue
+                pzone = zone if is_win else {'O': 'D', 'D': 'O'}.get(zone, zone)
+                if pzone != 'D':
+                    continue
+                if pid not in acc:
+                    acc[pid] = [0, 0]
+                if is_win:
+                    acc[pid][0] += 1
+                else:
+                    acc[pid][1] += 1
+
+        for pid, (dz_won, dz_lost) in acc.items():
+            rows.append((gid, pid, dz_won, dz_lost))
+
+    if rows:
+        conn.executemany(
+            'INSERT OR IGNORE INTO dz_fo_counts (game_id, player_id, dz_won, dz_lost) VALUES (?,?,?,?)',
+            rows
+        )
+        conn.commit()
+        print(f'  Stored DZ FO counts for {len(missing)} games ({len(rows)} player-game records).', flush=True)
+
+
+def load_dz_fo_counts() -> Dict[int, Dict[int, Tuple[int, int]]]:
+    """Return {game_id: {player_id: (dz_won, dz_lost)}} for all cached games."""
+    global _DZ_FO_CACHE
+    if _DZ_FO_CACHE is not None:
+        return _DZ_FO_CACHE
+
+    conn = sqlite3.connect(DB_PATH)
+    _ensure_table(conn)
+    _build_dz_fo_counts(conn)
+
+    result: Dict[int, Dict[int, Tuple[int, int]]] = {}
+    for game_id, player_id, dz_won, dz_lost in conn.execute(
+        'SELECT game_id, player_id, dz_won, dz_lost FROM dz_fo_counts'
+    ).fetchall():
+        result.setdefault(game_id, {})[player_id] = (dz_won, dz_lost)
+
+    conn.close()
+    _DZ_FO_CACHE = result
+    return _DZ_FO_CACHE
+
+
+def get_dz_fo_counts(game_id: int, player_id: int) -> Optional[Tuple[int, int]]:
+    """Return (dz_won, dz_lost) for a player in a game, or None."""
+    return load_dz_fo_counts().get(game_id, {}).get(player_id)

@@ -50,6 +50,7 @@ class PlayerStats:
     shots_on_goal: int = 0       # individual shots on goal (not on-ice Corsi)
     hits: int = 0
     blocked_shots: int = 0       # individual shot blocks
+    pk_blocked_shots: int = 0    # shot blocks while shorthanded
     penalties_taken: int = 0
     penalties_drawn: int = 0
     pim: int = 0                 # penalty minutes
@@ -71,10 +72,21 @@ class PlayerStats:
     raw_grade: float = 0.0       # sum of per-play grade deltas; normalized to 0-100 at output
 
     # Sub-grade accumulators (split by category, normalized separately at output)
-    raw_offense: float = 0.0     # goals, assists, shots, ixG
-    raw_defense: float = 0.0     # blocks, hits, takeaways, giveaways
-    raw_possession: float = 0.0  # on-ice shot for/against deltas
+    raw_offense: float = 0.0     # legacy accumulator (kept for compat)
+    raw_defense: float = 0.0     # legacy accumulator (kept for compat)
+    raw_possession: float = 0.0  # legacy accumulator (kept for compat)
     raw_faceoff: float = 0.0     # all faceoff deltas
+
+    # Tracking sub-grade components (populated in grade_game from xlsx data)
+    raw_tracking_off: float = 0.0       # Passing + Shooting + OZ Activity
+    raw_tracking_dz_exit: float = 0.0   # Defensive Zone Exit
+    raw_tracking_entry_dfn: float = 0.0 # Entry Defense
+
+    # Zone-specific penalty counts (from PBP API)
+    oz_pen_drawn: int = 0
+    oz_pen_taken: int = 0
+    dz_pen_drawn: int = 0
+    dz_pen_taken: int = 0
 
     # Time on ice (seconds), computed from shifts
     toi_seconds: int = 0

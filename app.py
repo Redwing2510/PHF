@@ -380,31 +380,23 @@ def api_player(player_id):
         if player:
             pos_group = player.get('pos_group', '')
             ms_gp     = player.get('ms_gp', 0) or 0
-            qualified    = [p for p in all_players if p.get('qualified') and p.get('pos_group') == pos_group]
-            ms_qualified = [p for p in qualified if (p.get('ms_gp') or 0) > 0]
-            pos_total    = len(ms_qualified) if ms_gp > 0 else len(qualified)
+            qualified = [p for p in all_players if p.get('qualified') and p.get('pos_group') == pos_group]
+            pos_total = len(qualified)
             def _rank(key):
-                pool   = ms_qualified if ms_gp > 0 else qualified
-                ranked = sorted(pool, key=lambda p: p.get(key) or 0, reverse=True)
+                ranked = sorted(qualified, key=lambda p: p.get(key) or 0, reverse=True)
                 return next((i + 1 for i, p in enumerate(ranked) if p['player_id'] == player_id), None)
-            ms_overall = player.get('ms_overall')
-            ms_dfn     = player.get('ms_dfn')
-            ms_poss    = player.get('ms_poss')
             grades = {
-                'overall':        ms_overall if ms_gp > 0 else player.get('overall'),
-                'overall_letter': player.get('ms_overall_letter') if ms_gp > 0 else player.get('overall_letter'),
+                'overall':        player.get('overall'),
+                'overall_letter': player.get('overall_letter'),
                 'off':            player.get('off'),
                 'off_letter':     player.get('off_letter'),
-                'dfn':            ms_dfn if ms_gp > 0 else player.get('dfn'),
-                'dfn_letter':     score_to_letter(ms_dfn) if ms_gp > 0 and ms_dfn is not None else player.get('dfn_letter'),
-                'poss':           ms_poss if ms_gp > 0 else player.get('poss'),
-                'poss_letter':    score_to_letter(ms_poss) if ms_gp > 0 and ms_poss is not None else player.get('poss_letter'),
-                'rank':           _rank('ms_overall') if ms_gp > 0 else player.get('rank'),
+                'dfn':            player.get('dfn'),
+                'dfn_letter':     player.get('dfn_letter'),
+                'rank':           player.get('rank'),
                 'pos_group':      pos_group,
                 'pos_total':      pos_total,
                 'off_rank':       _rank('off'),
-                'dfn_rank':       _rank('ms_dfn') if ms_gp > 0 else _rank('dfn'),
-                'poss_rank':      _rank('ms_poss') if ms_gp > 0 else _rank('poss'),
+                'dfn_rank':       _rank('dfn'),
                 'ms_gp':          ms_gp,
                 'gp':             player.get('gp'),
                 'toi_per_game':   player.get('toi_per_game'),
