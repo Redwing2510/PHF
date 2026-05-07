@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.env
+
+# Large data files (re-downloadable)
+MoneyPuck Game Data/*.csv
+
+# Caches & databases
+season_cache/
+*.pkl
+cache.db
+
+# Temp/debug files
+shifts.json
+car_ott.json
+*.json.bak
+
+# OS
+.DS_Store

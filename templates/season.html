@@ -638,6 +638,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     <button class="filter-btn" data-pos="def">Defense</button>
   </div>
   <button class="ms-toggle-btn" id="ms-toggle" title="Show only MS-tracked games, replace Dfn/Poss with microstat-enhanced grades">🔬 MS Mode</button>
+  <button class="ms-toggle-btn" id="atz-toggle" title="Add AllThreeZones tracking data on top of MoneyPuck baseline scores">ATZ +Tracking</button>
+  <button class="ms-toggle-btn active" id="dzblend-toggle" title="D defensive sub-score: DZ%-weighted blend of tracking + MP (default on). Uncheck to use legacy ATZ formula.">D-Blend</button>
   <div class="player-search">
     <input id="player-search" type="search" placeholder="Search player name..." autocomplete="off">
   </div>
@@ -686,7 +688,23 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-pos="{{ row.pos_group }}"
       data-qualified="{{ 'true' if row.qualified else 'false' }}"
       data-global-rank="{{ row.rank }}"
-      data-ms-gp="{{ row.ms_gp }}">
+      data-ms-gp="{{ row.ms_gp }}"
+      data-overall-mp="{{ row.overall_mp }}"
+      data-off-mp="{{ row.off_mp }}"
+      data-dfn-mp="{{ row.dfn_mp }}"
+      data-overall-mp-letter="{{ row.overall_mp_letter }}"
+      data-off-mp-letter="{{ row.off_mp_letter }}"
+      data-dfn-mp-letter="{{ row.dfn_mp_letter }}"
+      data-overall-trk="{{ row.overall }}"
+      data-off-trk="{{ row.off }}"
+      data-dfn-trk="{{ row.dfn }}"
+      data-overall-trk-letter="{{ row.overall_letter }}"
+      data-off-trk-letter="{{ row.off_letter }}"
+      data-dfn-trk-letter="{{ row.dfn_letter }}"
+      data-overall-legacy="{{ row.overall_legacy }}"
+      data-dfn-legacy="{{ row.dfn_legacy }}"
+      data-dfn-legacy-letter="{{ row.dfn_legacy_letter }}"
+      >
     <td class="td-rank">{{ row.rank }}</td>
     <td class="td-name">{{ row.name }}</td>
     <td class="td-team">
@@ -696,7 +714,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       </div>
     </td>
     <td class="td-pos">{{ row.position }}</td>
-    <td class="td-stats td-gp" style="text-align:center">{{ row.ms_gp }}</td>
+    <td class="td-stats td-gp" style="text-align:center">{{ row.gp }}</td>
 
     <!-- OVERALL -->
     <td class="td-grade" data-val="{{ "%.2f"|format(row.overall) }}">
@@ -775,8 +793,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th>TEAM</th>
       <th class="tg-th-record">RECORD</th>
       <th class="tg-th-grade tg-sorted" data-col="overall" onclick="sortTeams('overall')">OVERALL<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="off"   onclick="sortTeams('off')">OFF<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="def_g" onclick="sortTeams('def_g')">DEF<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="fwd"   onclick="sortTeams('fwd')">FWD<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="dfn"   onclick="sortTeams('dfn')">DEF<span class="sort-arrow">↓</span></th>
       <th class="tg-th-grade" data-col="fo_g"  onclick="sortTeams('fo_g')">FO<span class="sort-arrow">↓</span></th>
     </tr>
   </thead>
@@ -785,8 +803,11 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   <tr class="team-grade-row"
       data-team="{{ t.team }}"
       data-overall="{{ t.overall or 0 }}"
-      data-off="{{ t.off or 0 }}"
-      data-def_g="{{ t.def_g or 0 }}"
+      data-fwd="{{ t.fwd or 0 }}"
+      data-dfn="{{ t.dfn or 0 }}"
+      data-overall-mp="{{ t.overall_mp or 0 }}"
+      data-fwd-mp="{{ t.fwd_mp or 0 }}"
+      data-dfn-mp="{{ t.dfn_mp or 0 }}"
       data-fo_g="{{ t.fo_g or 0 }}">
     <td class="tg-rank" data-rank="{{ t.rank }}">{{ t.rank }}</td>
     <td class="tg-team-cell">
@@ -805,13 +826,16 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       {% else %}—{% endif %}
     </td>
     <td class="tg-grade-cell">
-      {% if t.overall is not none %}<span class="grade-chip grade-chip-lg" style="background:{{ t.overall | grade_bg }}">{{ t.overall }}</span>{% else %}—{% endif %}
+      {% set ov = t.overall_mp if t.overall_mp is not none else t.overall %}
+      {% if ov is not none %}<span class="grade-chip grade-chip-lg tg-overall-chip" data-mp="{{ t.overall_mp or 0 }}" data-trk="{{ t.overall or 0 }}" style="background:{{ ov | grade_bg }}">{{ ov }}</span>{% else %}—{% endif %}
     </td>
     <td class="tg-grade-cell">
-      {% if t.off is not none %}<span class="grade-chip" style="background:{{ t.off | grade_bg }}">{{ t.off }}</span>{% else %}—{% endif %}
+      {% set fv = t.fwd_mp if t.fwd_mp is not none else t.fwd %}
+      {% if fv is not none %}<span class="grade-chip tg-fwd-chip" data-mp="{{ t.fwd_mp or 0 }}" data-trk="{{ t.fwd or 0 }}" style="background:{{ fv | grade_bg }}">{{ fv }}</span>{% else %}—{% endif %}
     </td>
     <td class="tg-grade-cell">
-      {% if t.def_g is not none %}<span class="grade-chip" style="background:{{ t.def_g | grade_bg }}">{{ t.def_g }}</span>{% else %}—{% endif %}
+      {% set dv = t.dfn_mp if t.dfn_mp is not none else t.dfn %}
+      {% if dv is not none %}<span class="grade-chip tg-dfn-chip" data-mp="{{ t.dfn_mp or 0 }}" data-trk="{{ t.dfn or 0 }}" style="background:{{ dv | grade_bg }}">{{ dv }}</span>{% else %}—{% endif %}
     </td>
     <td class="tg-grade-cell">
       {% if t.fo_g is not none %}<span class="grade-chip" style="background:{{ t.fo_g | grade_bg }}">{{ t.fo_g }}</span>{% else %}—{% endif %}
@@ -896,7 +920,9 @@ function sortTeams(col) {
   });
   const tbody = document.querySelector('#teams-table tbody');
   const rows  = Array.from(tbody.querySelectorAll('.team-grade-row'));
-  rows.sort((a, b) => (parseFloat(b.dataset[col]) || 0) - (parseFloat(a.dataset[col]) || 0));
+  // In MP mode, sort by the MP version of the column
+  const dataCol = (!atzMode && ['overall','fwd','dfn'].includes(col)) ? col + 'Mp' : col;
+  rows.sort((a, b) => (parseFloat(b.dataset[dataCol]) || 0) - (parseFloat(a.dataset[dataCol]) || 0));
   rows.forEach(r => tbody.appendChild(r));
   _filterTeamsTable();
 }
@@ -918,7 +944,7 @@ const TEAM_DIV = {
 
 let activeTeam = 'ALL';
 let activePos  = 'all';
-let msMode     = true;
+let msMode     = false;
 let activeSearch = '';
 
 /* ── filter & rerank ── */
@@ -971,8 +997,8 @@ function applyFilters() {
       el.style.background = pct != null ? gradeColor(pct) : '#374151';
     }
     _rankChip('ti-overall', 'overall');
-    _rankChip('ti-off',     'off');
-    _rankChip('ti-def-g',   'def_g');
+    _rankChip('ti-off',     'fwd');
+    _rankChip('ti-def-g',   'dfn');
     _rankChip('ti-fo-g',    'fo_g');
     bar.style.display = 'flex';
   } else {
@@ -1133,9 +1159,112 @@ document.getElementById('ms-toggle').addEventListener('click', function() {
   applyMsMode();
 });
 
-// Default: players view, MS mode on.
+/* ── ATZ data mode toggle ── */
+let atzMode = false; // default: MP only (no tracking overlay)
+
+function applyDataMode() {
+  const sfx = atzMode ? 'Trk' : 'Mp';
+  document.querySelectorAll('.player-row').forEach(row => {
+    const overall = parseFloat(row.dataset['overall' + sfx]);
+    const offVal  = parseFloat(row.dataset['off'     + sfx]);
+    const dfnVal  = parseFloat(row.dataset['dfn'     + sfx]);
+    const overallL = row.dataset['overall' + sfx + 'Letter'] || '';
+    const offL     = row.dataset['off'     + sfx + 'Letter'] || '';
+    const dfnL     = row.dataset['dfn'     + sfx + 'Letter'] || '';
+
+    // cells[5]=overall, cells[6]=off, cells[7]=dfn
+    const overallTd = row.cells[5];
+    const offTd     = row.cells[6];
+    const dfnTd     = row.cells[7];
+
+    overallTd.dataset.val = overall.toFixed(2);
+    const badge = overallTd.querySelector('.grade-badge');
+    if (badge) {
+      badge.style.background = gradeBg(overall);
+      const lEl = badge.querySelector('.g-letter');
+      const sEl = badge.querySelector('.g-score');
+      if (lEl) lEl.textContent = overallL;
+      if (sEl) sEl.textContent = overall.toFixed(1);
+    }
+
+    offTd.dataset.val = offVal.toFixed(2);
+    const offSub = offTd.querySelector('.grade-sub');
+    if (offSub) { offSub.style.background = gradeBg(offVal); offSub.textContent = offVal.toFixed(1); }
+
+    dfnTd.dataset.val = dfnVal.toFixed(2);
+    const dfnSub = dfnTd.querySelector('.grade-sub');
+    if (dfnSub) { dfnSub.style.background = gradeBg(dfnVal); dfnSub.textContent = dfnVal.toFixed(1); }
+  });
+  if (['overall','off','dfn'].includes(sortCol)) sortTable(sortCol, true);
+
+  // Update team grade chips
+  const tSfx = atzMode ? 'trk' : 'mp';
+  document.querySelectorAll('.team-grade-row').forEach(row => {
+    const ov  = parseFloat(row.dataset[atzMode ? 'overall' : 'overallMp']) || 0;
+    const fv  = parseFloat(row.dataset[atzMode ? 'fwd'     : 'fwdMp'])     || 0;
+    const dv  = parseFloat(row.dataset[atzMode ? 'dfn'     : 'dfnMp'])     || 0;
+    const oEl = row.querySelector('.tg-overall-chip');
+    const fEl = row.querySelector('.tg-fwd-chip');
+    const dEl = row.querySelector('.tg-dfn-chip');
+    if (oEl) { oEl.style.background = gradeBg(ov); oEl.textContent = ov.toFixed(1); }
+    if (fEl) { fEl.style.background = gradeBg(fv); fEl.textContent = fv.toFixed(1); }
+    if (dEl) { dEl.style.background = gradeBg(dv); dEl.textContent = dv.toFixed(1); }
+  });
+  sortTeams(teamSortCol);
+}
+
+document.getElementById('atz-toggle').addEventListener('click', function() {
+  atzMode = !atzMode;
+  this.classList.toggle('active', atzMode);
+  applyDataMode();
+  applyDzBlend();
+});
+
+/* ── D-Blend toggle (default ON) ── */
+// When ON: D rows always show the DZ%-weighted blend for dfn (regardless of ATZ mode)
+// When OFF: D rows fall back to pure MP dfn
+let dzBlendMode = true;
+
+function applyDzBlend() {
+  document.querySelectorAll('.player-row').forEach(row => {
+    if (row.dataset.pos !== 'def') return;
+    let dfnVal, overallVal;
+    if (dzBlendMode) {
+      dfnVal     = parseFloat(row.dataset.dfnTrk)      || 0;
+      overallVal = parseFloat(row.dataset.overallTrk)  || 0;
+    } else {
+      dfnVal     = parseFloat(row.dataset.dfnMp)       || 0;
+      overallVal = parseFloat(row.dataset.overallMp)   || 0;
+    }
+
+    const dfnTd = row.cells[7];
+    dfnTd.dataset.val = dfnVal.toFixed(2);
+    const dfnSub = dfnTd.querySelector('.grade-sub');
+    if (dfnSub) { dfnSub.style.background = gradeBg(dfnVal); dfnSub.textContent = dfnVal.toFixed(1); }
+
+    const overallTd = row.cells[5];
+    overallTd.dataset.val = overallVal.toFixed(2);
+    const badge = overallTd.querySelector('.grade-badge');
+    if (badge) {
+      badge.style.background = gradeBg(overallVal);
+      const sEl = badge.querySelector('.g-score');
+      if (sEl) sEl.textContent = overallVal.toFixed(1);
+    }
+  });
+  if (['overall','dfn'].includes(sortCol)) sortTable(sortCol, true);
+}
+
+document.getElementById('dzblend-toggle').addEventListener('click', function() {
+  dzBlendMode = !dzBlendMode;
+  this.classList.toggle('active', dzBlendMode);
+  applyDzBlend();
+});
+
+// Default: players view, MS mode on, MP-only scores.
 setView('players');
-document.getElementById('ms-toggle').classList.add('active');
+// ms-toggle off by default — MP baseline covers all players
+applyDataMode();   // initialize cells to MP scores before first sort
+applyDzBlend();    // apply D-blend on top (default ON for D rows)
 sortCol = '__init__';
 sortTable('overall');
 applyMsMode();

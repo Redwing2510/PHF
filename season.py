@@ -177,6 +177,7 @@ class SeasonEntry:
     # Tracking sub-grade totals (accumulated from xlsx data across all games)
     raw_tracking_off_total:       float = 0.0
     raw_tracking_dz_exit_total:   float = 0.0
+    raw_tracking_dz_exit_ms:      float = 0.0  # manual tracking only (no blocks/penalties)
     raw_tracking_entry_dfn_total: float = 0.0
     ms_gp:          int = 0   # games with tracking data (used for MS mode filter)
     ms_toi_seconds: int = 0
@@ -184,6 +185,41 @@ class SeasonEntry:
     # DZ faceoff counts (from PBP, all games)
     dz_fo_won:  int = 0
     dz_fo_lost: int = 0
+
+    # DZ penalty counts (from PBP, all games)
+    dz_pen_drawn: int = 0
+    dz_pen_taken: int = 0
+
+    # MoneyPuck: DZ faceoff shift starts (opportunity normalizer for DZ exits)
+    dz_shift_starts: float = 0.0
+    # DZ shift starts in games where tracking data also exists — correct denominator for dz_exit_rate
+    tracking_dz_starts: float = 0.0
+    # MoneyPuck: full-season DZ start rate (dz / total shift starts) — zone-start adjustment
+    mp_fs_dz_rate: float = 0.0
+    # MoneyPuck: score+venue adjusted on-ice xGA (replaces homegrown logistic model)
+    mp_xga: float = 0.0
+    # MoneyPuck: high-danger on-ice xGA (≥20% goal probability only)
+    mp_xga_hd: float = 0.0
+    # MoneyPuck: xGA allowed 1-5s after player shifts off (backchecking signal)
+    mp_xga_after_shifts: float = 0.0
+    # MoneyPuck: on/off xG% delta — deployment-neutral possession impact
+    mp_onice_xg_pct_sum: float = 0.0
+    mp_office_xg_pct_sum: float = 0.0
+    mp_xg_pct_gp: int = 0
+
+    # MoneyPuck: individual offensive stats (for off_mp sub-score)
+    mp_ixg_adj: float = 0.0        # individual score+venue adjusted xG (all sit)
+    mp_ixg_hd: float = 0.0         # individual high-danger xG (all sit)
+    mp_onice_xgf_adj: float = 0.0  # on-ice xGF score+venue adjusted (all sit)
+    mp_pp_ixg_adj: float = 0.0     # PP individual adjusted xG (5on4)
+    mp_pp_toi: float = 0.0         # PP icetime in seconds (5on4)
+    mp_pk_xga: float = 0.0         # PK on-ice xGA score+venue adjusted (4on5)
+    mp_pk_toi: float = 0.0         # PK icetime in seconds (4on5)
+
+    # MoneyPuck: full-season totals (overwritten after game loop for baseline scores)
+    mp_fs_toi: float = 0.0         # full-season all-sit icetime (seconds)
+    mp_fs_goals: float = 0.0       # full-season individual goals
+    mp_fs_pa: float = 0.0          # full-season individual primary assists
 
     # Block tracking
     pk_blocked_shots: int = 0
@@ -565,7 +601,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     from manual_loader import LOGS_DIR as _ML_LOGS_DIR
     _year = int(season_str[:4])
     _season_folder = f"{_year}-{str(_year + 1)[-2:]}"   # e.g. "2025-26"
-    for _sub in ('Regular Season', 'Playoffs'):
+    for _sub in ('Regular Season',):
         _sub_dir = _ML_LOGS_DIR / _sub / _season_folder
         if _sub_dir.exists():
             for _f in sorted(_sub_dir.glob('*.xlsx')):
@@ -586,6 +622,34 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     season_acc: Dict[int, SeasonEntry] = {}
     fo_grades_by_game  = load_fo_grades()
     dz_fo_by_game      = load_dz_fo_counts()
+
+    # Pre-load MoneyPuck per-game data for all our game IDs into a lookup dict.
+    # Keyed by (player_id, game_id) so the inner loop can accumulate per game.
+    _mp_season_year = int(season_str[:4])
+    _mp_lookup: dict = {}
+    try:
+        _mp_conn = sqlite3.connect(DB_PATH)
+        _gid_ph  = ','.join('?' * len(game_ids))
+        for _row in _mp_conn.execute(
+            f"SELECT player_id, game_id, dzone_shift_starts, onice_xga_adj, onice_xga_hd, "
+            f"xga_after_shifts, onice_xg_pct, office_xg_pct, ixg_adj, ixg_hd, onice_xgf_adj "
+            f"FROM moneypuck_games "
+            f"WHERE situation='all' AND season=? AND game_id IN ({_gid_ph})",
+            [_mp_season_year] + list(game_ids)
+        ):
+            _mp_lookup[(_row[0], _row[1])] = (_row[2], _row[3], _row[4], _row[5], _row[6], _row[7], _row[8], _row[9], _row[10])
+        _mp_pp_lookup: dict = {}
+        for _row in _mp_conn.execute(
+            f"SELECT player_id, game_id, ixg_adj, icetime "
+            f"FROM moneypuck_games "
+            f"WHERE situation='5on4' AND season=? AND game_id IN ({_gid_ph})",
+            [_mp_season_year] + list(game_ids)
+        ):
+            _mp_pp_lookup[(_row[0], _row[1])] = (_row[2], _row[3])
+        _mp_conn.close()
+    except Exception:
+        _mp_pp_lookup = {}
+        pass
 
     for gi, game_id in enumerate(game_ids, 1):
         if gi % 25 == 0 or gi == total_games:
@@ -681,6 +745,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             pen_dfn = stats.dz_pen_drawn * 0.40 + stats.dz_pen_taken * (-0.50)
             e.raw_tracking_off_total     += pen_off
             e.raw_tracking_dz_exit_total += pen_dfn
+            e.dz_pen_drawn += stats.dz_pen_drawn
+            e.dz_pen_taken += stats.dz_pen_taken
 
             trk_record = get_microstat_record(game_id, info.name, info.team, info.position)
             if trk_record:
@@ -688,15 +754,116 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
                 e.raw_grade_total              += trk_off + trk_dz + trk_ed
                 e.raw_tracking_off_total       += trk_off
                 e.raw_tracking_dz_exit_total   += trk_dz
+                e.raw_tracking_dz_exit_ms      += trk_dz
                 e.raw_tracking_entry_dfn_total += trk_ed
                 if not ms_grade:
                     e.ms_gp += 1
                 # Use 5v5 TOI from tracking record — it matches the 5v5 numerator stats.
                 # Using total TOI (stats.toi_seconds) would deflate rates for PP-heavy players.
                 e.ms_toi_seconds += int(trk_record.toi_min * 60)
+                # Accumulate DZ starts only for games where tracking also exists — correct denominator
+                mp_row_trk = _mp_lookup.get((pid, game_id))
+                if mp_row_trk:
+                    e.tracking_dz_starts += mp_row_trk[0] or 0.0
             elif ms_grade:
                 # No tracking record; fall back to total TOI as the best available denominator.
                 e.ms_toi_seconds += stats.toi_seconds
+
+            mp_row = _mp_lookup.get((pid, game_id))
+            if mp_row:
+                e.dz_shift_starts      += mp_row[0] or 0.0
+                e.mp_xga               += mp_row[1] or 0.0
+                e.mp_xga_hd            += mp_row[2] or 0.0
+                e.mp_xga_after_shifts  += mp_row[3] or 0.0
+                if mp_row[4] is not None and mp_row[5] is not None:
+                    e.mp_onice_xg_pct_sum  += mp_row[4]
+                    e.mp_office_xg_pct_sum += mp_row[5]
+                    e.mp_xg_pct_gp         += 1
+                e.mp_ixg_adj          += mp_row[6] or 0.0
+                e.mp_ixg_hd           += mp_row[7] or 0.0
+                e.mp_onice_xgf_adj    += mp_row[8] or 0.0
+            mp_pp_row = _mp_pp_lookup.get((pid, game_id))
+            if mp_pp_row:
+                e.mp_pp_ixg_adj += mp_pp_row[0] or 0.0
+                e.mp_pp_toi     += mp_pp_row[1] or 0.0
+
+    # ── Overwrite MP fields with full-season totals ───────────────────────────
+    # All mp_* fields accumulated above were filtered to our game subset.
+    # Replace them with season-wide aggregates so off_mp/dfn_mp scores are based
+    # on the full ~82-game season rather than our ~266-game coverage subset.
+    # dz_shift_starts is intentionally excluded — it's the denominator for
+    # per-subset DZ exit tracking data and must stay aligned with that subset.
+    try:
+        _fs_conn = sqlite3.connect(DB_PATH)
+        for _row in _fs_conn.execute(
+            "SELECT player_id, SUM(icetime), SUM(onice_xga_adj), SUM(onice_xga_hd), "
+            "SUM(onice_xg_pct), SUM(office_xg_pct), COUNT(*), "
+            "SUM(ixg_adj), SUM(ixg_hd), SUM(onice_xgf_adj), "
+            "SUM(goals), SUM(primary_assists), SUM(secondary_assists), "
+            "SUM(shots_on_goal), SUM(hits), SUM(takeaways), SUM(giveaways), SUM(pim) "
+            "FROM moneypuck_games WHERE situation='all' AND season=? GROUP BY player_id",
+            [_mp_season_year]
+        ):
+            pid = _row[0]
+            if pid not in season_acc:
+                continue
+            e = season_acc[pid]
+            gp_count                = int(_row[6] or 1)
+            e.mp_fs_toi             = _row[1]  or 0.0
+            e.mp_xga                = _row[2]  or 0.0
+            e.mp_xga_hd             = _row[3]  or 0.0
+            e.mp_onice_xg_pct_sum   = _row[4]  or 0.0
+            e.mp_office_xg_pct_sum  = _row[5]  or 0.0
+            e.mp_xg_pct_gp          = gp_count
+            e.mp_ixg_adj            = _row[7]  or 0.0
+            e.mp_ixg_hd             = _row[8]  or 0.0
+            e.mp_onice_xgf_adj      = _row[9]  or 0.0
+            e.goals                 = int(round(_row[10] or 0))
+            e.primary_assists       = int(round(_row[11] or 0))
+            e.secondary_assists     = int(round(_row[12] or 0))
+            e.shots_on_goal         = int(round(_row[13] or 0))
+            e.hits                  = int(round(_row[14] or 0))
+            e.takeaways             = int(round(_row[15] or 0))
+            e.giveaways             = int(round(_row[16] or 0))
+            e.pim                   = int(round(_row[17] or 0))
+        for _row in _fs_conn.execute(
+            "SELECT player_id, SUM(ixg_adj), SUM(icetime) "
+            "FROM moneypuck_games WHERE situation='5on4' AND season=? GROUP BY player_id",
+            [_mp_season_year]
+        ):
+            pid = _row[0]
+            if pid not in season_acc:
+                continue
+            e = season_acc[pid]
+            e.mp_pp_ixg_adj = _row[1] or 0.0
+            e.mp_pp_toi     = _row[2] or 0.0
+        for _row in _fs_conn.execute(
+            "SELECT player_id, SUM(onice_xga_adj), SUM(icetime) "
+            "FROM moneypuck_games WHERE situation='4on5' AND season=? GROUP BY player_id",
+            [_mp_season_year]
+        ):
+            pid = _row[0]
+            if pid not in season_acc:
+                continue
+            e = season_acc[pid]
+            e.mp_pk_xga = _row[1] or 0.0
+            e.mp_pk_toi = _row[2] or 0.0
+        for _row in _fs_conn.execute(
+            "SELECT player_id, "
+            "SUM(dzone_shift_starts) * 1.0 / NULLIF("
+            "  SUM(dzone_shift_starts)+SUM(ozone_shift_starts)"
+            "  +SUM(nzone_shift_starts)+SUM(fly_shift_starts), 0) "
+            "FROM moneypuck_games WHERE situation='all' AND season=? GROUP BY player_id",
+            [_mp_season_year]
+        ):
+            pid = _row[0]
+            if pid not in season_acc:
+                continue
+            if _row[1] is not None:
+                season_acc[pid].mp_fs_dz_rate = float(_row[1])
+        _fs_conn.close()
+    except Exception:
+        pass
 
     if not season_acc:
         _sy0 = int(season_str[:4])
@@ -722,7 +889,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     # low-TOI/sheltered players toward the mean more aggressively than overall grade.
     # Revert: change back to 80.0 to match SEASON_PRIOR_MIN.
     SUB_GRADE_PRIOR_MIN = 80.0  # reverted — use TOI floor instead
-    def _shrink_rates(values, pids, acc, prior=None):
+    def _shrink_rates(values, pids, acc, prior=None, use_fs_toi=False):
         if prior is None:
             prior = SEASON_PRIOR_MIN
         fwd_set = {'C', 'L', 'R'}
@@ -732,7 +899,10 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         def_mean = _stats.mean(def_vals) if def_vals else 0.0
         result = []
         for v, p in zip(values, pids):
-            toi_min = acc[p].toi_seconds / 60.0
+            if use_fs_toi:
+                toi_min = acc[p].mp_fs_toi / 60.0
+            else:
+                toi_min = acc[p].toi_seconds / 60.0
             w = toi_min / (toi_min + prior)
             mean = fwd_mean if acc[p].position in fwd_set else def_mean
             result.append(w * v + (1.0 - w) * mean)
@@ -775,6 +945,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         return e.raw_tracking_off_total / _effective_toi_h(e)
 
     def _tracking_dz_exit_rate(e):
+        if e.tracking_dz_starts >= 5:
+            return e.raw_tracking_dz_exit_total / e.tracking_dz_starts
         return e.raw_tracking_dz_exit_total / _effective_toi_h(e)
 
     def _tracking_entry_dfn_rate(e):
@@ -793,11 +965,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     dz_exit_normed   = _norm_sub(_shrink_rates(dz_exit_raw_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
     entry_dfn_normed = _norm_sub(_shrink_rates(entry_dfn_per60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
 
-    # PK component — all positions
-    pk_per60 = [season_acc[p].raw_pk_total / (season_acc[p].toi_seconds / 3600.0 or 1e-6)
-                for p in all_pids]
-    pk_normed_list = _norm_sub(_shrink_rates(pk_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
-    pk_scores_map  = {p: pk_normed_list[i] for i, p in enumerate(all_pids)}
+    # PK component computed after matchup_totals is loaded (see below)
 
     # DZ FO net per 60 — centers with ≥20 DZ faceoffs only
     DZ_FO_MIN = 20
@@ -819,7 +987,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         )
         dz_fo_normed = {p: dz_fo_normed_vals[i] for i, p in enumerate(dz_fo_center_pids)}
 
-    # Team-relative on-ice possession component (avg of xG% and CF%, strips system bias)
+    # On/off xG% delta — deployment-neutral possession impact (MoneyPuck).
+    # Measures how much better/worse the team's xG share is with the player on vs off ice.
+    # Falls back to homegrown team-relative xG% for players missing MP data.
     team_xg_sums: Dict[str, list] = {}
     team_cf_sums: Dict[str, list] = {}
     for pid, e in season_acc.items():
@@ -835,11 +1005,15 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     poss_vals = []
     for p in all_pids:
         e = season_acc[p]
-        xg_total = e.xgf + e.xga
-        rel_xg = (e.xgf / xg_total - team_avg_xg.get(e.team, 0.5)) if xg_total > 0 else 0.0
-        cf_total = e.cf + e.ca
-        rel_cf = (e.cf / cf_total - team_avg_cf.get(e.team, 0.5)) if cf_total > 0 else 0.0
-        poss_vals.append((rel_xg + rel_cf) / 2.0)
+        if e.mp_xg_pct_gp >= 5:
+            delta = (e.mp_onice_xg_pct_sum - e.mp_office_xg_pct_sum) / e.mp_xg_pct_gp
+            poss_vals.append(delta)
+        else:
+            xg_total = e.xgf + e.xga
+            rel_xg = (e.xgf / xg_total - team_avg_xg.get(e.team, 0.5)) if xg_total > 0 else 0.0
+            cf_total = e.cf + e.ca
+            rel_cf = (e.cf / cf_total - team_avg_cf.get(e.team, 0.5)) if cf_total > 0 else 0.0
+            poss_vals.append((rel_xg + rel_cf) / 2.0)
     poss_normed_list = _norm_sub(poss_vals, pos_list)
     poss_map = {p: poss_normed_list[i] for i, p in enumerate(all_pids)}
 
@@ -851,22 +1025,184 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     blk_normed_list = _norm_sub(_shrink_rates(blk_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
     blk_map = {p: blk_normed_list[i] for i, p in enumerate(all_pids)}
 
-    # Blend DFN:
-    #   Centers with ≥20 DZ FOs: 22% DZ Exit + 22% Entry DFN + 11% PK + 20% DZ FO + 20% possession + 5% blocks
-    #   Everyone else:            30% DZ Exit + 30% Entry DFN + 15% PK + 20% possession + 5% blocks
+    fwd_positions = {'C', 'L', 'R'}
+
+    # Full-season MP TOI denominator — falls back to subset TOI if no MP data
+    def _mp_toi_h(e):
+        return (e.mp_fs_toi / 3600.0) if e.mp_fs_toi > 0.0 else (_effective_toi_h(e))
+
+    # ── Load full-season matchup data early (used for opp-adjusted xGA and QoC) ──
+    print('  Loading QoC matchup data...', flush=True)
+    _sched_conn = sqlite3.connect(DB_PATH)
+    _all_sched_ids: set[int] = set()
+    for (_sched_data,) in _sched_conn.execute(
+        "SELECT data FROM schedules WHERE season = ?", [season_str]
+    ):
+        for _g in json.loads(_sched_data):
+            if _g.get('gameType') == 2:
+                _all_sched_ids.add(_g['id'])
+    _sched_conn.close()
+    qoc_game_ids = sorted(_all_sched_ids) if _all_sched_ids else game_ids
+    matchup_totals = load_matchup_totals(qoc_game_ids)
+
+    # ── Opponent offensive quality per player (for xGA adjustment) ──────────────
+    # Use raw full-season ixg/60 as each player's offensive threat rating.
+    _raw_ixg = {
+        pid: season_acc[pid].mp_ixg_adj / max(_mp_toi_h(season_acc[pid]), 0.01)
+        for pid in all_pids
+    }
+    _league_ixg_mean = _stats.mean(list(_raw_ixg.values())) if _raw_ixg else 0.0
+
+    opp_off_quality: Dict[int, float] = {}
+    for pid in all_pids:
+        opp_map = matchup_totals.get(pid, {})
+        total_sec = weighted = 0.0
+        for opp_pid, secs in opp_map.items():
+            if opp_pid in _raw_ixg:
+                total_sec += secs
+                weighted  += _raw_ixg[opp_pid] * secs
+        opp_off_quality[pid] = (weighted / total_sec) if total_sec > 0 else _league_ixg_mean
+
+    _opp_quality_mean = _stats.mean(list(opp_off_quality.values()))
+
+    # ── Opponent-adjusted PK xGA ─────────────────────────────────────────────
+    # Use opponents' PP ixg/60 as their PP threat rating, weighted by matchup time.
+    # This credits PK players who face elite power plays.
+    _pp_ixg_rates: Dict[int, float] = {}
+    for pid in all_pids:
+        pp_toi_h = season_acc[pid].mp_pp_toi / 3600.0
+        _pp_ixg_rates[pid] = (season_acc[pid].mp_pp_ixg_adj / pp_toi_h) if pp_toi_h > 0 else 0.0
+
+    _league_pp_ixg_mean = _stats.mean([v for v in _pp_ixg_rates.values() if v > 0]) if any(v > 0 for v in _pp_ixg_rates.values()) else 0.0
+
+    opp_pp_quality: Dict[int, float] = {}
+    for pid in all_pids:
+        opp_map = matchup_totals.get(pid, {})
+        total_sec = weighted = 0.0
+        for opp_pid, secs in opp_map.items():
+            rate = _pp_ixg_rates.get(opp_pid, 0.0)
+            if rate > 0:
+                total_sec += secs
+                weighted  += rate * secs
+        opp_pp_quality[pid] = (weighted / total_sec) if total_sec > 0 else _league_pp_ixg_mean
+
+    _opp_pp_quality_mean = _stats.mean(list(opp_pp_quality.values()))
+
+    # PK xGA/60 (negated), opponent-adjusted — players facing better PPs get credit
+    _pk_per60_raw = [
+        -(season_acc[p].mp_pk_xga / (season_acc[p].mp_pk_toi / 3600.0))
+        + (opp_pp_quality[p] - _opp_pp_quality_mean)
+        if season_acc[p].mp_pk_toi > 120
+        else None
+        for p in all_pids
+    ]
+    _pk_vals = [v for v in _pk_per60_raw if v is not None]
+    _pk_mean = _stats.mean(_pk_vals) if _pk_vals else 0.0
+    pk_per60 = [v if v is not None else _pk_mean for v in _pk_per60_raw]
+    pk_normed_list = _norm_sub(_shrink_rates(pk_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN, use_fs_toi=True), pos_list)
+    pk_scores_map  = {p: pk_normed_list[i] for i, p in enumerate(all_pids)}
+
+    # On-ice xGA/60 — score+venue adjusted, opponent-quality adjusted (negated: lower = better)
+    # Players who face harder offenses get credit: their raw xGA is reduced by the
+    # gap between their opponents' offensive quality and the league average.
+    neg_xga_per60 = [
+        -(season_acc[p].mp_xga / _mp_toi_h(season_acc[p]))
+        + (opp_off_quality[p] - _opp_quality_mean)
+        for p in all_pids
+    ]
+    xga_normed_list = _norm_sub(_shrink_rates(neg_xga_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    xga_map = {p: xga_normed_list[i] for i, p in enumerate(all_pids)}
+
+    # High-danger xGA/60 — opponent-adjusted with half weight (HD chances are more
+    # situation-specific; full opp-quality credit would over-adjust)
+    neg_xga_hd_per60 = [
+        -(season_acc[p].mp_xga_hd / _mp_toi_h(season_acc[p]))
+        + (opp_off_quality[p] - _opp_quality_mean) * 0.5
+        for p in all_pids
+    ]
+    xga_hd_normed_list = _norm_sub(_shrink_rates(neg_xga_hd_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    xga_hd_map = {p: xga_hd_normed_list[i] for i, p in enumerate(all_pids)}
+
+    # xGA after shifts per 60 — backchecking signal (negated: lower = better)
+    neg_xga_after_per60 = [
+        -(season_acc[p].mp_xga_after_shifts / (_effective_toi_h(season_acc[p]) or 1e-6))
+        for p in all_pids
+    ]
+    xga_after_normed_list = _norm_sub(_shrink_rates(neg_xga_after_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    xga_after_map = {p: xga_after_normed_list[i] for i, p in enumerate(all_pids)}
+
+    # ATZ tracking dfn blend — pure tracking signals only.
+    #   Centers with ≥20 DZ FOs: 35% DZ + 25% ED + 20% PK + 15% DZ FO + 5% blocks
+    #   Forwards (other):         40% DZ + 30% ED + 25% PK + 5% blocks
+    #   Defensemen:               40% DZ + 30% ED + 25% PK + 5% blocks
     def_blended = []
     for i, pid in enumerate(all_pids):
         dz = dz_exit_normed[i]
         ed = entry_dfn_normed[i]
         pk = pk_scores_map[pid]
-        ps = poss_map[pid]
         bk = blk_map[pid]
+        is_fwd = season_acc[pid].position in fwd_positions
         if pid in dz_fo_normed:
-            def_blended.append(0.22*dz + 0.22*ed + 0.11*pk + 0.20*dz_fo_normed[pid] + 0.20*ps + 0.05*bk)
+            def_blended.append(0.35*dz + 0.25*ed + 0.20*pk + 0.15*dz_fo_normed[pid] + 0.05*bk)
+        elif is_fwd:
+            def_blended.append(0.40*dz + 0.30*ed + 0.25*pk + 0.05*bk)
         else:
-            def_blended.append(0.30*dz + 0.30*ed + 0.15*pk + 0.20*ps + 0.05*bk)
+            def_blended.append(0.40*dz + 0.30*ed + 0.25*pk + 0.05*bk)
 
     def_normed = _norm_sub(def_blended, pos_list)
+
+    # ── MoneyPuck baseline scores (off_mp, dfn_mp) ───────────────────────────
+    # All denominators use _mp_toi_h (full-season TOI) so per-60 rates are
+    # computed over the same sample window as the numerators.
+
+    # --- off_mp components: normalize each per-60 rate, then blend ---
+    ixg_adj_p60  = [season_acc[p].mp_ixg_adj       / _mp_toi_h(season_acc[p]) for p in all_pids]
+    ixg_hd_p60   = [season_acc[p].mp_ixg_hd        / _mp_toi_h(season_acc[p]) for p in all_pids]
+    xgf_adj_p60  = [season_acc[p].mp_onice_xgf_adj / _mp_toi_h(season_acc[p]) for p in all_pids]
+    pp_ixg_p60   = [season_acc[p].mp_pp_ixg_adj    / _mp_toi_h(season_acc[p]) for p in all_pids]
+    pts_p_p60    = [(season_acc[p].goals + season_acc[p].primary_assists) / _mp_toi_h(season_acc[p]) for p in all_pids]
+
+    ixg_adj_normed  = _norm_sub(_shrink_rates(ixg_adj_p60,  all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    ixg_hd_normed   = _norm_sub(_shrink_rates(ixg_hd_p60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    xgf_adj_normed  = _norm_sub(_shrink_rates(xgf_adj_p60,  all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    pp_ixg_normed   = _norm_sub(_shrink_rates(pp_ixg_p60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    pts_p_normed    = _norm_sub(_shrink_rates(pts_p_p60,    all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+
+    # F:  20% ixg_adj + 15% ixg_hd + 15% onice_xgf_adj + 20% pp_ixg + 30% (G+PA)
+    # D:  20% ixg_adj + 15% ixg_hd + 45% onice_xgf_adj + 20% (G+PA)
+    #     (pp_ixg omitted for D — PP contribution already embedded in onice_xgf_adj;
+    #      including it separately causes extreme bimodal skew among D.)
+    off_mp_blended = []
+    for i, pid in enumerate(all_pids):
+        ia = ixg_adj_normed[i]; ih = ixg_hd_normed[i]
+        xf = xgf_adj_normed[i]; pp = pp_ixg_normed[i]; pt = pts_p_normed[i]
+        if season_acc[pid].position in fwd_positions:
+            off_mp_blended.append(0.20*ia + 0.15*ih + 0.15*xf + 0.20*pp + 0.30*pt)
+        else:
+            off_mp_blended.append(0.20*ia + 0.15*ih + 0.45*xf + 0.20*pt)
+    off_mp_normed = _norm_sub(off_mp_blended, pos_list)
+    off_mp_scores = {p: off_mp_normed[i] for i, p in enumerate(all_pids)}
+
+    # --- dfn_mp: 100% MoneyPuck baseline (no tracking data) ---
+    # MP on/off xG delta: avg onice_xg_pct minus avg office_xg_pct (full season)
+    mp_onoff_delta = [
+        (season_acc[p].mp_onice_xg_pct_sum / season_acc[p].mp_xg_pct_gp)
+        - (season_acc[p].mp_office_xg_pct_sum / season_acc[p].mp_xg_pct_gp)
+        if season_acc[p].mp_xg_pct_gp > 0 else 0.0
+        for p in all_pids
+    ]
+    mp_onoff_normed_list = _norm_sub(_shrink_rates(mp_onoff_delta, all_pids, season_acc, SUB_GRADE_PRIOR_MIN, use_fs_toi=True), pos_list)
+    mp_onoff_map = {p: mp_onoff_normed_list[i] for i, p in enumerate(all_pids)}
+
+    # All positions: 40% xGA + 20% HD xGA + 25% on/off delta + 15% PK xGA
+    # All components are full-season MP, opponent-adjusted where applicable.
+    dfn_mp_blended = []
+    for i, pid in enumerate(all_pids):
+        xg = xga_map[pid]; xg_hd = xga_hd_map[pid]
+        delta = mp_onoff_map[pid]; pk = pk_scores_map[pid]
+        dfn_mp_blended.append(0.40*xg + 0.20*xg_hd + 0.25*delta + 0.15*pk)
+    dfn_mp_normed = _norm_sub(dfn_mp_blended, pos_list)
+    dfn_mp_scores = {p: dfn_mp_normed[i] for i, p in enumerate(all_pids)}
 
     fo_pids = [p for p in all_pids if _fo_raw(season_acc[p]) is not None]
     fo_normed: Dict[int, float] = {}
@@ -877,8 +1213,45 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         )
         fo_normed = {p: fo_normed_vals[i] for i, p in enumerate(fo_pids)}
 
-    off_scores = {p: off_normed[i]  for i, p in enumerate(all_pids)}
-    def_scores = {p: def_normed[i]  for i, p in enumerate(all_pids)}
+    off_scores      = {p: off_normed[i] for i, p in enumerate(all_pids)}
+    def_scores      = {p: def_normed[i] for i, p in enumerate(all_pids)}
+    def_scores_legacy = dict(def_scores)  # old ATZ formula — kept for toggle
+
+    # ── DZ% blend for D defensive sub-score ──────────────────────────────────
+    # Normalize DZ exits and entry defense among D only so relative rankings
+    # match experiment results (not diluted by F/untracked players).
+    _d_indices  = [i for i, p in enumerate(all_pids) if season_acc[p].position == 'D']
+    _d_pids_only = [all_pids[i] for i in _d_indices]
+    _d_pos_only  = ['D'] * len(_d_pids_only)
+
+    # Use manual-only DZ exit (excludes blocks/penalties from API) so pure tracking
+    # ranking matches the standalone experiment scripts.
+    _dz_raw_d  = [season_acc[all_pids[i]].raw_tracking_dz_exit_ms / (_effective_toi_h(season_acc[all_pids[i]]) or 1e-6)
+                  for i in _d_indices]
+    _ed_raw_d  = [entry_dfn_per60[i]    for i in _d_indices]
+
+    _dz_d_normed = _norm_sub(_shrink_rates(_dz_raw_d, _d_pids_only, season_acc, SUB_GRADE_PRIOR_MIN), _d_pos_only)
+    _ed_d_normed = _norm_sub(_shrink_rates(_ed_raw_d, _d_pids_only, season_acc, SUB_GRADE_PRIOR_MIN), _d_pos_only)
+
+    _d_pure_trk: Dict[int, float] = {
+        _d_pids_only[j]: 0.571 * _dz_d_normed[j] + 0.429 * _ed_d_normed[j]
+        for j in range(len(_d_pids_only))
+    }
+
+    # DZ% percentile among D — determines tracking weight (floor 50%)
+    _d_pids_dz = [(p, season_acc[p].mp_fs_dz_rate)
+                  for p in _d_pids_only
+                  if season_acc[p].mp_fs_dz_rate > 0]
+    _d_pids_dz.sort(key=lambda x: x[1])
+    _n_dz = len(_d_pids_dz)
+    dz_pct_map: Dict[int, float] = {
+        pid: (_rank / (_n_dz - 1)) if _n_dz > 1 else 0.5
+        for _rank, (pid, _) in enumerate(_d_pids_dz)
+    }
+    for pid in _d_pids_only:
+        pure_trk = _d_pure_trk[pid]
+        trk_w    = max(0.50, dz_pct_map.get(pid, 0.50))
+        def_scores[pid] = trk_w * pure_trk + (1.0 - trk_w) * dfn_mp_scores[pid]
 
     # ── QoC adjustment (PFF-style iterative, 1 round) ─────────────────────────
     # Round-1 overall for each player (pre-QoC)
@@ -889,9 +1262,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
 
     r1_overall = {p: _r1_overall(p) for p in all_pids}
 
-    print('  Loading QoC matchup data...', flush=True)
-    matchup_totals = load_matchup_totals(game_ids)
-
+    # matchup_totals and qoc_game_ids already loaded above (for opp-adjusted xGA)
     qoc_raw = []
     for p in all_pids:
         opp_map = matchup_totals.get(p, {})
@@ -917,30 +1288,45 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         fo_score = fo_normed.get(pid)
         fo_total = (e.es_fo_won + e.es_fo_lost + e.pp_fo_won
                     + e.pp_fo_lost + e.pk_fo_won + e.pk_fo_lost)
-        off_v = round(off_scores.get(pid, 60.0), 1)
-        dfn_v = round(def_scores.get(pid, 60.0), 1)
+        off_v        = min(100.0, round(off_scores.get(pid, 60.0),        1))
+        dfn_v        = min(100.0, round(def_scores.get(pid, 60.0),        1))
+        dfn_legacy_v = min(100.0, round(def_scores_legacy.get(pid, 60.0), 1))
+        off_mp_v     = min(100.0, round(off_mp_scores.get(pid, 60.0),     1))
+        dfn_mp_v     = min(100.0, round(dfn_mp_scores.get(pid, 60.0),     1))
         is_d  = e.position == 'D'
         # Overall: F = 80% OFF + 20% DFN, D = 20% OFF + 80% DFN
         # QoC adjustment applied to overall only (±3 pts max)
-        off_w, dfn_w = (0.80, 0.20) if not is_d else (0.20, 0.80)
-        overall_v = round(off_w * off_v + dfn_w * dfn_v + qoc_adj.get(pid, 0.0), 1)
+        off_w, dfn_w  = (0.80, 0.20) if not is_d else (0.20, 0.80)
+        overall_v     = min(100.0, round(off_w * off_v        + dfn_w * dfn_v        + qoc_adj.get(pid, 0.0), 1))
+        overall_leg_v = min(100.0, round(off_w * off_v        + dfn_w * dfn_legacy_v + qoc_adj.get(pid, 0.0), 1))
+        overall_mp_v  = min(100.0, round(off_w * off_mp_v     + dfn_w * dfn_mp_v     + qoc_adj.get(pid, 0.0), 1))
         players.append({
-            'player_id':      pid,
-            'name':           e.name,
-            'team':           e.team,
-            'position':       e.position,
-            'pos_group':      'fwd' if e.position in ('C', 'L', 'R') else 'def',
-            'gp':             e.gp,
-            'qualified':      season_acc[pid].gp >= min_gp_for_team(pid),
-            'overall':        overall_v,
-            'overall_letter': score_to_letter(overall_v),
-            'off':            off_v,
-            'off_letter':     score_to_letter(off_v),
-            'dfn':            dfn_v,
-            'dfn_letter':     score_to_letter(dfn_v),
+            'player_id':        pid,
+            'name':             e.name,
+            'team':             e.team,
+            'position':         e.position,
+            'pos_group':        'fwd' if e.position in ('C', 'L', 'R') else 'def',
+            'gp':               e.mp_xg_pct_gp if e.mp_xg_pct_gp > 0 else e.gp,
+            'gp_subset':        e.gp,
+            'qualified':        season_acc[pid].gp >= min_gp_for_team(pid),
+            'overall':          overall_v,
+            'overall_letter':   score_to_letter(overall_v),
+            'overall_mp':       overall_mp_v,
+            'overall_mp_letter': score_to_letter(overall_mp_v),
+            'off':              off_v,
+            'off_letter':       score_to_letter(off_v),
+            'off_mp':           off_mp_v,
+            'off_mp_letter':    score_to_letter(off_mp_v),
+            'dfn':              dfn_v,
+            'dfn_letter':       score_to_letter(dfn_v),
+            'dfn_legacy':       dfn_legacy_v,
+            'dfn_legacy_letter': score_to_letter(dfn_legacy_v),
+            'dfn_mp':           dfn_mp_v,
+            'dfn_mp_letter':    score_to_letter(dfn_mp_v),
+            'overall_legacy':   overall_leg_v,
             'fo':             round(fo_score, 1) if (fo_score is not None and fo_total > 0) else None,
             'fo_letter':      score_to_letter(fo_score) if (fo_score is not None and fo_total > 0) else None,
-            'toi_per_game':   e.toi_per_game,
+            'toi_per_game':   (lambda s: f"{int(s//60)}:{int(s%60):02d}")(e.mp_fs_toi / e.mp_xg_pct_gp) if e.mp_xg_pct_gp > 0 else e.toi_per_game,
             'cf_pct':         str(e.cf_pct),
             'xg_pct':         str(e.xg_pct),
             'goals':          e.goals,
@@ -978,6 +1364,10 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         scores = [_best_grade(p) for p in pool]
         return round(sum(scores) / len(scores), 1) if scores else None
 
+    def _avg_mp(pool):
+        scores = [p.get('overall_mp', 60.0) for p in pool]
+        return round(sum(scores) / len(scores), 1) if scores else None
+
     def _avg_sub(pool, col):
         vals = [p[col] for p in pool if p.get(col) is not None]
         return round(sum(vals) / len(vals), 1) if vals else None
@@ -992,21 +1382,26 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         fo_pl = [p for p in qual if p.get('fo') is not None]
         rec   = records.get(team, {})
         team_grades.append({
-            'team':    team,
-            'overall': _avg(qual),
-            'fwd':     _avg(fwds),
-            'dfn':     _avg(defs),
-            'off':     _avg_sub(qual, 'off'),
-            'def_g':   _avg_sub(qual, 'dfn'),
-            'fo_g':    _avg_sub(fo_pl, 'fo'),
-            'n_fwd':   len(fwds),
-            'n_def':   len(defs),
-            'w':       rec.get('w', 0),
-            'l':       rec.get('l', 0),
-            'otl':     rec.get('otl', 0),
-            'pts':     rec.get('pts', 0),
+            'team':       team,
+            'overall':    _avg(qual),
+            'fwd':        _avg(fwds),
+            'dfn':        _avg(defs),
+            'overall_mp': _avg_mp(qual),
+            'fwd_mp':     _avg_mp(fwds),
+            'dfn_mp':     _avg_mp(defs),
+            'off':        _avg_sub(qual, 'off'),
+            'def_g':      _avg_sub(qual, 'dfn'),
+            'off_mp_avg': _avg_sub(qual, 'off_mp'),
+            'dfn_mp_avg': _avg_sub(qual, 'dfn_mp'),
+            'fo_g':       _avg_sub(fo_pl, 'fo'),
+            'n_fwd':      len(fwds),
+            'n_def':      len(defs),
+            'w':          rec.get('w', 0),
+            'l':          rec.get('l', 0),
+            'otl':        rec.get('otl', 0),
+            'pts':        rec.get('pts', 0),
         })
-    team_grades.sort(key=lambda t: t['overall'] or 0, reverse=True)
+    team_grades.sort(key=lambda t: t['overall_mp'] or 0, reverse=True)
     for i, t in enumerate(team_grades, 1):
         t['rank'] = i
 

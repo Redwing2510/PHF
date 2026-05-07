@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+import threading
 import requests
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify
@@ -21,6 +22,7 @@ def apple_touch_icon():
 
 # Per-season cache: {'20252026': {...}, '20242025': {...}}
 _season_cache: dict = {}
+_season_build_lock = threading.Lock()   # single global lock guards all builds
 
 _CACHE_DIR = os.path.join(os.path.dirname(__file__), 'season_cache')
 
@@ -97,17 +99,20 @@ _SEASONS = [('20252026', '2025–26'), ('20242025', '2024–25')]
 
 
 def _get_season_data(season_str: str) -> dict:
-    if season_str not in _season_cache:
-        cached = _load_disk_cache(season_str)
-        if cached:
-            print(f'  Loaded {season_str} from disk cache ({len(cached["players"])} players).', flush=True)
-            _season_cache[season_str] = cached
-        else:
-            print(f'Building season grades for {season_str}...', flush=True)
-            data = build_season_grades(season_str)
-            _season_cache[season_str] = data
-            print(f"Done — {len(data['players'])} players across {data['total_games']} games.", flush=True)
-            _save_disk_cache(season_str, data)
+    if season_str in _season_cache:
+        return _season_cache[season_str]
+    with _season_build_lock:
+        if season_str not in _season_cache:
+            cached = _load_disk_cache(season_str)
+            if cached:
+                print(f'  Loaded {season_str} from disk cache ({len(cached["players"])} players).', flush=True)
+                _season_cache[season_str] = cached
+            else:
+                print(f'Building season grades for {season_str}...', flush=True)
+                data = build_season_grades(season_str)
+                _season_cache[season_str] = data
+                print(f"Done — {len(data['players'])} players across {data['total_games']} games.", flush=True)
+                _save_disk_cache(season_str, data)
     return _season_cache[season_str]
 
 
@@ -127,6 +132,8 @@ def refresh():
     path = _disk_cache_path(season_str)
     if os.path.exists(path):
         os.remove(path)
+    manual_loader.invalidate_cache()
+    play_grader.invalidate_cache()
     return redirect(url_for('index', season=season_str))
 
 

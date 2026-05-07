@@ -61,17 +61,17 @@ def compute_tracking_split(r: MicrostatRecord, position: str = 'F') -> tuple:
     off += r.recoveries       *  0.15
 
     # ── DEFENSIVE ZONE EXIT ───────────────────────────────────────────────────
-    dz_exit += r.carry_exits                  *  0.35
-    dz_exit += r.pass_exits                   *  0.28
+    dz_exit += r.carry_exits                  *  0.20
+    dz_exit += r.pass_exits                   *  0.22
     dz_exit += r.retrievals_leading_to_exits  *  0.25
-    dz_exit += r.clears                       *  0.10
-    dz_exit += r.exchanges                    *  0.08
-    dz_exit += r.failed_exits                 * -0.20
-    dz_exit += r.botched_retrievals           * -0.40
+    dz_exit += r.clears                       *  0.38
+    dz_exit += r.exchanges                    *  0.05
+    dz_exit += r.failed_exits                 * -0.50
+    dz_exit += r.botched_retrievals           * -0.55
     dz_exit += r.missed_passes                * -0.15
 
     # ── ENTRY DEFENSE ─────────────────────────────────────────────────────────
-    entry_d += r.denials              *  0.45
+    entry_d += r.denials              *  0.80
     entry_d += r.carries_chance_against * -0.45
     entry_d += r.dump_in_chance_against * -0.20
     # DZ retrievals not already credited via retrievals_leading_to_exits
