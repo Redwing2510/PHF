@@ -540,7 +540,7 @@ def _fetch_standings(season_str: str) -> dict:
     season_year = int(season_str[:4])
     next_year   = season_year + 1
     today       = _date.today()
-    if today.year < next_year or (today.year == next_year and today.month <= 4):
+    if today.year < next_year or (today.year == next_year and today.month <= 7):
         endpoint = 'now'
     else:
         endpoint = f'{next_year}-04-20'
@@ -1294,12 +1294,15 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         off_mp_v     = min(100.0, round(off_mp_scores.get(pid, 60.0),     1))
         dfn_mp_v     = min(100.0, round(dfn_mp_scores.get(pid, 60.0),     1))
         is_d  = e.position == 'D'
+        # O/D Blend: forward off = 50% MP + 50% ATZ tracking
+        off_blend_v  = min(100.0, round(0.5 * off_mp_v + 0.5 * off_v, 1)) if not is_d else off_mp_v
         # Overall: F = 80% OFF + 20% DFN, D = 20% OFF + 80% DFN
         # QoC adjustment applied to overall only (±3 pts max)
         off_w, dfn_w  = (0.80, 0.20) if not is_d else (0.20, 0.80)
-        overall_v     = min(100.0, round(off_w * off_v        + dfn_w * dfn_v        + qoc_adj.get(pid, 0.0), 1))
-        overall_leg_v = min(100.0, round(off_w * off_v        + dfn_w * dfn_legacy_v + qoc_adj.get(pid, 0.0), 1))
-        overall_mp_v  = min(100.0, round(off_w * off_mp_v     + dfn_w * dfn_mp_v     + qoc_adj.get(pid, 0.0), 1))
+        overall_v       = min(100.0, round(off_w * off_v        + dfn_w * dfn_v        + qoc_adj.get(pid, 0.0), 1))
+        overall_leg_v   = min(100.0, round(off_w * off_v        + dfn_w * dfn_legacy_v + qoc_adj.get(pid, 0.0), 1))
+        overall_mp_v    = min(100.0, round(off_w * off_mp_v     + dfn_w * dfn_mp_v     + qoc_adj.get(pid, 0.0), 1))
+        overall_blend_v = min(100.0, round(off_w * off_blend_v  + dfn_w * dfn_mp_v     + qoc_adj.get(pid, 0.0), 1)) if not is_d else overall_v
         players.append({
             'player_id':        pid,
             'name':             e.name,
@@ -1323,6 +1326,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'dfn_legacy_letter': score_to_letter(dfn_legacy_v),
             'dfn_mp':           dfn_mp_v,
             'dfn_mp_letter':    score_to_letter(dfn_mp_v),
+            'off_blend':        off_blend_v,
+            'off_blend_letter': score_to_letter(off_blend_v),
+            'overall_blend':    overall_blend_v,
             'overall_legacy':   overall_leg_v,
             'fo':             round(fo_score, 1) if (fo_score is not None and fo_total > 0) else None,
             'fo_letter':      score_to_letter(fo_score) if (fo_score is not None and fo_total > 0) else None,
@@ -1368,6 +1374,10 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         scores = [p.get('overall_mp', 60.0) for p in pool]
         return round(sum(scores) / len(scores), 1) if scores else None
 
+    def _avg_blend(pool):
+        scores = [p.get('overall_blend', p.get('overall_mp', 60.0)) for p in pool]
+        return round(sum(scores) / len(scores), 1) if scores else None
+
     def _avg_sub(pool, col):
         vals = [p[col] for p in pool if p.get(col) is not None]
         return round(sum(vals) / len(vals), 1) if vals else None
@@ -1382,13 +1392,16 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         fo_pl = [p for p in qual if p.get('fo') is not None]
         rec   = records.get(team, {})
         team_grades.append({
-            'team':       team,
-            'overall':    _avg(qual),
-            'fwd':        _avg(fwds),
-            'dfn':        _avg(defs),
-            'overall_mp': _avg_mp(qual),
-            'fwd_mp':     _avg_mp(fwds),
-            'dfn_mp':     _avg_mp(defs),
+            'team':         team,
+            'overall':      _avg(qual),
+            'fwd':          _avg(fwds),
+            'dfn':          _avg(defs),
+            'overall_mp':   _avg_mp(qual),
+            'fwd_mp':       _avg_mp(fwds),
+            'dfn_mp':       _avg_mp(defs),
+            'overall_blend': _avg_blend(qual),
+            'fwd_blend':    _avg_blend(fwds),
+            'dfn_blend':    _avg_blend(defs),
             'off':        _avg_sub(qual, 'off'),
             'def_g':      _avg_sub(qual, 'dfn'),
             'off_mp_avg': _avg_sub(qual, 'off_mp'),
