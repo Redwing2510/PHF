@@ -372,8 +372,22 @@
 .grades-table tbody tr.player-row td.td-stats-sep{
   color:var(--text2);
   border-left:1px solid var(--border2);
+  text-align:center;
 }
-.grades-table tbody tr.player-row td.td-stats{color:var(--text2)}
+.grades-table tbody tr.player-row td.td-stats{color:var(--text2);text-align:center;min-width:36px}
+.grades-table thead tr.col-row th[data-col="goals"],
+.grades-table thead tr.col-row th[data-col="assists"],
+.grades-table thead tr.col-row th[data-col="points"],
+.grades-table thead tr.col-row th[data-col="sog"],
+.grades-table thead tr.col-row th[data-col="hits"],
+.grades-table thead tr.col-row th[data-col="blocks"],
+.grades-table thead tr.col-row th[data-col="gva"],
+.grades-table thead tr.col-row th[data-col="tka"],
+.grades-table thead tr.col-row th[data-col="pim"],
+.grades-table thead tr.col-row th[data-col="cf_pct"],
+.grades-table thead tr.col-row th[data-col="xg_pct"],
+.grades-table thead tr.col-row th[data-col="fo_pct"],
+.grades-table thead tr.col-row th[data-col="toi_per_game"]{text-align:center;min-width:36px}
 
 /* ── Grade badges ── */
 .grade-badge{
@@ -387,6 +401,7 @@
 }
 .grade-badge .g-letter{font-size:10px;opacity:.85}
 .grade-badge .g-score{font-size:14px}
+.no-trk-badge{font-size:8px;font-weight:700;margin-left:5px;padding:1px 4px;border-radius:3px;background:#92400e;color:#fcd34d;vertical-align:middle;letter-spacing:.3px;white-space:nowrap}
 .grade-sub{
   display:inline-flex;
   align-items:center;
@@ -637,9 +652,10 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     <button class="filter-btn" data-pos="fwd">Forwards</button>
     <button class="filter-btn" data-pos="def">Defense</button>
   </div>
-  <button class="ms-toggle-btn" id="ms-toggle" title="Show only MS-tracked games, replace Dfn/Poss with microstat-enhanced grades">🔬 MS Mode</button>
+<button class="ms-toggle-btn" id="ms-toggle" title="Microstat mode: overlay AllThreeZones manual tracking data" style="display:none">MS Mode</button>
   <button class="ms-toggle-btn" id="atz-toggle" title="Add AllThreeZones tracking data on top of MoneyPuck baseline scores">ATZ +Tracking</button>
   <button class="ms-toggle-btn active" id="dzblend-toggle" title="O/D Blend: forward off = 50% MP + 50% ATZ tracking; D def = DZ%-weighted tracking + MP blend (default on).">O/D Blend</button>
+  <button class="ms-toggle-btn" id="unqualified-toggle" title="Show players who haven't met the minimum games-played threshold">Show Unqualified</button>
   <div class="player-search">
     <input id="player-search" type="search" placeholder="Search player name..." autocomplete="off">
   </div>
@@ -665,8 +681,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.dfn }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.fo }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-stats-first" data-col="toi_per_game">TOI/GM</th>
-      <th data-col="cf_pct">CF%</th>
-      <th data-col="xg_pct">xG%</th>
       <th data-col="goals">G</th>
       <th data-col="assists">A</th>
       <th data-col="points">PTS</th>
@@ -676,6 +690,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th data-col="gva">GVA</th>
       <th data-col="tka">TKA</th>
       <th data-col="pim">PIM</th>
+      <th data-col="cf_pct">CF%</th>
+      <th data-col="xg_pct">xG%</th>
       <th data-col="fo_pct">FO%</th>
     </tr>
   </thead>
@@ -734,7 +750,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 
     <!-- DEF -->
     <td class="td-grade" data-val="{{ "%.2f"|format(row.dfn) }}">
-      <div class="grade-sub" style="background:{{ row.dfn|grade_bg }}">{{ "%.1f"|format(row.dfn) }}</div>
+      <div class="grade-sub" style="background:{{ row.dfn|grade_bg }}">{{ "%.1f"|format(row.dfn) }}</div>{% if row.dfn_trk_active == false %}<span class="no-trk-badge" title="Fewer than 10 tracked games — using MP only">MP</span>{% endif %}
     </td>
 
     <!-- FO -->
@@ -748,8 +764,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 
     <!-- Stats -->
     <td class="td-stats-sep td-toi">{{ row.toi_per_game }}</td>
-    <td class="td-stats td-cf" data-val="{{ row.cf_pct if row.cf_pct != '—' else '0' }}">{{ row.cf_pct }}</td>
-    <td class="td-stats td-xg" data-val="{{ row.xg_pct if row.xg_pct != '—' else '0' }}">{{ row.xg_pct }}</td>
     <td class="td-stats td-goals">{{ row.goals }}</td>
     <td class="td-stats td-assists">{{ row.assists }}</td>
     <td class="td-stats td-points">{{ row.points }}</td>
@@ -759,6 +773,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     <td class="td-stats td-gva">{{ row.gva }}</td>
     <td class="td-stats td-tka">{{ row.tka }}</td>
     <td class="td-stats td-pim">{{ row.pim }}</td>
+    <td class="td-stats td-cf" data-val="{{ row.cf_pct if row.cf_pct != '—' else '0' }}">{{ row.cf_pct }}</td>
+    <td class="td-stats td-xg" data-val="{{ row.xg_pct if row.xg_pct != '—' else '0' }}">{{ row.xg_pct }}</td>
     <td class="td-stats td-fo-pct" data-val="{{ row.fo_pct_val if row.fo_pct_val is not none else '0' }}">{{ row.fo_pct }}</td>
   </tr>
   {% endfor %}
@@ -996,7 +1012,7 @@ const TEAM_DIV = {
 
 let activeTeam = 'ALL';
 let activePos  = 'all';
-let msMode     = false;
+let showUnqualified = false;
 let activeSearch = '';
 
 /* ── filter & rerank ── */
@@ -1014,14 +1030,16 @@ function applyFilters() {
     else if (['Atlantic','Metropolitan','Central','Pacific'].includes(activeTeam)) teamOk = TEAM_DIV[t] === activeTeam;
     else                                                   teamOk = t === activeTeam;
     const posOk    = activePos === 'all' || row.dataset.pos === activePos;
-    const msOk     = !msMode  || (parseInt(row.dataset.msGp || '0') > 0 && row.dataset.qualified === 'true');
-    const filterOk = teamOk && posOk && msOk;
-    const nameOk   = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
-    const show     = filterOk && nameOk;
+    const qualOk    = showUnqualified || row.dataset.qualified === 'true';
+    const filterOk  = teamOk && posOk && qualOk;
+    const nameOk    = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
+    const show      = filterOk && nameOk;
     row.style.display = show ? '' : 'none';
-    if (filterOk) {
+    if (filterOk && row.dataset.qualified === 'true') {
       rank++;
-      row.querySelector('.td-rank').textContent = rank;
+      if (show) row.querySelector('.td-rank').textContent = rank;
+    } else if (show) {
+      row.querySelector('.td-rank').textContent = '—';
     }
   });
 
@@ -1182,7 +1200,7 @@ function sortTable(col, keepDirection = false) {
 }
 
 const COL_ORDER = ['rank','name','team','position','gp','overall','off','dfn','fo',
-                   'toi_per_game','cf_pct','xg_pct','goals','assists','points','sog','hits','blocks','gva','tka','pim','fo_pct'];
+                   'toi_per_game','goals','assists','points','sog','hits','blocks','gva','tka','pim','cf_pct','xg_pct','fo_pct'];
 function colIndex(col) { return COL_ORDER.indexOf(col); }
 
 document.querySelectorAll('.col-row th[data-col]').forEach(th => {
@@ -1190,14 +1208,7 @@ document.querySelectorAll('.col-row th[data-col]').forEach(th => {
 });
 
 /* ── MS mode toggle ── */
-function gradeBg(s) {
-  if (s >= 90) return '#0d9488';
-  if (s >= 80) return '#16a34a';
-  if (s >= 70) return '#4d7c0f';
-  if (s >= 60) return '#b45309';
-  if (s >= 50) return '#c2410c';
-  return '#b91c1c';
-}
+let msMode = false;
 
 function applyMsMode() {
   applyFilters();
@@ -1208,6 +1219,15 @@ document.getElementById('ms-toggle').addEventListener('click', function() {
   this.classList.toggle('active', msMode);
   applyMsMode();
 });
+
+function gradeBg(s) {
+  if (s >= 90) return '#0d9488';
+  if (s >= 80) return '#16a34a';
+  if (s >= 70) return '#4d7c0f';
+  if (s >= 60) return '#b45309';
+  if (s >= 50) return '#c2410c';
+  return '#b91c1c';
+}
 
 /* ── ATZ data mode toggle ── */
 let atzMode = false; // default: MP only (no tracking overlay)
@@ -1318,6 +1338,14 @@ document.getElementById('dzblend-toggle').addEventListener('click', function() {
 
 // Default: players view, MS mode on, MP-only scores.
 setView('players');
+document.getElementById('unqualified-toggle').textContent = 'Show Unqualified (< 50% team GP)';
+
+document.getElementById('unqualified-toggle').addEventListener('click', function() {
+  showUnqualified = !showUnqualified;
+  this.classList.toggle('active', showUnqualified);
+  applyFilters();
+});
+
 // ms-toggle off by default — MP baseline covers all players
 applyDataMode();   // initialize cells to MP scores before first sort
 applyDzBlend();    // apply D-blend on top (default ON for D rows)

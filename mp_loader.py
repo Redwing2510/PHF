@@ -11,6 +11,7 @@ import pandas as pd
 
 DB_PATH   = Path(__file__).parent / 'cache.db'
 CSV_PATHS = [
+    Path(__file__).parent / 'MoneyPuck Game Data' / '2024-25 Player Game Data.csv',
     Path(__file__).parent / 'MoneyPuck Game Data' / '2025-26 Player Game Data.csv',
 ]
 

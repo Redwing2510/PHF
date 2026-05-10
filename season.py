@@ -214,6 +214,7 @@ class SeasonEntry:
     mp_pp_ixg_adj: float = 0.0     # PP individual adjusted xG (5on4)
     mp_pp_toi: float = 0.0         # PP icetime in seconds (5on4)
     mp_pk_xga: float = 0.0         # PK on-ice xGA score+venue adjusted (4on5)
+    mp_pk_xga_hd: float = 0.0     # PK on-ice HD xGA (4on5)
     mp_pk_toi: float = 0.0         # PK icetime in seconds (4on5)
 
     # MoneyPuck: full-season totals (overwritten after game loop for baseline scores)
@@ -838,7 +839,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             e.mp_pp_ixg_adj = _row[1] or 0.0
             e.mp_pp_toi     = _row[2] or 0.0
         for _row in _fs_conn.execute(
-            "SELECT player_id, SUM(onice_xga_adj), SUM(icetime) "
+            "SELECT player_id, SUM(onice_xga_adj), SUM(onice_xga_hd), SUM(icetime) "
             "FROM moneypuck_games WHERE situation='4on5' AND season=? GROUP BY player_id",
             [_mp_season_year]
         ):
@@ -846,8 +847,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             if pid not in season_acc:
                 continue
             e = season_acc[pid]
-            e.mp_pk_xga = _row[1] or 0.0
-            e.mp_pk_toi = _row[2] or 0.0
+            e.mp_pk_xga    = _row[1] or 0.0
+            e.mp_pk_xga_hd = _row[2] or 0.0
+            e.mp_pk_toi    = _row[3] or 0.0
         for _row in _fs_conn.execute(
             "SELECT player_id, "
             "SUM(dzone_shift_starts) * 1.0 / NULLIF("
@@ -1102,21 +1104,23 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     pk_normed_list = _norm_sub(_shrink_rates(pk_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN, use_fs_toi=True), pos_list)
     pk_scores_map  = {p: pk_normed_list[i] for i, p in enumerate(all_pids)}
 
-    # On-ice xGA/60 — score+venue adjusted, opponent-quality adjusted (negated: lower = better)
-    # Players who face harder offenses get credit: their raw xGA is reduced by the
-    # gap between their opponents' offensive quality and the league average.
+    # Non-PK xGA/60 — subtracts 4on5 contribution from all-sit so PK deployment
+    # doesn't inflate this component. PK performance is captured separately (15%).
+    def _non_pk_toi_h(e) -> float:
+        toi = (e.mp_fs_toi - e.mp_pk_toi)
+        return max(toi, 60.0) / 3600.0
+
     neg_xga_per60 = [
-        -(season_acc[p].mp_xga / _mp_toi_h(season_acc[p]))
+        -((season_acc[p].mp_xga - season_acc[p].mp_pk_xga) / _non_pk_toi_h(season_acc[p]))
         + (opp_off_quality[p] - _opp_quality_mean)
         for p in all_pids
     ]
     xga_normed_list = _norm_sub(_shrink_rates(neg_xga_per60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
     xga_map = {p: xga_normed_list[i] for i, p in enumerate(all_pids)}
 
-    # High-danger xGA/60 — opponent-adjusted with half weight (HD chances are more
-    # situation-specific; full opp-quality credit would over-adjust)
+    # High-danger xGA/60 — PK-subtracted, opponent-adjusted with half weight
     neg_xga_hd_per60 = [
-        -(season_acc[p].mp_xga_hd / _mp_toi_h(season_acc[p]))
+        -((season_acc[p].mp_xga_hd - season_acc[p].mp_pk_xga_hd) / _non_pk_toi_h(season_acc[p]))
         + (opp_off_quality[p] - _opp_quality_mean) * 0.5
         for p in all_pids
     ]
@@ -1248,10 +1252,56 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         pid: (_rank / (_n_dz - 1)) if _n_dz > 1 else 0.5
         for _rank, (pid, _) in enumerate(_d_pids_dz)
     }
+    _d_trk_active: set = set()
     for pid in _d_pids_only:
-        pure_trk = _d_pure_trk[pid]
-        trk_w    = max(0.50, dz_pct_map.get(pid, 0.50))
-        def_scores[pid] = trk_w * pure_trk + (1.0 - trk_w) * dfn_mp_scores[pid]
+        if season_acc[pid].ms_gp >= 10:
+            pure_trk = _d_pure_trk[pid]
+            trk_w    = max(0.50, dz_pct_map.get(pid, 0.50))
+            def_scores[pid] = trk_w * pure_trk + (1.0 - trk_w) * dfn_mp_scores[pid]
+            _d_trk_active.add(pid)
+        else:
+            def_scores[pid] = dfn_mp_scores[pid]
+
+    # ── Forward defensive subscore ────────────────────────────────────────────
+    # 35% PK-deploy + 20% NPK-xGA×TOI-mult + 25% PK-perf(floor 60) + 20% net-puck
+    # Tracking: graduated 30% max blend (65% DZ-exit + 35% entry-dfn)
+    _fwd_pids = [p for p in all_pids if season_acc[p].position in fwd_positions]
+    _fwd_pos  = [season_acc[p].position for p in _fwd_pids]
+
+    _pkdep_raw   = [season_acc[p].mp_pk_toi / max(season_acc[p].mp_fs_toi, 1.0)
+                    for p in _fwd_pids]
+    _netpuck_raw = [(season_acc[p].takeaways - season_acc[p].giveaways)
+                    / (_mp_toi_h(season_acc[p]) or 1e-6)
+                    for p in _fwd_pids]
+
+    _pkdep_normed   = _norm_sub(_shrink_rates(_pkdep_raw,   _fwd_pids, season_acc, SUB_GRADE_PRIOR_MIN, use_fs_toi=True), _fwd_pos)
+    _netpuck_normed = _norm_sub(_shrink_rates(_netpuck_raw, _fwd_pids, season_acc, SUB_GRADE_PRIOR_MIN, use_fs_toi=True), _fwd_pos)
+
+    _fwd_pkdep_map   = {p: _pkdep_normed[j]   for j, p in enumerate(_fwd_pids)}
+    _fwd_netpuck_map = {p: _netpuck_normed[j] for j, p in enumerate(_fwd_pids)}
+
+    for i, pid in enumerate(all_pids):
+        e = season_acc[pid]
+        if e.position not in fwd_positions:
+            continue
+
+        toi_pg_min   = (e.mp_fs_toi / 60.0 / e.mp_xg_pct_gp) if e.mp_xg_pct_gp > 0 else 0.0
+        xga_toi_mult = min(toi_pg_min / 14.0, 1.0)
+        xga_weight   = 0.20 * xga_toi_mult
+        remainder    = 0.20 - xga_weight
+
+        pk_v   = max(60.0, pk_scores_map[pid])
+        mp_fwd = (0.35 * _fwd_pkdep_map.get(pid, 60.0)
+                + xga_weight * xga_map.get(pid, 60.0) + remainder * 60.0
+                + 0.25 * pk_v
+                + 0.20 * _fwd_netpuck_map.get(pid, 60.0))
+
+        trk_toi_min = e.ms_toi_seconds / 60.0
+        trk_w       = min(trk_toi_min / 300.0, 1.0) * 0.30
+        trk_dfn     = 0.65 * dz_exit_normed[i] + 0.35 * entry_dfn_normed[i]
+
+        dfn_mp_scores[pid] = mp_fwd
+        def_scores[pid] = (1.0 - trk_w) * mp_fwd + trk_w * trk_dfn
 
     # ── QoC adjustment (PFF-style iterative, 1 round) ─────────────────────────
     # Round-1 overall for each player (pre-QoC)
@@ -1326,6 +1376,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'dfn_legacy_letter': score_to_letter(dfn_legacy_v),
             'dfn_mp':           dfn_mp_v,
             'dfn_mp_letter':    score_to_letter(dfn_mp_v),
+            'dfn_trk_active':   (pid in _d_trk_active) if is_d else None,
             'off_blend':        off_blend_v,
             'off_blend_letter': score_to_letter(off_blend_v),
             'overall_blend':    overall_blend_v,
