@@ -1469,6 +1469,10 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     for i, t in enumerate(team_grades, 1):
         t['rank'] = i
 
+    from game_grade_builder import build_player_game_grades
+    print('  Building per-game grades...', flush=True)
+    build_player_game_grades(season_str, season_acc, game_ids)
+
     _sy = int(season_str[:4])
     return {
         'season':       season_str,

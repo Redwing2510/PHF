@@ -6,8 +6,8 @@ import requests
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from pipeline import process_game, grade_game
-from season import build_season_grades, fetch_schedule, TEAMS, SEASON, GRADE_DESCRIPTIONS
-from grader import score_to_letter
+from season import build_season_grades, fetch_schedule, TEAMS, SEASON, GRADE_DESCRIPTIONS, _fetch_standings
+from grader import score_to_letter, normalize_by_position_group
 import manual_loader
 import play_grader
 import fo_grade_loader
@@ -125,6 +125,25 @@ def index():
     return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS)
 
 
+@app.route('/api/player/<int:player_id>/games')
+def player_games(player_id: int):
+    season_str = request.args.get('season', '20252026')
+    mp_year = int(season_str[:4])
+    conn = sqlite3.connect('cache.db')
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        '''SELECT game_id, team, opponent, game_date, position, toi_min,
+                  off, dfn, overall, has_tracking
+           FROM player_game_grades
+           WHERE player_id=? AND season=?
+           ORDER BY game_date ASC, game_id ASC''',
+        (player_id, mp_year)
+    ).fetchall()
+    conn.close()
+    from flask import jsonify
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route('/refresh')
 def refresh():
     season_str = request.args.get('season', '20252026')
@@ -148,8 +167,12 @@ def _ensure_game_dates():
     ''')
     conn.commit()
 
-    # Find game IDs that are missing dates
+    # Find game IDs that are missing dates (from both play-grade cache and MP data)
     all_ids = {r[0] for r in conn.execute('SELECT game_id FROM games').fetchall()}
+    try:
+        all_ids |= {r[0] for r in conn.execute('SELECT DISTINCT game_id FROM moneypuck_games').fetchall()}
+    except Exception:
+        pass
     dated   = {r[0] for r in conn.execute('SELECT game_id FROM game_dates').fetchall()}
     missing = all_ids - dated
     if not missing:
@@ -180,11 +203,10 @@ def _ensure_game_dates():
 
 
 def _get_cached_game_list():
-    """Return list of {id, label, group} for all cached games, sorted by game_id."""
+    """Return list of game dicts for all RS + playoff games from schedule data."""
     conn = sqlite3.connect('cache.db')
-    game_ids = [r[0] for r in conn.execute('SELECT game_id FROM games ORDER BY game_id').fetchall()]
 
-    # Build lookup: game_id -> schedule entry (playoff games fetched via API)
+    # Build full game map from all 32 team schedules (has home/away/date for every game)
     sched_map = {}
     for (data,) in conn.execute('SELECT data FROM schedules').fetchall():
         for g in json.loads(data):
@@ -192,25 +214,29 @@ def _get_cached_game_list():
             if gid and gid not in sched_map:
                 sched_map[gid] = g
 
-    # Build lookup: game_id -> date from game_dates table
+    # Also include game_dates for any games not in schedules
     date_map = {r[0]: r[1] for r in conn.execute('SELECT game_id, game_date FROM game_dates').fetchall()}
+
+    # Set of game_ids that have full play-grade data cached
+    cached_gids = {r[0] for r in conn.execute('SELECT game_id FROM games').fetchall()}
+
+    # Set of game_ids that have per-game grades
+    try:
+        graded_gids = {r[0] for r in conn.execute('SELECT DISTINCT game_id FROM player_game_grades').fetchall()}
+    except Exception:
+        graded_gids = set()
+
     conn.close()
 
-    # Build lookup: short file_id (5 digits) -> (away, home) from xlsx filenames
-    import re as _re
-    from manual_loader import LOGS_DIR as _ML_LOGS_DIR
-    _rs_dir = _ML_LOGS_DIR / 'Regular Season'
-    _xlsx_teams: dict = {}
-    if _rs_dir.exists():
-        for _f in _rs_dir.glob('*.xlsx'):
-            m = _re.match(r'^(\d+)\s+([A-Z]{2,3})\s+vs\.\s+([A-Z]{2,3})', _f.stem)
-            if m:
-                _xlsx_teams[int(m.group(1))] = (m.group(2), m.group(3))
+    # Use all game IDs from schedules (covers RS + playoffs for both seasons)
+    all_gids = sorted(sched_map.keys())
 
     games = []
-    for gid in game_ids:
+    for gid in all_gids:
         gid_s = str(gid)
         game_type = int(gid_s[4:6]) if len(gid_s) >= 6 else 0
+        if game_type == 1:   # skip preseason only
+            continue
 
         g = sched_map.get(gid, {})
         away = g.get('awayTeam', {}).get('abbrev', '')
@@ -219,44 +245,30 @@ def _get_cached_game_list():
         away_logo = g.get('awayTeam', {}).get('darkLogo', '')
         home_logo = g.get('homeTeam', {}).get('darkLogo', '')
 
-        # For regular season games not in schedules table, use xlsx filename
-        if not away and game_type == 2:
-            file_id = int(gid_s[-5:])
-            if file_id in _xlsx_teams:
-                away, home = _xlsx_teams[file_id]
-
         if not away:
             away, home = '???', '???'
 
-        # Fill missing logos from the standard NHL CDN pattern
         if away != '???' and not away_logo:
             away_logo = f'https://assets.nhle.com/logos/nhl/svg/{away}_dark.svg'
         if home != '???' and not home_logo:
             home_logo = f'https://assets.nhle.com/logos/nhl/svg/{home}_dark.svg'
 
         date_label = datetime.strptime(date_str, '%Y-%m-%d').strftime('%b %d') if date_str else ''
+        home_score = g.get('homeTeam', {}).get('score')
+        away_score = g.get('awayTeam', {}).get('score')
 
         if game_type == 3:
-            # Playoff: YYYY 03 R S G
-            round_num  = int(gid_s[7]) if len(gid_s) == 10 else 0
-            series_num = int(gid_s[8]) if len(gid_s) == 10 else 0
-            game_num   = int(gid_s[9]) if len(gid_s) == 10 else 0
-
-            # Sort teams alphabetically so same series always groups together
-            if away != '???' and away > home:
-                away, home = home, away
-                away_logo, home_logo = home_logo, away_logo
-
-            pair  = f'{away} vs {home}' if away != '???' else f'Series {series_num}'
-            group = f'Round {round_num} \u2014 {pair}'
-            label = f'Game {game_num}  ({date_label})' if date_label else f'Game {game_num}'
+            # Playoff: YYYY03RRSGN \u2192 [6:8]=round, [8]=series, [9]=game_num
+            round_num  = int(gid_s[6:8]) if len(gid_s) >= 8  else 0
+            series_num = int(gid_s[8])   if len(gid_s) >= 9  else 0
+            game_num   = int(gid_s[9])   if len(gid_s) >= 10 else 0
+            group      = 'Playoffs'
         else:
-            # Regular season
-            game_num   = int(gid_s[-5:])
-            series_num = 0
             round_num  = 0
-            group = f'Regular Season \u2014 {away} vs {home}'
-            label = f'{away} vs {home}  ({date_label})' if date_label else f'{away} vs {home}'
+            series_num = 0
+            game_num   = int(gid_s[6:10]) if len(gid_s) >= 10 else 0
+            group      = f'Regular Season \u2014 {away} vs {home}'
+        label = f'{away} vs {home}  ({date_label})' if date_label else f'{away} vs {home}'
 
         season_year = int(gid_s[:4])
         season_str  = f"{season_year}{season_year + 1}"
@@ -264,7 +276,10 @@ def _get_cached_game_list():
                       'round': round_num, 'series': series_num, 'game_num': game_num,
                       'away': away, 'home': home,
                       'away_logo': away_logo, 'home_logo': home_logo,
-                      'season': season_str})
+                      'season': season_str,
+                      'home_score': home_score, 'away_score': away_score,
+                      'has_grades': gid in graded_gids,
+                      'has_play_grades': gid in cached_gids})
     return games
 
 
@@ -278,8 +293,139 @@ def game_lookup():
     active_season = request.args.get('season', '20252026')
     if active_season not in dict(_SEASONS):
         active_season = '20252026'
+    standings = _fetch_standings(active_season)
+    team_pts = {abbrev: d['pts'] for abbrev, d in standings.items()}
     return render_template('index.html', games=_get_cached_game_list(),
-                           active_season=active_season, seasons=_SEASONS)
+                           active_season=active_season, seasons=_SEASONS,
+                           team_pts=team_pts)
+
+
+@app.route('/game-grades/<int:game_id>')
+def game_grades(game_id):
+    season = request.args.get('season', '20252026')
+    mp_year = int(season[:4])
+    conn = sqlite3.connect('cache.db')
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        '''SELECT player_id, name, team, opponent, game_date, position, toi_min,
+                  off, dfn, overall, has_tracking
+           FROM player_game_grades
+           WHERE game_id=? AND season=?
+           ORDER BY team, overall DESC''',
+        (game_id, mp_year)
+    ).fetchall()
+    date_row = conn.execute('SELECT game_date FROM game_dates WHERE game_id=?', (game_id,)).fetchone()
+
+    # MP per-game stats (all situations) for stat columns
+    mp_stat_map = {}
+    for r in conn.execute(
+        '''SELECT player_id, goals, primary_assists, secondary_assists,
+                  shots_on_goal, hits, giveaways, takeaways, pim,
+                  onice_corsi_pct, onice_xg_pct, icetime
+           FROM moneypuck_games
+           WHERE game_id=? AND season=? AND situation='all' ''',
+        (game_id, mp_year)
+    ).fetchall():
+        cf = r[9]
+        xg = r[10]
+        mp_stat_map[r[0]] = {
+            'goals': int(r[1] or 0), 'assists': int((r[2] or 0) + (r[3] or 0)),
+            'sog': int(r[4] or 0), 'hits': int(r[5] or 0),
+            'gva': int(r[6] or 0), 'tka': int(r[7] or 0), 'pim': int(r[8] or 0),
+            'cf_pct': f'{cf*100:.1f}' if cf else '—',
+            'xg_pct': f'{xg*100:.1f}' if xg else '—',
+        }
+
+    # Blocks and FO% from tracked-game cache (266 games only)
+    tracked_stat_map = {}
+    games_row = conn.execute('SELECT player_stats FROM games WHERE game_id=?', (game_id,)).fetchone()
+    if games_row:
+        for pid_str, ps in json.loads(games_row[0]).items():
+            fo_won  = (ps.get('es_fo_won', 0) or 0) + (ps.get('pp_fo_won', 0) or 0) + (ps.get('pk_fo_won', 0) or 0)
+            fo_lost = (ps.get('es_fo_lost', 0) or 0) + (ps.get('pp_fo_lost', 0) or 0) + (ps.get('pk_fo_lost', 0) or 0)
+            fo_tot  = fo_won + fo_lost
+            tracked_stat_map[int(pid_str)] = {
+                'blocks': int(ps.get('blocked_shots', 0) or 0),
+                'fo_pct': f'{fo_won/fo_tot*100:.1f}' if fo_tot > 0 else None,
+            }
+
+    # Zone-weighted FO grades from fo_grades table (PBP-derived, tracked games only)
+    fo_grade_raw = {
+        r[0]: (r[1], r[2])  # pid -> (weighted_sum, total_fo)
+        for r in conn.execute(
+            'SELECT player_id, weighted, total_fo FROM fo_grades WHERE game_id=?', (game_id,)
+        ).fetchall()
+    }
+
+    conn.close()
+
+    game_date = date_row[0] if date_row else ''
+    sched_map = {}
+    conn2 = sqlite3.connect('cache.db')
+    for (data,) in conn2.execute('SELECT data FROM schedules').fetchall():
+        for g in json.loads(data):
+            if g.get('id') == game_id:
+                sched_map = g
+                break
+        if sched_map:
+            break
+    conn2.close()
+
+    away = sched_map.get('awayTeam', {}).get('abbrev', '')
+    home = sched_map.get('homeTeam', {}).get('abbrev', '')
+    away_score = sched_map.get('awayTeam', {}).get('score', '')
+    home_score = sched_map.get('homeTeam', {}).get('score', '')
+    away_logo = sched_map.get('awayTeam', {}).get('darkLogo', '') or (f'https://assets.nhle.com/logos/nhl/svg/{away}_dark.svg' if away else '')
+    home_logo = sched_map.get('homeTeam', {}).get('darkLogo', '') or (f'https://assets.nhle.com/logos/nhl/svg/{home}_dark.svg' if home else '')
+
+    has_play_grades = bool(tracked_stat_map)
+
+    grades = []
+    for r in rows:
+        d = dict(r)
+        d['overall_letter'] = score_to_letter(d['overall'])
+        pid = d['player_id']
+        mp = mp_stat_map.get(pid, {})
+        trk = tracked_stat_map.get(pid, {})
+        d['goals']   = mp.get('goals', 0)
+        d['assists'] = mp.get('assists', 0)
+        d['sog']     = mp.get('sog', 0)
+        d['hits']    = mp.get('hits', 0)
+        d['gva']     = mp.get('gva', 0)
+        d['tka']     = mp.get('tka', 0)
+        d['pim']     = mp.get('pim', 0)
+        d['cf_pct']  = mp.get('cf_pct', '—')
+        d['xg_pct']  = mp.get('xg_pct', '—')
+        d['blocks']  = trk.get('blocks', '—') if trk else '—'
+        d['fo_pct']  = trk.get('fo_pct') if trk else None
+        d['_fo_raw'] = fo_grade_raw.get(pid)  # (weighted_sum, total_fo) or None
+        grades.append(d)
+
+    # Normalize zone-weighted FO scores across players who took faceoffs this game
+    fo_eligible = [d for d in grades if d['_fo_raw'] and d['_fo_raw'][1] > 0]
+    if fo_eligible:
+        fo_vals = [d['_fo_raw'][0] for d in fo_eligible]
+        fo_pos  = [d['position']   for d in fo_eligible]
+        fo_normed = normalize_by_position_group(list(zip(fo_vals, fo_pos)))
+        for d, normed in zip(fo_eligible, fo_normed):
+            score = max(0.0, min(100.0, normed))
+            d['fo_grade']  = round(score, 1)
+            d['fo_letter'] = score_to_letter(score)
+    for d in grades:
+        d.pop('_fo_raw', None)
+        if 'fo_grade' not in d:
+            d['fo_grade']  = None
+            d['fo_letter'] = None
+
+    return render_template('game_grades.html',
+        game_id=game_id, season=season,
+        game_date=game_date,
+        away=away, home=home,
+        away_score=away_score, home_score=home_score,
+        away_logo=away_logo, home_logo=home_logo,
+        grades=grades,
+        has_play_grades=has_play_grades,
+    )
 
 
 @app.route('/game/<int:game_id>')
@@ -289,6 +435,44 @@ def game(game_id):
         game_id=game_id, season=season, verbose=False
     )
     grades = grade_game(player_stats, all_players, game_id=game_id)
+
+    # When PBP Corsi/xG parsing fails entirely, all players show cf_pct=0.0.
+    # Fall back to moneypuck_games for display and substitute stable MP-based grades.
+    pbp_ok = any(float(r['cf_pct']) > 0.0 for r in grades)
+    if not pbp_ok:
+        mp_year = int(season[:4])
+        conn = sqlite3.connect('cache.db')
+        mp_map = {
+            r[0]: {
+                'cf_pct': f'{r[1]*100:.1f}' if r[1] else '—',
+                'xg_pct': f'{r[2]*100:.1f}' if r[2] else '—',
+            }
+            for r in conn.execute(
+                "SELECT player_id, onice_corsi_pct, onice_xg_pct "
+                "FROM moneypuck_games WHERE game_id=? AND season=? AND situation='all'",
+                (game_id, mp_year)
+            ).fetchall()
+        }
+        pg_map = {
+            r[0]: {
+                'overall': r[1], 'overall_letter': score_to_letter(r[1]),
+                'off': r[2], 'off_letter': score_to_letter(r[2]),
+                'dfn': r[3], 'dfn_letter': score_to_letter(r[3]),
+            }
+            for r in conn.execute(
+                "SELECT player_id, overall, off, dfn "
+                "FROM player_game_grades WHERE game_id=? AND season=?",
+                (game_id, mp_year)
+            ).fetchall()
+        }
+        conn.close()
+        for r in grades:
+            pid = r['player_id']
+            if pid in mp_map:
+                r['cf_pct'] = mp_map[pid]['cf_pct']
+                r['xg_pct'] = mp_map[pid]['xg_pct']
+            if pid in pg_map:
+                r.update(pg_map[pid])
 
     play_logs: dict[int, list] = {}
     for row in grades:

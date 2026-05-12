@@ -7,6 +7,12 @@
 .season-tab:hover{color:var(--text);}
 .season-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
+.view-tabs{display:flex;gap:0;margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:fit-content;}
+.view-tab{padding:6px 20px;font-size:13px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;transition:background .12s,color .12s;}
+.view-tab:hover{color:var(--text);background:var(--surface2);}
+.view-tab.active{background:var(--accent);color:#fff;}
+.view-tab+.view-tab{border-left:1px solid var(--border);}
+
 .lookup-wrap{
   max-width:1100px;
   margin:48px auto;
@@ -52,6 +58,25 @@
 /* ── Panels ── */
 .panel{ display:none; }
 .panel.visible{ display:block; }
+
+/* ── Visual bracket ── */
+.bk-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:16px;}
+.bk-root{display:flex;align-items:flex-start;position:relative;gap:20px;min-width:max-content;padding:0 4px 4px;}
+.bk-col{display:flex;flex-direction:column;width:130px;}
+.bk-round-hdr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:center;height:30px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;white-space:nowrap;}
+.bk-cards{display:flex;flex-direction:column;justify-content:space-around;height:348px;}
+.bs-slot{border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:8px 10px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;}
+.bs-slot:hover{border-color:var(--accent);background:var(--surface2);}
+.bs-slot.bs-tbd{opacity:.3;cursor:default;pointer-events:none;}
+.bs-team{display:flex;align-items:center;gap:6px;padding:2px 0;}
+.bs-logo{width:20px;height:20px;object-fit:contain;flex-shrink:0;}
+.bs-abbrev{font-size:12px;font-weight:700;color:var(--text);line-height:1;}
+.bs-wins{margin-left:auto;font-size:12px;font-weight:800;color:var(--text);}
+.bs-div{height:1px;background:var(--border);margin:4px 0;}
+.bk-svg{position:absolute;top:0;left:0;pointer-events:none;}
+.po-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:20px;background:none;border:none;padding:0;}
+.po-back:hover{color:var(--text);}
+.playoff-empty{padding:64px 0;text-align:center;color:var(--muted);font-size:14px;line-height:1.8;}
 
 /* ── Team grid ── */
 .team-grid{
@@ -209,25 +234,40 @@
            href="/game-lookup?season={{ s_str }}">{{ s_label }}</a>
       {% endfor %}
     </div>
+    <div class="view-tabs">
+      <button class="view-tab active" id="vt-regular" onclick="setView('regular')">Regular Season</button>
+      <button class="view-tab" id="vt-playoffs" onclick="setView('playoffs')">Playoffs</button>
+    </div>
   </div>
 
   <div class="breadcrumb" id="breadcrumb">
     <span class="breadcrumb-item active" id="bc-teams" onclick="showTeams()">All Teams</span>
   </div>
 
-  {# ── Panel 1: Team cards ── #}
-  <div class="panel visible" id="panel-teams">
-    <div class="team-grid" id="team-grid"></div>
+  {# ── Regular Season Panels ── #}
+  <div id="rs-panels">
+    <div class="panel visible" id="panel-teams">
+      <div class="team-grid" id="team-grid"></div>
+    </div>
+    <div class="panel" id="panel-months">
+      <div class="month-grid" id="month-grid"></div>
+    </div>
+    <div class="panel" id="panel-games">
+      <div class="game-list" id="game-list"></div>
+    </div>
   </div>
 
-  {# ── Panel 2: Month buttons ── #}
-  <div class="panel" id="panel-months">
-    <div class="month-grid" id="month-grid"></div>
-  </div>
-
-  {# ── Panel 3: Game rows ── #}
-  <div class="panel" id="panel-games">
-    <div class="game-list" id="game-list"></div>
+  {# ── Playoff Panels ── #}
+  <div id="po-panels" style="display:none;">
+    <div id="bracket-view">
+      <div class="bk-wrap">
+        <div class="bk-root" id="bracket-root"></div>
+      </div>
+    </div>
+    <div id="panel-po-games" style="display:none;">
+      <button class="po-back" onclick="showBracket()">‹ Back to Bracket</button>
+      <div class="game-list" id="po-game-list"></div>
+    </div>
   </div>
 
   <div class="scale">
@@ -245,9 +285,11 @@
 
 <script>
 // ── Raw game data from server ──────────────────────────────────────────────
-const ALL_GAMES    = {{ games | tojson }};
+const ALL_GAMES     = {{ games | tojson }};
 const ACTIVE_SEASON = '{{ active_season }}';
-const GAMES = ALL_GAMES.filter(g => g.season === ACTIVE_SEASON);
+const TEAM_PTS      = {{ team_pts | tojson }};
+const GAMES         = ALL_GAMES.filter(g => g.season === ACTIVE_SEASON && g.round === 0);
+const PLAYOFF_GAMES = ALL_GAMES.filter(g => g.season === ACTIVE_SEASON && g.round > 0);
 
 // Month names
 // Season order: Oct → Sep (NHL season wraps calendar year)
@@ -384,7 +426,7 @@ function showGames(abbrev, month) {
   for (const g of filtered) {
     const a = document.createElement('a');
     a.className = 'game-row';
-    a.href = `/game/${g.id}?season=${g.season}`;
+    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : `/game/${g.id}?season=${g.season}`;
 
     const dateMatch = g.label.match(/\((.+?)\)/);
     const dateStr = dateMatch ? dateMatch[1] : '';
@@ -417,6 +459,248 @@ function showGames(abbrev, month) {
     { label: 'All Teams', onclick: showTeams },
     { label: abbrev, onclick: () => showMonths(abbrev) },
     { label: month }
+  ]);
+}
+
+// ── View mode toggle ──────────────────────────────────────────────────────
+function setView(mode) {
+  document.getElementById('vt-regular').classList.toggle('active', mode === 'regular');
+  document.getElementById('vt-playoffs').classList.toggle('active', mode === 'playoffs');
+  document.getElementById('rs-panels').style.display = mode === 'regular'  ? '' : 'none';
+  document.getElementById('po-panels').style.display = mode === 'playoffs' ? '' : 'none';
+  if (mode === 'regular') showTeams();
+  else renderBracket();
+}
+
+// ── Playoff bracket ───────────────────────────────────────────────────────
+// NHL playoff series numbering:
+//   R1 East 1-4 / West 5-8 | R2 East 1-2 / West 3-4 | CF East 1 / West 2 | SCF 1
+const ROUND_NAMES = {1:'First Round', 2:'Second Round', 3:'Conference Finals', 4:'Stanley Cup Final'};
+
+function buildPlayoffIndex(games) {
+  const idx = {};
+  for (const g of games) {
+    if (!idx[g.round]) idx[g.round] = {};
+    if (!idx[g.round][g.series])
+      idx[g.round][g.series] = { away: g.away, home: g.home, away_logo: g.away_logo, home_logo: g.home_logo, games: [], away_wins: 0, home_wins: 0 };
+    const ser = idx[g.round][g.series];
+    if (!ser.games.find(x => x.id === g.id)) {
+      ser.games.push(g);
+      if (g.home_score != null && g.away_score != null && g.home_score !== g.away_score) {
+        const winner = g.home_score > g.away_score ? g.home : g.away;
+        if (winner === ser.away) ser.away_wins++; else ser.home_wins++;
+      }
+    }
+  }
+  return idx;
+}
+
+const PLAYOFF_INDEX = buildPlayoffIndex(PLAYOFF_GAMES);
+
+// Which previous slots feed each bracket slot: 'round-series' → ['r-s','r-s']
+const BRACKET_SOURCES = {
+  '2-1':['1-1','1-2'], '2-2':['1-3','1-4'],
+  '2-3':['1-5','1-6'], '2-4':['1-7','1-8'],
+  '3-1':['2-1','2-2'], '3-2':['2-3','2-4'],
+  '4-1':['3-1','3-2'],
+};
+
+function getWinner(round, seriesNum) {
+  const s = (PLAYOFF_INDEX[round] || {})[seriesNum];
+  if (!s) return null;
+  if (s.away_wins >= 4) return { abbrev: s.away, logo: s.away_logo };
+  if (s.home_wins >= 4) return { abbrev: s.home, logo: s.home_logo };
+  return null;
+}
+
+function inferTeams(round, seriesNum) {
+  const sources = BRACKET_SOURCES[`${round}-${seriesNum}`];
+  if (!sources) return [null, null];
+  const teams = sources.map(key => {
+    const [r, s] = key.split('-').map(Number);
+    return getWinner(r, s);
+  });
+  // Put higher-points team on bottom (home position)
+  const [a, b] = teams;
+  if (a && b) {
+    const ptsA = TEAM_PTS[a.abbrev] || 0;
+    const ptsB = TEAM_PTS[b.abbrev] || 0;
+    return ptsA < ptsB ? [a, b] : [b, a];
+  }
+  return teams;
+}
+
+function slotHTML(round, seriesNum) {
+  const s = (PLAYOFF_INDEX[round] || {})[seriesNum];
+  const id = `bk-${round}-${seriesNum}`;
+
+  if (s) {
+    return `<div class="bs-slot" id="${id}" onclick="showSeriesGames(${round},${seriesNum})">
+      <div class="bs-team"><img class="bs-logo" src="${s.away_logo}" onerror="this.style.display='none'"><span class="bs-abbrev">${s.away}</span><span class="bs-wins">${s.away_wins}</span></div>
+      <div class="bs-div"></div>
+      <div class="bs-team"><img class="bs-logo" src="${s.home_logo}" onerror="this.style.display='none'"><span class="bs-abbrev">${s.home}</span><span class="bs-wins">${s.home_wins}</span></div>
+    </div>`;
+  }
+
+  const [teamA, teamB] = inferTeams(round, seriesNum);
+  const bothTBD = !teamA && !teamB;
+
+  function teamRow(t) {
+    if (!t) return `<div class="bs-team"><span class="bs-abbrev" style="color:var(--muted)">TBD</span><span class="bs-wins" style="color:var(--muted)">—</span></div>`;
+    return `<div class="bs-team"><img class="bs-logo" src="${t.logo}" onerror="this.style.display='none'"><span class="bs-abbrev">${t.abbrev}</span><span class="bs-wins" style="color:var(--muted)">0</span></div>`;
+  }
+
+  return `<div class="bs-slot${bothTBD ? ' bs-tbd' : ''}" id="${id}">
+    ${teamRow(teamA)}
+    <div class="bs-div"></div>
+    ${teamRow(teamB)}
+  </div>`;
+}
+
+function bkColHTML(id, hdr, slotsHTML) {
+  return `<div class="bk-col" id="${id}">
+    <div class="bk-round-hdr">${hdr}</div>
+    <div class="bk-cards">${slotsHTML}</div>
+  </div>`;
+}
+
+function renderBracket() {
+  const root = document.getElementById('bracket-root');
+
+  if (!PLAYOFF_GAMES.length) {
+    root.innerHTML = '<div class="playoff-empty">Playoff data not yet available.<br>Bracket will populate once the pipeline runs.</div>';
+    setBreadcrumb([{ label: 'Playoffs' }]);
+    return;
+  }
+
+  root.innerHTML = [
+    // West: R1 → R2 → CF (left side, LTR)
+    bkColHTML('w-r1', 'First Round',    [5,6,7,8].map(s => slotHTML(1,s)).join('')),
+    bkColHTML('w-r2', 'Second Round',   [3,4].map(s => slotHTML(2,s)).join('')),
+    bkColHTML('w-cf', 'Conf. Finals',   slotHTML(3,2)),
+    // SCF center
+    bkColHTML('scf',  'Stanley Cup Final', slotHTML(4,1)),
+    // East: CF → R2 → R1 (right side, RTL)
+    bkColHTML('e-cf', 'Conf. Finals',   slotHTML(3,1)),
+    bkColHTML('e-r2', 'Second Round',   [1,2].map(s => slotHTML(2,s)).join('')),
+    bkColHTML('e-r1', 'First Round',    [1,2,3,4].map(s => slotHTML(1,s)).join('')),
+    '<svg class="bk-svg" id="bk-svg"></svg>',
+  ].join('');
+
+  requestAnimationFrame(drawBracketLines);
+  setBreadcrumb([{ label: 'Playoffs' }]);
+}
+
+function addSVGLine(svg, x1, y1, x2, y2) {
+  const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+  ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+  ln.setAttribute('stroke', 'var(--border2)'); ln.setAttribute('stroke-width', '1.5');
+  svg.appendChild(ln);
+}
+
+function drawBracketLines() {
+  const root = document.getElementById('bracket-root');
+  const svg  = document.getElementById('bk-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const rr = root.getBoundingClientRect();
+  svg.setAttribute('width',  rr.width);
+  svg.setAttribute('height', rr.height);
+
+  function cy(el) { const r = el.getBoundingClientRect(); return r.top + r.height / 2 - rr.top; }
+  function rx(el) { return el.getBoundingClientRect().right  - rr.left; }
+  function lx(el) { return el.getBoundingClientRect().left   - rr.left; }
+
+  // LTR: two source cards → one destination card (East side)
+  function connLTR(id1, id2, idT) {
+    const e1 = document.getElementById(id1);
+    const e2 = document.getElementById(id2);
+    const et = document.getElementById(idT);
+    if (!e1 || !e2 || !et) return;
+    const y1 = cy(e1), y2 = cy(e2), yt = cy(et);
+    const midX = (rx(e1) + lx(et)) / 2;
+    addSVGLine(svg, rx(e1), y1, midX, y1);
+    addSVGLine(svg, rx(e2), y2, midX, y2);
+    addSVGLine(svg, midX, y1, midX, y2);
+    addSVGLine(svg, midX, yt, lx(et), yt);
+  }
+
+  // RTL: two source cards → one destination card (West side, lines go leftward)
+  function connRTL(id1, id2, idT) {
+    const e1 = document.getElementById(id1);
+    const e2 = document.getElementById(id2);
+    const et = document.getElementById(idT);
+    if (!e1 || !e2 || !et) return;
+    const y1 = cy(e1), y2 = cy(e2), yt = cy(et);
+    const midX = (lx(e1) + rx(et)) / 2;
+    addSVGLine(svg, lx(e1), y1, midX, y1);
+    addSVGLine(svg, lx(e2), y2, midX, y2);
+    addSVGLine(svg, midX, y1, midX, y2);
+    addSVGLine(svg, midX, yt, rx(et), yt);
+  }
+
+  // Single card → single card horizontal connector
+  function connH(idFrom, fromEdge, idTo, toEdge) {
+    const ef = document.getElementById(idFrom);
+    const et = document.getElementById(idTo);
+    if (!ef || !et) return;
+    const x1 = fromEdge === 'right' ? rx(ef) : lx(ef);
+    const x2 = toEdge   === 'left'  ? lx(et) : rx(et);
+    addSVGLine(svg, x1, cy(ef), x2, cy(et));
+  }
+
+  // West (left side, LTR)
+  connLTR('bk-1-5','bk-1-6','bk-2-3');
+  connLTR('bk-1-7','bk-1-8','bk-2-4');
+  connLTR('bk-2-3','bk-2-4','bk-3-2');
+  connH('bk-3-2','right','bk-4-1','left');
+  // East (right side, RTL)
+  connRTL('bk-1-1','bk-1-2','bk-2-1');
+  connRTL('bk-1-3','bk-1-4','bk-2-2');
+  connRTL('bk-2-1','bk-2-2','bk-3-1');
+  connH('bk-3-1','left','bk-4-1','right');
+}
+
+function showBracket() {
+  document.getElementById('bracket-view').style.display = '';
+  document.getElementById('panel-po-games').style.display = 'none';
+  setBreadcrumb([{ label: 'Playoffs' }]);
+}
+
+function showSeriesGames(roundNum, seriesNum) {
+  document.getElementById('bracket-view').style.display = 'none';
+  document.getElementById('panel-po-games').style.display = '';
+
+  const s = (PLAYOFF_INDEX[roundNum] || {})[seriesNum] || { games: [], away: '?', home: '?' };
+  const sorted = [...s.games].sort((a, b) => a.game_num - b.game_num);
+
+  const list = document.getElementById('po-game-list');
+  list.innerHTML = '';
+  for (const g of sorted) {
+    const a = document.createElement('a');
+    a.className = 'game-row';
+    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : `/game/${g.id}?season=${g.season}`;
+    const dateMatch = g.label.match(/\((.+?)\)/);
+    const dateStr = dateMatch ? dateMatch[1] : '';
+    a.innerHTML = `
+      <div class="game-row-logos">
+        <img class="game-row-logo" src="${g.away_logo}" alt="${g.away}" onerror="this.style.display='none'">
+        <span class="game-row-vs">@</span>
+        <img class="game-row-logo" src="${g.home_logo}" alt="${g.home}" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div class="game-row-label">${g.away} at ${g.home}</div>
+        <div class="game-row-sub">Game ${g.game_num}</div>
+      </div>
+      <div class="game-row-date">${dateStr}</div>
+    `;
+    list.appendChild(a);
+  }
+
+  setBreadcrumb([
+    { label: 'Playoffs', onclick: showBracket },
+    { label: `${s.away} vs ${s.home}` }
   ]);
 }
 

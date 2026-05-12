@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %} — {{ away }} @ {{ home }} Grades{% endblock %}
+
+{% block style %}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:20px;transition:color .15s;}
+.back-link:hover{color:var(--text2)}
+
+.game-header{
+  display:flex;align-items:center;justify-content:center;gap:0;
+  margin-bottom:28px;background:var(--surface);
+  border:1px solid var(--border);border-radius:12px;padding:28px 48px;
+}
+.gh-team{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:160px;}
+.gh-logo{width:64px;height:64px;object-fit:contain;}
+.gh-abbrev{font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1;}
+.gh-sep{display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 48px;min-width:200px;}
+.gh-scores{display:flex;align-items:center;gap:16px;font-size:54px;font-weight:900;letter-spacing:-2px;line-height:1;}
+.gh-dash{font-size:36px;color:var(--muted);font-weight:300}
+.gh-final{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);background:var(--surface3);border:1px solid var(--border);border-radius:20px;padding:3px 12px;}
+.gh-date{font-size:12px;color:var(--muted);}
+
+.play-grade-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 10px;margin-bottom:20px;transition:color .15s,border-color .15s;}
+.play-grade-link:hover{color:var(--text2);border-color:var(--border2);}
+
+.filters{display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.filter-group{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.filter-btn{padding:5px 14px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.3px;transition:background .15s,color .15s;}
+.filter-btn.active{background:var(--surface3);color:var(--text)}
+.filter-btn:hover:not(.active){color:var(--text2)}
+
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+
+.grades-table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px;}
+
+.grades-table thead tr.group-row th{background:var(--surface2);padding:6px 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;}
+.grades-table thead tr.group-row th.grade-group{color:#06b6d4;border-left:1px solid var(--border2);}
+
+.grades-table thead tr.col-row th{background:var(--surface2);padding:8px 10px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:2px solid var(--border2);white-space:nowrap;}
+.grades-table thead tr.col-row th.th-name{text-align:left}
+.grades-table thead tr.col-row th.th-grade{text-align:center;color:#06b6d4;border-left:1px solid var(--border2);}
+.grades-table thead tr.col-row th[data-col]{cursor:pointer;user-select:none;}
+.grades-table thead tr.col-row th[data-col]:hover{color:var(--text2);}
+
+.grades-table tbody tr.player-row{border-bottom:1px solid var(--border);}
+.grades-table tbody tr.player-row td{padding:9px 10px;text-align:right;white-space:nowrap;vertical-align:middle;}
+.grades-table tbody tr.player-row td.td-rank{color:var(--muted);font-size:12px;width:36px;text-align:center;}
+.grades-table tbody tr.player-row td.td-name{text-align:left;font-weight:600;color:var(--text);max-width:200px;}
+.grades-table tbody tr.player-row td.td-team{text-align:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;}
+.grades-table tbody tr.player-row td.td-pos{text-align:center;font-size:11px;font-weight:600;color:var(--muted);}
+.grades-table tbody tr.player-row td.td-grade{text-align:center;border-left:1px solid var(--border2);}
+.grades-table tbody tr.player-row td.td-sub{text-align:center;}
+
+.grade-badge{display:inline-flex;align-items:baseline;gap:5px;padding:4px 10px;border-radius:5px;font-weight:700;}
+.grade-badge .g-letter{font-size:11px;opacity:.85}
+.grade-badge .g-score{font-size:15px}
+.grade-sub{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:3px 7px;border-radius:4px;font-size:12.5px;font-weight:600;}
+
+.sort-arrow{display:inline-block;margin-left:3px;opacity:.4;font-size:9px}
+th.sorted .sort-arrow{opacity:1;color:var(--accent)}
+
+.trk-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#818cf8;vertical-align:middle;margin-left:5px;flex-shrink:0;}
+.td-stats{color:var(--text2);}
+.td-stats-sep{color:var(--text2);border-left:1px solid var(--border2);}
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="javascript:history.back()">← Back</a>
+
+{% if has_play_grades %}
+<a class="play-grade-link" href="/game/{{ game_id }}?season={{ season }}">
+  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9V9h2v4zm0-6H9V5h2v2z"/></svg>
+  View detailed play-by-play grades
+</a>
+{% endif %}
+
+<div class="game-header">
+  <div class="gh-team">
+    {% if away_logo %}<img class="gh-logo" src="{{ away_logo }}" alt="{{ away }}" onerror="this.style.display='none'">{% endif %}
+    <div class="gh-abbrev">{{ away }}</div>
+  </div>
+  <div class="gh-sep">
+    {% if away_score != '' and home_score != '' %}
+    <div class="gh-scores">
+      <span>{{ away_score }}</span>
+      <span class="gh-dash">–</span>
+      <span>{{ home_score }}</span>
+    </div>
+    <div class="gh-final">Final</div>
+    {% else %}
+    <div class="gh-scores" style="font-size:32px;color:var(--muted)">@</div>
+    {% endif %}
+    {% if game_date %}
+    <div class="gh-date">{{ game_date }}</div>
+    {% endif %}
+  </div>
+  <div class="gh-team">
+    {% if home_logo %}<img class="gh-logo" src="{{ home_logo }}" alt="{{ home }}" onerror="this.style.display='none'">{% endif %}
+    <div class="gh-abbrev">{{ home }}</div>
+  </div>
+</div>
+
+{% if not grades %}
+<div style="color:var(--muted);text-align:center;padding:40px;">No grade data available for this game.</div>
+{% else %}
+
+<div class="filters">
+  <div class="filter-group" id="pos-filters">
+    <button class="filter-btn active" data-pos="all">All</button>
+    <button class="filter-btn" data-pos="fwd">Forwards</button>
+    <button class="filter-btn" data-pos="def">Defense</button>
+  </div>
+  <div class="filter-group" id="team-filters">
+    <button class="filter-btn active" data-team="all">Both Teams</button>
+    <button class="filter-btn" data-team="{{ away }}">{{ away }}</button>
+    <button class="filter-btn" data-team="{{ home }}">{{ home }}</button>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table class="grades-table">
+  <thead>
+    <tr class="group-row">
+      <th colspan="4"></th>
+      <th colspan="4" class="grade-group">── PHG SCORE ──</th>
+      <th colspan="11" class="stats-group" style="color:#a3a3a3;border-left:1px solid var(--border2);">── STATS ──</th>
+    </tr>
+    <tr class="col-row">
+      <th style="text-align:center" data-col="rank">#<span class="sort-arrow">↓</span></th>
+      <th class="th-name" data-col="name">NAME</th>
+      <th style="text-align:center" data-col="team">TEAM</th>
+      <th style="text-align:center" data-col="pos">POS</th>
+      <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="fo_grade">FO<span class="sort-arrow">↓</span></th>
+      <th data-col="toi" style="text-align:right;border-left:1px solid var(--border2)">TOI<span class="sort-arrow">↓</span></th>
+      <th data-col="cf_pct">CF%<span class="sort-arrow">↓</span></th>
+      <th data-col="xg_pct">xG%<span class="sort-arrow">↓</span></th>
+      <th data-col="goals">G<span class="sort-arrow">↓</span></th>
+      <th data-col="assists">A<span class="sort-arrow">↓</span></th>
+      <th data-col="sog">SOG<span class="sort-arrow">↓</span></th>
+      <th data-col="hits">HIT<span class="sort-arrow">↓</span></th>
+      <th data-col="blocks">BLK<span class="sort-arrow">↓</span></th>
+      <th data-col="gva">GVA<span class="sort-arrow">↓</span></th>
+      <th data-col="tka">TKA<span class="sort-arrow">↓</span></th>
+      <th data-col="fo_pct">FO%<span class="sort-arrow">↓</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for p in grades | sort(attribute='overall', reverse=True) %}
+  <tr class="player-row"
+      data-pos="{{ 'fwd' if p.position in ('C','L','R') else 'def' }}"
+      data-team="{{ p.team }}">
+    <td class="td-rank">—</td>
+    <td class="td-name">
+      {{ p.name }}
+      {% if p.has_tracking %}<span class="trk-dot" title="Manual stats blended"></span>{% endif %}
+    </td>
+    <td class="td-team">{{ p.team }}</td>
+    <td class="td-pos">{{ p.position }}</td>
+    <td class="td-grade" data-val="{{ '%.2f'|format(p.overall) }}">
+      <div class="grade-badge" style="background:{{ p.overall|grade_bg }};color:#fff">
+        <span class="g-letter">{{ p.overall_letter }}</span>
+        <span class="g-score">{{ '%.1f'|format(p.overall) }}</span>
+      </div>
+    </td>
+    <td class="td-sub td-grade" data-val="{{ '%.2f'|format(p.off) }}">
+      <div class="grade-sub" style="background:{{ p.off|grade_bg }};color:#fff">{{ '%.1f'|format(p.off) }}</div>
+    </td>
+    <td class="td-sub td-grade" data-val="{{ '%.2f'|format(p.dfn) }}">
+      <div class="grade-sub" style="background:{{ p.dfn|grade_bg }};color:#fff">{{ '%.1f'|format(p.dfn) }}</div>
+    </td>
+    <td class="td-sub td-grade" data-val="{{ '%.2f'|format(p.fo_grade) if p.fo_grade is not none else '0' }}">
+      {% if p.fo_grade is not none %}
+        <div class="grade-sub" style="background:{{ p.fo_grade|grade_bg }};color:#fff">{{ '%.1f'|format(p.fo_grade) }}</div>
+      {% else %}
+        <span style="color:var(--muted)">—</span>
+      {% endif %}
+    </td>
+    <td class="td-stats-sep" data-val="{{ p.toi_min }}">{{ '%d:%02d' % (p.toi_min | int, ((p.toi_min % 1) * 60) | round | int) }}</td>
+    <td class="td-stats" data-val="{{ p.cf_pct if p.cf_pct != '—' else '0' }}">{{ p.cf_pct }}</td>
+    <td class="td-stats" data-val="{{ p.xg_pct if p.xg_pct != '—' else '0' }}">{{ p.xg_pct }}</td>
+    <td class="td-stats" data-val="{{ p.goals }}">{{ p.goals }}</td>
+    <td class="td-stats" data-val="{{ p.assists }}">{{ p.assists }}</td>
+    <td class="td-stats" data-val="{{ p.sog }}">{{ p.sog }}</td>
+    <td class="td-stats" data-val="{{ p.hits }}">{{ p.hits }}</td>
+    <td class="td-stats" data-val="{{ p.blocks if p.blocks != '—' else '0' }}">{{ p.blocks }}</td>
+    <td class="td-stats" data-val="{{ p.gva }}">{{ p.gva }}</td>
+    <td class="td-stats" data-val="{{ p.tka }}">{{ p.tka }}</td>
+    <td class="td-stats" data-val="{{ p.fo_pct if p.fo_pct else '0' }}">{{ p.fo_pct if p.fo_pct else '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<script>
+let sortCol = 'overall';
+let sortAsc = false;
+let activePos = 'all';
+let activeTeam = 'all';
+
+const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','fo_grade','toi','cf_pct','xg_pct','goals','assists','sog','hits','blocks','gva','tka','fo_pct'];
+function colIndex(col) { return COL_ORDER.indexOf(col); }
+
+function applyFilters() {
+  let rank = 0;
+  document.querySelectorAll('.player-row').forEach(row => {
+    const posOk  = activePos  === 'all' || activePos  === row.dataset.pos;
+    const teamOk = activeTeam === 'all' || activeTeam === row.dataset.team;
+    const show = posOk && teamOk;
+    row.style.display = show ? '' : 'none';
+    if (show) {
+      rank++;
+      row.querySelector('.td-rank').textContent = rank;
+    }
+  });
+}
+
+function sortTable(col) {
+  if (col === sortCol) {
+    sortAsc = !sortAsc;
+  } else {
+    sortCol = col;
+    sortAsc = (col === 'name' || col === 'team' || col === 'pos' || col === 'rank');
+  }
+  document.querySelectorAll('.col-row th').forEach(th => {
+    th.classList.remove('sorted');
+    if (th.dataset.col === sortCol) th.classList.add('sorted');
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && th.dataset.col === sortCol) arrow.textContent = sortAsc ? '↑' : '↓';
+  });
+  const tbody = document.querySelector('.grades-table tbody');
+  const rows = Array.from(tbody.querySelectorAll('.player-row'));
+  rows.sort((a, b) => {
+    const idx = colIndex(col);
+    const aCell = a.cells[idx];
+    const bCell = b.cells[idx];
+    let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
+    let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    const an = parseFloat(aVal), bn = parseFloat(bVal);
+    if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
+    return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+  applyFilters();
+}
+
+document.querySelectorAll('.col-row th[data-col]').forEach(th => {
+  th.addEventListener('click', () => sortTable(th.dataset.col));
+});
+
+document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activePos = this.dataset.pos;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('#team-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#team-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activeTeam = this.dataset.team;
+    applyFilters();
+  });
+});
+
+applyFilters();
+</script>
+{% endblock %}
