@@ -9,12 +9,16 @@ Steps:
   3. load     — parse responses and insert into moneypuck_games table
   4. rebuild  — trigger Flask season cache refresh
 
+Single-game update (1 NST token, replaces delete+re-download for new games):
+  update <game_id>  — fetch NST game page, upsert all skater stats, rebuild
+
 Usage:
-    python3 playoff_pipeline.py              # run all steps
-    python3 playoff_pipeline.py collect      # step 1 only
-    python3 playoff_pipeline.py download     # step 2 only
-    python3 playoff_pipeline.py load         # step 3 only
-    python3 playoff_pipeline.py rebuild      # step 4 only
+    python3 playoff_pipeline.py                        # run all steps
+    python3 playoff_pipeline.py collect                # step 1 only
+    python3 playoff_pipeline.py download               # step 2 only
+    python3 playoff_pipeline.py load                   # step 3 only
+    python3 playoff_pipeline.py rebuild                # step 4 only
+    python3 playoff_pipeline.py update 2025030236      # single-game update
 """
 from __future__ import annotations
 import json
@@ -22,6 +26,7 @@ import re
 import sqlite3
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -39,10 +44,12 @@ DB_PATH      = Path(__file__).parent / 'cache.db'
 DATA_DIR     = Path(__file__).parent / 'NST Playoff Data'
 PLAYERS_FILE = DATA_DIR / 'playoff_player_ids.json'
 
-REQUEST_DELAY = 0.5          # seconds between NST API calls
+REQUEST_DELAY = 1.0          # seconds between requests within a batch
+BATCH_SIZE    = 14            # requests per batch (~150 tokens = 1 standard refill window)
+BATCH_PAUSE   = 305          # seconds to wait between batches (5 min for standard tokens to refill)
 
 # Situations to download
-SITUATIONS = ['all', '5on4', '4on5']
+SITUATIONS = ['all', '5v4', '4v5']
 
 # ── Step 1: Collect ───────────────────────────────────────────────────────────
 
@@ -99,13 +106,17 @@ def collect():
             for side in ['homeTeam', 'awayTeam']:
                 team_abbrev = box.get(side, {}).get('abbrev', '')
                 for cat in ['forwards', 'defense']:
+                    pos = 'C' if cat == 'forwards' else 'D'
                     for p in pbgs.get(side, {}).get(cat, []):
                         pid = str(p['playerId'])
                         if pid not in player_ids:
                             player_ids[pid] = {
                                 'name': p.get('name', {}).get('default', ''),
                                 'team': team_abbrev,
+                                'position': pos,
                             }
+                        elif 'position' not in player_ids[pid]:
+                            player_ids[pid]['position'] = pos
         except Exception as e:
             print(f'\n  Error on {gid}: {e}')
 
@@ -134,8 +145,8 @@ def _nst_url(player_id: str, stdoi: str, sit: str) -> str:
     )
 
 
-def _raw_path(player_id: str, stdoi: str, sit: str) -> Path:
-    return DATA_DIR / 'raw' / f'{player_id}_{stdoi}_{sit}.html'
+def _raw_path(player_id: str, stdoi: str, sit: str, team: str = 'unknown') -> Path:
+    return DATA_DIR / team / player_id / f'{stdoi}_{sit}.html'
 
 
 def download():
@@ -146,37 +157,63 @@ def download():
         return
 
     player_ids = json.loads(PLAYERS_FILE.read_text())
-    (DATA_DIR / 'raw').mkdir(parents=True, exist_ok=True)
 
-    total = len(player_ids) * (len(SITUATIONS) * 2 - 2)
-    # We download: ind/all, ind/5on4, ind/4on5, oi/all  = 4 per player
+    # We download: std/all, std/5v4, std/4v5, oi/all  = 4 per player
     downloads = [
-        ('std', 'all'), ('std', '5on4'), ('std', '4on5'), ('oi', 'all')
+        ('std', 'all'), ('std', '5v4'), ('std', '4v5'), ('oi', 'all')
     ]
     total = len(player_ids) * len(downloads)
     done  = sum(
-        1 for pid in player_ids for stdoi, sit in downloads
-        if _raw_path(pid, stdoi, sit).exists()
+        1 for pid, info in player_ids.items() for stdoi, sit in downloads
+        if _raw_path(pid, stdoi, sit, info.get('team', 'unknown')).exists()
     )
     print(f'  {done}/{total} already downloaded')
 
-    for i, (pid, info) in enumerate(player_ids.items(), 1):
-        name = info.get('name', pid)
-        for stdoi, sit in downloads:
-            dest = _raw_path(pid, stdoi, sit)
+    # Build list of all pending downloads
+    pending = [
+        (pid, info, stdoi, sit)
+        for pid, info in player_ids.items()
+        for stdoi, sit in downloads
+        if not _raw_path(pid, stdoi, sit, info.get('team', 'unknown')).exists()
+    ]
+    total_pending = len(pending)
+    print(f'  {total - total_pending}/{total} already downloaded, {total_pending} to go')
+
+    batch_num = 0
+    i = 0
+    while i < len(pending):
+        batch = pending[i:i + BATCH_SIZE]
+        batch_num += 1
+        print(f'\n  Batch {batch_num}: requests {i+1}–{i+len(batch)} of {total_pending}', flush=True)
+
+        for pid, info, stdoi, sit in batch:
+            name = info.get('name', pid)
+            team = info.get('team', 'unknown')
+            dest = _raw_path(pid, stdoi, sit, team)
             if dest.exists():
                 continue
-            url = _nst_url(pid, stdoi, sit)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            url  = _nst_url(pid, stdoi, sit)
             try:
                 r = requests.get(url, timeout=15)
                 if 'Pending key' in r.text:
                     print('\n  ERROR: API key not yet approved. Try again later.')
                     return
+                if 'burst tokens' in r.text or len(r.text) < 200:
+                    print(f'  Rate limited mid-batch — pausing {BATCH_PAUSE}s then retrying batch...', flush=True)
+                    time.sleep(BATCH_PAUSE)
+                    break  # retry same batch
                 dest.write_text(r.text, encoding='utf-8')
-                print(f'  [{i}/{len(player_ids)}] {name} {stdoi}/{sit} ✓', end='\r', flush=True)
+                print(f'  {name} {stdoi}/{sit} ✓', end='\r', flush=True)
             except Exception as e:
-                print(f'\n  [{i}/{len(player_ids)}] {name} {stdoi}/{sit} ✗ {e}')
+                print(f'\n  {name} {stdoi}/{sit} ✗ {e}')
             time.sleep(REQUEST_DELAY)
+        else:
+            # Full batch completed without rate limit — advance and pause before next batch
+            i += len(batch)
+            if i < len(pending):
+                print(f'\n  Batch {batch_num} done. Pausing {BATCH_PAUSE}s for burst refill...', flush=True)
+                time.sleep(BATCH_PAUSE)
 
     print(f'\n  Download complete.')
 
@@ -258,8 +295,10 @@ def load():
 
     for pid, info in player_ids.items():
         # ── Individual (all situations) ───────────────────────────────────────
+        SIT_MAP = {'5v4': '5on4', '4v5': '4on5'}
+        team = info.get('team', 'unknown')
         for sit in SITUATIONS:
-            ind_path = _raw_path(pid, 'std', sit)
+            ind_path = _raw_path(pid, 'std', sit, team)
             if not ind_path.exists():
                 continue
             rows = _parse_html_table(ind_path.read_text(encoding='utf-8'))
@@ -281,7 +320,7 @@ def load():
                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ''', (
                         int(pid), gid, MP_SEASON,
-                        info.get('team', ''), sit,
+                        info.get('team', ''), SIT_MAP.get(sit, sit),
                         toi_s,
                         float(row.get('Goals', 0) or 0),
                         float(row.get('First Assists', 0) or 0),
@@ -299,7 +338,7 @@ def load():
                     errors += 1
 
         # ── On-ice (all situations only) ──────────────────────────────────────
-        oi_path = _raw_path(pid, 'oi', 'all')
+        oi_path = _raw_path(pid, 'oi', 'all', team)
         if oi_path.exists():
             rows = _parse_html_table(oi_path.read_text(encoding='utf-8'))
             for row in rows:
@@ -328,6 +367,194 @@ def load():
     print(f'  Inserted: {inserted}  Skipped: {skipped}  Errors: {errors}')
 
 
+# ── Single-game update (game page approach) ───────────────────────────────────
+
+# NST uses different abbreviations for some teams than the NHL API.
+_NST_TO_NHL = {'L.A': 'LAK', 'T.B': 'TBL', 'N.J': 'NJD', 'S.J': 'SJS'}
+
+
+def _nst_game_id(game_id: int) -> int:
+    """2025030235 → 30235 (last 5 digits used by NST game.php)."""
+    return int(str(game_id)[-5:])
+
+
+def _norm_name(name: str) -> str:
+    """
+    Normalize to 'F. Lastname' so abbreviated and full names match.
+    'Nathan MacKinnon' → 'n. mackinnon'
+    'N. MacKinnon'     → 'n. mackinnon'
+    'Joel Eriksson Ek' → 'j. eriksson ek'
+    """
+    name = name.replace('\xa0', ' ').strip()
+    parts = name.split()
+    if len(parts) < 2:
+        return name.lower()
+    first = parts[0]
+    last  = ' '.join(parts[1:])
+    # Already abbreviated ("N." has len ≤ 2 or ends with '.')
+    if len(first) <= 2 or first.endswith('.'):
+        return f"{first.rstrip('.')}. {last}".lower()
+    return f"{first[0]}. {last}".lower()
+
+
+def _build_name_lookup(player_ids: dict) -> dict[str, str]:
+    """Build normalized name → player_id lookup (handles abbreviated + full names)."""
+    lookup = {}
+    for pid, info in player_ids.items():
+        key = _norm_name(info.get('name', ''))
+        if key:
+            lookup[key] = pid
+    return lookup
+
+
+def _extract_game_table(html: str, table_id: str) -> list[dict]:
+    """Extract a named table from an NST game page and return rows as dicts."""
+    import pandas as pd
+    from io import StringIO
+    m = re.search(rf'<table[^>]+id={re.escape(table_id)}[^>]*>(.*?)</table>', html, re.DOTALL)
+    if not m:
+        return []
+    try:
+        df = pd.read_html(StringIO(f'<table>{m.group(1)}</table>'))[0]
+        if 'Player' in df.columns:
+            df['Player'] = df['Player'].str.replace('\xa0', ' ', regex=False).str.strip()
+        return df.to_dict('records')
+    except Exception:
+        return []
+
+
+def _todays_completed_playoff_games() -> list[int]:
+    """Return NHL game IDs for completed playoff games today."""
+    today = date.today().isoformat()
+    print(f'  Checking NHL schedule for {today}...')
+    try:
+        data = requests.get(
+            f'https://api-web.nhle.com/v1/schedule/{today}', timeout=10
+        ).json()
+    except Exception as e:
+        print(f'  NHL API error: {e}')
+        return []
+    game_ids = []
+    for day in data.get('gameWeek', []):
+        if day.get('date') != today:
+            continue
+        for g in day.get('games', []):
+            if g.get('gameType') == 3 and g.get('gameState') in ('OFF', 'FINAL', '7'):
+                game_ids.append(g['id'])
+    return game_ids
+
+
+def update_game(game_id: int):
+    """
+    Fetch a single NST game page and upsert stats for all skaters.
+    Costs 1 NST token vs ~172 for the delete+re-download approach.
+    """
+    print(f'── Updating game {game_id} via NST game page ──')
+
+    if not PLAYERS_FILE.exists():
+        print('  ERROR: Run collect first.')
+        return
+
+    player_ids  = json.loads(PLAYERS_FILE.read_text())
+    name_to_pid = _build_name_lookup(player_ids)
+
+    # Fetch game page (no Cloudflare on data.naturalstattrick.com)
+    nst_gid = _nst_game_id(game_id)
+    url = f'{NST_BASE}/game.php?season={FROM_SEASON}&game={nst_gid}&key={NST_KEY}'
+    print(f'  GET {url}')
+    r = requests.get(url, timeout=30)
+
+    if 'burst tokens' in r.text or len(r.text) < 500:
+        print('  Rate limited — try again in a few minutes.')
+        return
+
+    html = r.text
+
+    # Auto-detect NST team abbreviations from table IDs embedded in the page
+    nst_teams = re.findall(r'<table[^>]+id=tb([A-Z.]+)stall', html)
+    if len(nst_teams) < 2:
+        print(f'  ERROR: Could not find team tables (found: {nst_teams}).')
+        return
+    print(f'  NST teams: {nst_teams}')
+
+    conn = sqlite3.connect(DB_PATH)
+    inserted = oi_updated = skipped = 0
+
+    for nst_team in nst_teams:
+        # Pull the four tables we need for this team
+        std_all = _extract_game_table(html, f'tb{nst_team}stall')
+        std_pp  = _extract_game_table(html, f'tb{nst_team}stpp')
+        std_pk  = _extract_game_table(html, f'tb{nst_team}stpk')
+        oi_all  = _extract_game_table(html, f'tb{nst_team}oiall')
+
+        # Insert standard stats for all three situation tables
+        for rows, db_sit in [(std_all, 'all'), (std_pp, '5on4'), (std_pk, '4on5')]:
+            for row in rows:
+                name    = _norm_name(str(row.get('Player', '')))
+                pid_str = name_to_pid.get(name)
+                if not pid_str:
+                    skipped += 1
+                    continue
+                pid      = int(pid_str)
+                nhl_team = player_ids[pid_str].get('team', _NST_TO_NHL.get(nst_team, nst_team))
+                try:
+                    conn.execute('''
+                        INSERT OR REPLACE INTO moneypuck_games
+                        (player_id, game_id, season, team, situation,
+                         icetime, goals, primary_assists, secondary_assists,
+                         shots_on_goal, hits, takeaways, giveaways, pim,
+                         ixg_adj, ixg_hd)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ''', (
+                        pid, game_id, MP_SEASON, nhl_team, db_sit,
+                        _toi_to_seconds(row.get('TOI', 0)),
+                        float(row.get('Goals', 0) or 0),
+                        float(row.get('First Assists', 0) or 0),
+                        float(row.get('Second Assists', 0) or 0),
+                        float(row.get('Shots', 0) or 0),
+                        float(row.get('Hits', 0) or 0),
+                        float(row.get('Takeaways', 0) or 0),
+                        float(row.get('Giveaways', 0) or 0),
+                        float(row.get('PIM', 0) or 0),
+                        float(row.get('ixG', 0) or 0),
+                        float(row.get('iHDCF', 0) or 0),
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    print(f'  Insert error ({name}, {db_sit}): {e}')
+
+        # Update on-ice stats into the already-inserted 'all' rows
+        for row in oi_all:
+            name    = _norm_name(str(row.get('Player', '')))
+            pid_str = name_to_pid.get(name)
+            if not pid_str:
+                continue
+            pid = int(pid_str)
+            try:
+                cf     = float(row.get('CF', 0) or 0)
+                ca     = float(row.get('CA', 0) or 0)
+                xgf    = float(row.get('xGF', 0) or 0)
+                xga    = float(row.get('xGA', 0) or 0)
+                cf_pct = cf / (cf + ca) if (cf + ca) > 0 else None
+                xg_pct = xgf / (xgf + xga) if (xgf + xga) > 0 else None
+                conn.execute('''
+                    UPDATE moneypuck_games
+                    SET onice_xgf_adj=?, onice_xga_adj=?,
+                        onice_corsi_pct=?, onice_xg_pct=?
+                    WHERE player_id=? AND game_id=? AND situation='all'
+                ''', (xgf, xga, cf_pct, xg_pct, pid, game_id))
+                oi_updated += 1
+            except Exception as e:
+                print(f'  OI update error ({name}): {e}')
+
+    conn.commit()
+    conn.close()
+    print(f'  Inserted: {inserted}  OI updated: {oi_updated}  Skipped (name unmatched): {skipped}')
+    if skipped:
+        print('  Tip: run "collect" if new players appeared and re-run update.')
+    rebuild()
+
+
 # ── Step 4: Rebuild ───────────────────────────────────────────────────────────
 
 def rebuild():
@@ -346,12 +573,25 @@ STEPS = {'collect': collect, 'download': download, 'load': load, 'rebuild': rebu
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    if args:
+    if args and args[0] == 'update':
+        if len(args) >= 2:
+            # Explicit game ID: python3 playoff_pipeline.py update 2025030236
+            update_game(int(args[1]))
+        else:
+            # Auto-detect today's completed playoff games
+            game_ids = _todays_completed_playoff_games()
+            if not game_ids:
+                print('  No completed playoff games found today.')
+            else:
+                print(f'  Found {len(game_ids)} completed game(s): {game_ids}')
+                for gid in game_ids:
+                    update_game(gid)
+    elif args:
         for arg in args:
             if arg in STEPS:
                 STEPS[arg]()
             else:
-                print(f'Unknown step: {arg}. Choose from: {list(STEPS)}')
+                print(f'Unknown step: {arg}. Choose from: {list(STEPS)}, update <game_id>')
     else:
         collect()
         download()

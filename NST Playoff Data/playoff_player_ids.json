@@ -1,0 +1,1727 @@
+{
+  "8484145": {
+    "name": "Z. Benson",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8480064": {
+    "name": "J. Norris",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8478413": {
+    "name": "J. Greenway",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8475722": {
+    "name": "J. Zucker",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8481522": {
+    "name": "P. Krebs",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8482097": {
+    "name": "J. Quinn",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8479359": {
+    "name": "B. Malenstyn",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8482623": {
+    "name": "J. Dunne",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8480802": {
+    "name": "R. McLeod",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8479420": {
+    "name": "T. Thompson",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8477949": {
+    "name": "A. Tuch",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8482659": {
+    "name": "J. Doan",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8481524": {
+    "name": "B. Byram",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8479982": {
+    "name": "C. Timmins",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8480807": {
+    "name": "M. Samuelsson",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8482671": {
+    "name": "O. Power",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8480839": {
+    "name": "R. Dahlin",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8479378": {
+    "name": "L. Stanley",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8479999": {
+    "name": "C. Mittelstadt",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8478401": {
+    "name": "P. Zacha",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8477496": {
+    "name": "E. Lindholm",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8479987": {
+    "name": "M. Geekie",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8485395": {
+    "name": "J. Hagens",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8480355": {
+    "name": "M. Kastelic",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8476374": {
+    "name": "S. Kuraly",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8478042": {
+    "name": "V. Arvidsson",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8479661": {
+    "name": "T. Jeannot",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8477956": {
+    "name": "D. Pastrnak",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8482177": {
+    "name": "M. Khusnutdinov",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8483489": {
+    "name": "F. Minten",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8482511": {
+    "name": "M. Lohrei",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8479369": {
+    "name": "A. Peeke",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8476854": {
+    "name": "H. Lindholm",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8481219": {
+    "name": "J. Aspirot",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8479325": {
+    "name": "C. McAvoy",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8477507": {
+    "name": "N. Zadorov",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8482896": {
+    "name": "T. Kozak",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8483500": {
+    "name": "N. Ostlund",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8482117": {
+    "name": "L. Reichel",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8480887": {
+    "name": "J. Harris",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8482634": {
+    "name": "A. Steeves",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8479591": {
+    "name": "M. Eyssimont",
+    "team": "BOS",
+    "position": "C"
+  },
+  "8480035": {
+    "name": "H. Jokiharju",
+    "team": "BOS",
+    "position": "D"
+  },
+  "8480891": {
+    "name": "M. Kesselring",
+    "team": "BUF",
+    "position": "D"
+  },
+  "8470621": {
+    "name": "C. Perry",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8483447": {
+    "name": "C. Geekie",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8483752": {
+    "name": "D. James",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8477426": {
+    "name": "N. Paul",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8478010": {
+    "name": "B. Point",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8476878": {
+    "name": "Z. Girgensons",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8476826": {
+    "name": "Y. Gourde",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8479542": {
+    "name": "B. Hagel",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8477404": {
+    "name": "J. Guentzel",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8478519": {
+    "name": "A. Cirelli",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8476453": {
+    "name": "N. Kucherov",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8482201": {
+    "name": "G. Goncalves",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8474151": {
+    "name": "R. McDonagh",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8478178": {
+    "name": "D. Raddysh",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8480426": {
+    "name": "C. D'Astous",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8482929": {
+    "name": "E. Lilleberg",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8478416": {
+    "name": "E. Cernak",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8482655": {
+    "name": "J. Moser",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8481540": {
+    "name": "C. Caufield",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8480018": {
+    "name": "N. Suzuki",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8481618": {
+    "name": "A. Newhook",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8476981": {
+    "name": "J. Anderson",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8483515": {
+    "name": "J. Slafkovsk\u00fd",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8476479": {
+    "name": "P. Danault",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8478133": {
+    "name": "J. Evans",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8482737": {
+    "name": "Z. Bolduc",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8481523": {
+    "name": "K. Dach",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8480074": {
+    "name": "A. Texier",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8482775": {
+    "name": "O. Kapanen",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8484984": {
+    "name": "I. Demidov",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8476875": {
+    "name": "M. Matheson",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8482087": {
+    "name": "K. Guhle",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8478851": {
+    "name": "A. Carrier",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8481593": {
+    "name": "J. Struble",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8483457": {
+    "name": "L. Hutson",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8482964": {
+    "name": "A. Xhekaj",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8477149": {
+    "name": "S. Sabourin",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8483398": {
+    "name": "D. Carlile",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8477416": {
+    "name": "O. Bjorkstrand",
+    "team": "TBL",
+    "position": "C"
+  },
+  "8481719": {
+    "name": "M. Crozier",
+    "team": "TBL",
+    "position": "D"
+  },
+  "8475848": {
+    "name": "B. Gallagher",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8480865": {
+    "name": "N. Dobson",
+    "team": "MTL",
+    "position": "D"
+  },
+  "8473533": {
+    "name": "J. Staal",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8478427": {
+    "name": "S. Aho",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8482702": {
+    "name": "L. Stankoven",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8482093": {
+    "name": "S. Jarvis",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8477940": {
+    "name": "N. Ehlers",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8477478": {
+    "name": "W. Carrier",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8480830": {
+    "name": "A. Svechnikov",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8476921": {
+    "name": "J. Martinook",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8480762": {
+    "name": "E. Robinson",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8482809": {
+    "name": "J. Blake",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8475791": {
+    "name": "T. Hall",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8476873": {
+    "name": "M. Jankowski",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8476906": {
+    "name": "S. Gostisbehere",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8478970": {
+    "name": "J. Chatfield",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8480817": {
+    "name": "K. Miller",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8482100": {
+    "name": "A. Nikishin",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8480336": {
+    "name": "S. Walker",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8476958": {
+    "name": "J. Slavin",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8480801": {
+    "name": "B. Tkachuk",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8481596": {
+    "name": "S. Pinto",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8482116": {
+    "name": "T. St\u00fctzle",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8480208": {
+    "name": "D. Batherson",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8480188": {
+    "name": "F. Zetterlund",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8476393": {
+    "name": "N. Cousins",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8478020": {
+    "name": "M. Amadio",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8481528": {
+    "name": "D. Cozens",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8473512": {
+    "name": "C. Giroux",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8477998": {
+    "name": "W. Foegele",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8482092": {
+    "name": "R. Greig",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8474189": {
+    "name": "L. Eller",
+    "team": "OTT",
+    "position": "C"
+  },
+  "8482245": {
+    "name": "A. Zub",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8478502": {
+    "name": "D. Gilbert",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8481606": {
+    "name": "J. Spence",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8484321": {
+    "name": "N. Matinpalo",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8478469": {
+    "name": "T. Chabot",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8482105": {
+    "name": "J. Sanderson",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8481575": {
+    "name": "L. Thomson",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8480075": {
+    "name": "C. Crotty",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8482095": {
+    "name": "T. Kleven",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8484759": {
+    "name": "C. Yakemchuk",
+    "team": "OTT",
+    "position": "D"
+  },
+  "8475235": {
+    "name": "N. Deslauriers",
+    "team": "CAR",
+    "position": "C"
+  },
+  "8475810": {
+    "name": "B. Rust",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8478438": {
+    "name": "T. Novak",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8480980": {
+    "name": "C. Dewar",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8481725": {
+    "name": "E. Soderblom",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8477511": {
+    "name": "A. Mantha",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8481481": {
+    "name": "B. Lizotte",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8478569": {
+    "name": "N. Acciari",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8482475": {
+    "name": "E. Chinakhov",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8476483": {
+    "name": "R. Rakell",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8471215": {
+    "name": "E. Malkin",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8485414": {
+    "name": "B. Kindel",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8471675": {
+    "name": "S. Crosby",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8478854": {
+    "name": "R. Shea",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8478450": {
+    "name": "P. Wotherspoon",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8479398": {
+    "name": "S. Girard",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8471724": {
+    "name": "K. Letang",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8474578": {
+    "name": "E. Karlsson",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8477365": {
+    "name": "C. Clifton",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8478439": {
+    "name": "T. Konecny",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8476461": {
+    "name": "S. Couturier",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8477903": {
+    "name": "G. Hathaway",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8477989": {
+    "name": "C. Dvorak",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8480220": {
+    "name": "N. Cates",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8484387": {
+    "name": "M. Michkov",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8476822": {
+    "name": "L. Glendening",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8481533": {
+    "name": "T. Zegras",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8484142": {
+    "name": "D. Barkey",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8482159": {
+    "name": "T. Foerster",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8480015": {
+    "name": "O. Tippett",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8485406": {
+    "name": "P. Martone",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8477948": {
+    "name": "T. Sanheim",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8481546": {
+    "name": "C. York",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8482142": {
+    "name": "J. Drysdale",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8476372": {
+    "name": "N. Seeler",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8482126": {
+    "name": "E. Andrae",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8477499": {
+    "name": "R. Ristolainen",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8478454": {
+    "name": "N. Juulsen",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8479638": {
+    "name": "J. Brazeau",
+    "team": "PIT",
+    "position": "C"
+  },
+  "8482470": {
+    "name": "I. Solovyov",
+    "team": "PIT",
+    "position": "D"
+  },
+  "8483731": {
+    "name": "A. Bump",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8478462": {
+    "name": "N. Roy",
+    "team": "COL",
+    "position": "C"
+  },
+  "8475754": {
+    "name": "B. Nelson",
+    "team": "COL",
+    "position": "C"
+  },
+  "8477501": {
+    "name": "V. Nichushkin",
+    "team": "COL",
+    "position": "C"
+  },
+  "8480448": {
+    "name": "P. Kelly",
+    "team": "COL",
+    "position": "C"
+  },
+  "8480835": {
+    "name": "J. Drury",
+    "team": "COL",
+    "position": "C"
+  },
+  "8481186": {
+    "name": "L. O'Connor",
+    "team": "COL",
+    "position": "C"
+  },
+  "8477492": {
+    "name": "N. MacKinnon",
+    "team": "COL",
+    "position": "C"
+  },
+  "8477476": {
+    "name": "A. Lehkonen",
+    "team": "COL",
+    "position": "C"
+  },
+  "8480039": {
+    "name": "M. Necas",
+    "team": "COL",
+    "position": "C"
+  },
+  "8475172": {
+    "name": "N. Kadri",
+    "team": "COL",
+    "position": "C"
+  },
+  "8476455": {
+    "name": "G. Landeskog",
+    "team": "COL",
+    "position": "C"
+  },
+  "8481641": {
+    "name": "J. Kiviranta",
+    "team": "COL",
+    "position": "C"
+  },
+  "8478038": {
+    "name": "D. Toews",
+    "team": "COL",
+    "position": "D"
+  },
+  "8480069": {
+    "name": "C. Makar",
+    "team": "COL",
+    "position": "D"
+  },
+  "8476967": {
+    "name": "B. Kulak",
+    "team": "COL",
+    "position": "D"
+  },
+  "8476312": {
+    "name": "J. Manson",
+    "team": "COL",
+    "position": "D"
+  },
+  "8484258": {
+    "name": "S. Malinski",
+    "team": "COL",
+    "position": "D"
+  },
+  "8470613": {
+    "name": "B. Burns",
+    "team": "COL",
+    "position": "D"
+  },
+  "8477960": {
+    "name": "A. Kempe",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8478550": {
+    "name": "A. Panarin",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8471685": {
+    "name": "A. Kopitar",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8479675": {
+    "name": "T. Moore",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8482155": {
+    "name": "A. Laferriere",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8478472": {
+    "name": "M. Joseph",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8476872": {
+    "name": "S. Laughton",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8482408": {
+    "name": "J. Malott",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8476469": {
+    "name": "J. Armia",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8483756": {
+    "name": "J. Wright",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8482124": {
+    "name": "Q. Byfield",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8482726": {
+    "name": "S. Helenius",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8475208": {
+    "name": "B. Dumoulin",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8476879": {
+    "name": "C. Ceci",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8476441": {
+    "name": "J. Edmundson",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8474563": {
+    "name": "D. Doughty",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8479998": {
+    "name": "M. Anderson",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8482730": {
+    "name": "B. Clarke",
+    "team": "LAK",
+    "position": "D"
+  },
+  "8483808": {
+    "name": "A. Kuzmenko",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8479525": {
+    "name": "R. Colton",
+    "team": "COL",
+    "position": "C"
+  },
+  "8481532": {
+    "name": "A. Turcotte",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8483406": {
+    "name": "T. Ward",
+    "team": "LAK",
+    "position": "C"
+  },
+  "8483565": {
+    "name": "N. Blankenburg",
+    "team": "COL",
+    "position": "D"
+  },
+  "8480840": {
+    "name": "O. B\u00e4ck",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8476889": {
+    "name": "R. Faksa",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8473994": {
+    "name": "J. Benn",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8476278": {
+    "name": "C. Blackwell",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8479351": {
+    "name": "S. Steel",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8480027": {
+    "name": "J. Robertson",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8482145": {
+    "name": "M. Bourque",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8484829": {
+    "name": "J. Hryckowian",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8482740": {
+    "name": "W. Johnston",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8477454": {
+    "name": "A. Erne",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8475168": {
+    "name": "M. Duchene",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8478420": {
+    "name": "M. Rantanen",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8480036": {
+    "name": "M. Heiskanen",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8480878": {
+    "name": "N. Lundkvist",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8483425": {
+    "name": "L. Bichsel",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8476902": {
+    "name": "E. Lindell",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8481581": {
+    "name": "T. Harley",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8474574": {
+    "name": "T. Myers",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8481557": {
+    "name": "M. Boldy",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8478508": {
+    "name": "Y. Trenin",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8478493": {
+    "name": "J. Eriksson Ek",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8475220": {
+    "name": "M. Foligno",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8483525": {
+    "name": "D. Yurov",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8475692": {
+    "name": "M. Zuccarello",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8477451": {
+    "name": "R. Hartman",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8477446": {
+    "name": "M. McCarron",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8473422": {
+    "name": "N. Foligno",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8475149": {
+    "name": "M. Johansson",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8475765": {
+    "name": "V. Tarasenko",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8478864": {
+    "name": "K. Kaprizov",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8478136": {
+    "name": "J. Middleton",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8482122": {
+    "name": "B. Faber",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8474567": {
+    "name": "Z. Bogosian",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8476463": {
+    "name": "J. Brodin",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8480800": {
+    "name": "Q. Hughes",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8474716": {
+    "name": "J. Spurgeon",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8484938": {
+    "name": "A. Hyry",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8481553": {
+    "name": "B. Brink",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8481477": {
+    "name": "N. Sturm",
+    "team": "MIN",
+    "position": "C"
+  },
+  "8480950": {
+    "name": "I. Lyubushkin",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8473507": {
+    "name": "J. Petry",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8478047": {
+    "name": "M. Bunting",
+    "team": "DAL",
+    "position": "C"
+  },
+  "8475755": {
+    "name": "A. Petrovic",
+    "team": "DAL",
+    "position": "D"
+  },
+  "8478403": {
+    "name": "J. Eichel",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8476925": {
+    "name": "C. Sissons",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8481604": {
+    "name": "P. Dorofeyev",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8475191": {
+    "name": "R. Smith",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8479353": {
+    "name": "B. Howden",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8482062": {
+    "name": "C. Smith",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8475343": {
+    "name": "N. Dowd",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8476881": {
+    "name": "T. Hertl",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8477964": {
+    "name": "I. Barbashev",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8478434": {
+    "name": "K. Kolesar",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8475913": {
+    "name": "M. Stone",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8478483": {
+    "name": "M. Marner",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8475188": {
+    "name": "B. McNabb",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8478397": {
+    "name": "R. Andersson",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8478468": {
+    "name": "J. Lauzon",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8481527": {
+    "name": "K. Korczak",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8478396": {
+    "name": "N. Hanifin",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8477447": {
+    "name": "S. Theodore",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8477951": {
+    "name": "N. Schmaltz",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8479343": {
+    "name": "C. Keller",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8482699": {
+    "name": "D. Guenther",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8479293": {
+    "name": "B. Tanev",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8477021": {
+    "name": "A. Kerfoot",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8480855": {
+    "name": "J. McBain",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8479619": {
+    "name": "M. Carcone",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8479977": {
+    "name": "K. Yamamoto",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8478474": {
+    "name": "L. Crouse",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8482175": {
+    "name": "J. Peterka",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8478831": {
+    "name": "K. Stenlund",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8483431": {
+    "name": "L. Cooley",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8478507": {
+    "name": "J. Marino",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8474013": {
+    "name": "I. Cole",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8480434": {
+    "name": "S. Durzi",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8477346": {
+    "name": "M. Weegar",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8477220": {
+    "name": "N. Schmidt",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8479410": {
+    "name": "M. Sergachev",
+    "team": "UTA",
+    "position": "D"
+  },
+  "8477070": {
+    "name": "L. O'Brien",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8480849": {
+    "name": "B. Hayton",
+    "team": "UTA",
+    "position": "C"
+  },
+  "8479365": {
+    "name": "T. Frederic",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8477450": {
+    "name": "J. Dickinson",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8475786": {
+    "name": "Z. Hyman",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8474641": {
+    "name": "A. Henrique",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8483512": {
+    "name": "M. Savoie",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8478458": {
+    "name": "J. Roslovic",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8477934": {
+    "name": "L. Draisaitl",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8482703": {
+    "name": "C. Dach",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8477953": {
+    "name": "K. Kapanen",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8481617": {
+    "name": "V. Podkolzin",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8476454": {
+    "name": "R. Nugent-Hopkins",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8478402": {
+    "name": "C. McDavid",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8480803": {
+    "name": "E. Bouchard",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8476473": {
+    "name": "C. Murphy",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8475218": {
+    "name": "M. Ekholm",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8477498": {
+    "name": "D. Nurse",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8480834": {
+    "name": "T. Emberson",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8478013": {
+    "name": "J. Walman",
+    "team": "EDM",
+    "position": "D"
+  },
+  "8473986": {
+    "name": "A. Killorn",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8478873": {
+    "name": "T. Terry",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8475184": {
+    "name": "C. Kreider",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8482745": {
+    "name": "M. McTavish",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8480068": {
+    "name": "R. Poehling",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8479705": {
+    "name": "J. Viel",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8485512": {
+    "name": "T. Washe",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8484762": {
+    "name": "B. Sennecke",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8483445": {
+    "name": "C. Gauthier",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8475798": {
+    "name": "M. Granlund",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8484153": {
+    "name": "L. Carlsson",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8481605": {
+    "name": "J. LaCombe",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8482178": {
+    "name": "I. Moore",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8475462": {
+    "name": "R. Gudas",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8482731": {
+    "name": "T. Hinds",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8476885": {
+    "name": "J. Trouba",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8474590": {
+    "name": "J. Carlson",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8483490": {
+    "name": "P. Mintyukov",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8477508": {
+    "name": "C. Lazar",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8484509": {
+    "name": "J. Samanski",
+    "team": "EDM",
+    "position": "C"
+  },
+  "8481563": {
+    "name": "D. Helleson",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8480813": {
+    "name": "J. Veleno",
+    "team": "MTL",
+    "position": "C"
+  },
+  "8475842": {
+    "name": "S. Carrick",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8476422": {
+    "name": "M. Reilly",
+    "team": "CAR",
+    "position": "D"
+  },
+  "8479336": {
+    "name": "C. Grundstrom",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8484779": {
+    "name": "J. Luchanko",
+    "team": "PHI",
+    "position": "C"
+  },
+  "8484148": {
+    "name": "O. Bonk",
+    "team": "PHI",
+    "position": "D"
+  },
+  "8482094": {
+    "name": "D. Hunt",
+    "team": "MIN",
+    "position": "D"
+  },
+  "8482072": {
+    "name": "J. Ahcan",
+    "team": "COL",
+    "position": "D"
+  },
+  "8476448": {
+    "name": "W. Karlsson",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8477018": {
+    "name": "B. Hutton",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8478424": {
+    "name": "J. Harkins",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8477527": {
+    "name": "R. Johnston",
+    "team": "ANA",
+    "position": "C"
+  },
+  "8479639": {
+    "name": "D. Coghlan",
+    "team": "VGK",
+    "position": "D"
+  },
+  "8482803": {
+    "name": "O. Zellweger",
+    "team": "ANA",
+    "position": "D"
+  },
+  "8476438": {
+    "name": "B. Saad",
+    "team": "VGK",
+    "position": "C"
+  },
+  "8484797": {
+    "name": "K. Helenius",
+    "team": "BUF",
+    "position": "C"
+  },
+  "8474568": {
+    "name": "L. Schenn",
+    "team": "BUF",
+    "position": "D"
+  }
+}

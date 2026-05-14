@@ -602,8 +602,12 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     from manual_loader import LOGS_DIR as _ML_LOGS_DIR
     _year = int(season_str[:4])
     _season_folder = f"{_year}-{str(_year + 1)[-2:]}"   # e.g. "2025-26"
-    for _sub in ('Regular Season',):
-        _sub_dir = _ML_LOGS_DIR / _sub / _season_folder
+    _po_folder     = f"{_year}-{_year + 1}"              # e.g. "2025-2026"
+    _sub_dirs = [
+        _ML_LOGS_DIR / 'Regular Season' / _season_folder,
+        _ML_LOGS_DIR / 'Playoffs'       / _po_folder,
+    ]
+    for _sub_dir in _sub_dirs:
         if _sub_dir.exists():
             for _f in sorted(_sub_dir.glob('*.xlsx')):
                 if _f.name.startswith('~$'):
@@ -1468,6 +1472,18 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     team_grades.sort(key=lambda t: t['overall_mp'] or 0, reverse=True)
     for i, t in enumerate(team_grades, 1):
         t['rank'] = i
+
+    # Inject any playoff players not already in season_acc (need name/team/position for grader)
+    _po_file = os.path.join(os.path.dirname(__file__), 'NST Playoff Data', 'playoff_player_ids.json')
+    if os.path.exists(_po_file):
+        for _pid_s, _po in json.loads(open(_po_file).read()).items():
+            _pid = int(_pid_s)
+            if _pid not in season_acc:
+                season_acc[_pid] = SeasonEntry(
+                    name=_po.get('name', ''),
+                    team=_po.get('team', ''),
+                    position=_po.get('position', 'C'),
+                )
 
     from game_grade_builder import build_player_game_grades
     print('  Building per-game grades...', flush=True)

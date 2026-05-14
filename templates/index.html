@@ -426,7 +426,9 @@ function showGames(abbrev, month) {
   for (const g of filtered) {
     const a = document.createElement('a');
     a.className = 'game-row';
-    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : `/game/${g.id}?season=${g.season}`;
+    const noData = g.round > 0 && !g.has_grades;
+    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : (g.round > 0 ? '#' : `/game/${g.id}?season=${g.season}`);
+    if (noData) { a.style.opacity = '0.5'; a.style.pointerEvents = 'none'; }
 
     const dateMatch = g.label.match(/\((.+?)\)/);
     const dateStr = dateMatch ? dateMatch[1] : '';
@@ -434,7 +436,7 @@ function showGames(abbrev, month) {
     // Determine game type label
     let typeLine = '';
     if (g.round > 0) {
-      typeLine = `Round ${g.round} · Game ${g.game_num}`;
+      typeLine = `Round ${g.round} · Game ${g.game_num}${noData ? ' — Data Not Available Yet' : ''}`;
     } else {
       typeLine = 'Regular Season';
     }
@@ -680,7 +682,9 @@ function showSeriesGames(roundNum, seriesNum) {
   for (const g of sorted) {
     const a = document.createElement('a');
     a.className = 'game-row';
-    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : `/game/${g.id}?season=${g.season}`;
+    const noData = !g.has_grades;
+    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : '#';
+    if (noData) { a.style.opacity = '0.5'; a.style.pointerEvents = 'none'; }
     const dateMatch = g.label.match(/\((.+?)\)/);
     const dateStr = dateMatch ? dateMatch[1] : '';
     a.innerHTML = `
@@ -691,7 +695,7 @@ function showSeriesGames(roundNum, seriesNum) {
       </div>
       <div>
         <div class="game-row-label">${g.away} at ${g.home}</div>
-        <div class="game-row-sub">Game ${g.game_num}</div>
+        <div class="game-row-sub">Game ${g.game_num}${noData ? ' — Data Not Available Yet' : ''}</div>
       </div>
       <div class="game-row-date">${dateStr}</div>
     `;

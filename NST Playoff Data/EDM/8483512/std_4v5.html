@@ -1,0 +1,261 @@
+<head>
+<link rel="stylesheet" type="text/css" href="/DataTables-1.10.3/media/css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="/DataTables-1.10.3/extensions/Buttons/css/buttons.dataTables.min.css">
+ <link rel="stylesheet" href="style.css?20221027"> 
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+<meta charset="UTF-8">
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/media/js/jquery.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/media/js/jquery.dataTables.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/media/js/time.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/Buttons/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/Buttons/js/buttons.colVis.min.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/Buttons/js/buttons.html5.min.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/Buttons/js/buttons.flash.min.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/FixedColumns/js/dataTables.fixedColumns.js"></script>
+<script type="text/javascript" charset="utf8" src="/DataTables-1.10.3/extensions/FixedHeader/js/dataTables.fixedHeader.js"></script>
+<title>Matt Savoie - Game Log - Individual - Natural Stat Trick</title><script>
+ $(document).ready( function () {
+
+	var ir = $('#indreg').DataTable({dom: 'Bfrtip',
+
+	scrollX: true,
+
+	scrollY: '70vh',
+
+	scrollCollapse: true,
+
+	buttons: [{extend: 'collection',
+text: 'Show/Hide Columns',
+
+	buttons: [{extend: 'columnToggle',text: 'Points',columns: ['.pts']},
+
+	{extend: 'columnToggle',text: 'Shooting',columns: ['.sh']},
+
+	{extend: 'columnToggle',text: 'Penalties',columns: ['.pn']},
+
+	{extend: 'columnToggle',text: 'Real-Time',columns: ['.rt']},
+
+	{extend: 'columnToggle',text: 'Faceoffs',columns: ['.fo']}]}],
+
+	paging:false,
+ searching:false ,
+ columnDefs: [
+{ type: 'time-uni', targets: 'time' },
+{ render: function ( data, type, full, meta ) {
+	return type === 'display' ? Math.floor(Math.abs(data)) + ":" + (Math.floor((Math.abs(data) * 60) % 60) < 10 ? "0" : "") + Math.floor((Math.abs(data) * 60) % 60) :
+		data; 
+		}, targets: 'time' }
+]
+ });
+
+		new $.fn.dataTable.Buttons( ir, {
+			buttons: [{extend: 'copy',
+				text: 'Copy (Visible)',
+				exportOptions: {
+					columns: ':visible',
+					orthogonal: 'data'
+				}
+			},
+				{extend: 'csv',
+				text: 'CSV (Visible)',
+				exportOptions: {
+					columns: ':visible',
+					orthogonal: 'data'
+				}
+			},
+				{extend: 'copy',
+				text: 'Copy (All)',
+				exportOptions: {
+					orthogonal: 'data'
+				}
+			},
+				{extend: 'csv',
+				text: 'CSV (All)',
+				exportOptions: {
+					orthogonal: 'data'
+				}
+			}]
+	} );
+	
+	new $.fn.dataTable.FixedColumns( ir, {
+		leftColumns: 2
+	} );
+	
+	ir.buttons( 1, null ).container().appendTo(
+	ir.table().container()
+	);
+
+	} );
+</script>
+</head><div style="position:relative; min-height:100%"><script>
+$(window).scroll(function(e){ 
+$el = $('.headertxtsticky'); 
+if ($(this).scrollTop() > 92 && $el.css('display') != 'block'){ 
+  $('.headertxtsticky').css({'display': 'block'}); 
+}
+if ($(this).scrollTop() < 92 && $el.css('display') == 'block')
+{
+  $('.headertxtsticky').css({'display': 'none'}); 
+} 
+});
+</script>
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-55321726-1', 'auto');
+ga('require', 'displayfeatures');
+ga('send', 'pageview');
+</script>
+<script type="text/javascript" src="//static.addtoany.com/menu/page.js"></script>
+<div class="headertxtsticky" id=headertxtsticky>
+<a class=main href="http://www.naturalstattrick.com/" style="text-decoration:none">Natural Stat Trick</a>
+</div>
+<div class=headertxt id=headertxt>
+<a class=main href="http://www.naturalstattrick.com/" style="text-decoration:none;"><img src="/images/newlogo.png"></a>
+ <div style="float:right; display: inline-table; min-height: 40px; text-align: right; padding: 5px; font-size: 0.5em;"><a class=menu href="/login.php">Login</a><br>
+</div>
+<div class=menubox><ul class=menu><li class=menu><a href="#" class=menu>Games</a><ul class=menu><li><a href="#" class=menu>East </a><ul class=menu><li><a href="games.php?team=BOS" class=menu>Boston&nbsp;Bruins</a></li><li><a href="games.php?team=BUF" class=menu>Buffalo&nbsp;Sabres</a></li><li><a href="games.php?team=CAR" class=menu>Carolina&nbsp;Hurricanes</a></li><li><a href="games.php?team=CBJ" class=menu>Columbus&nbsp;Blue&nbsp;Jackets</a></li><li><a href="games.php?team=DET" class=menu>Detroit&nbsp;Red&nbsp;Wings</a></li><li><a href="games.php?team=FLA" class=menu>Florida&nbsp;Panthers</a></li><li><a href="games.php?team=MTL" class=menu>Montreal&nbsp;Canadiens</a></li><li><a href="games.php?team=N.J" class=menu>New&nbsp;Jersey&nbsp;Devils</a></li><li><a href="games.php?team=NYI" class=menu>New&nbsp;York&nbsp;Islanders</a></li><li><a href="games.php?team=NYR" class=menu>New&nbsp;York&nbsp;Rangers</a></li><li><a href="games.php?team=OTT" class=menu>Ottawa&nbsp;Senators</a></li><li><a href="games.php?team=PHI" class=menu>Philadelphia&nbsp;Flyers</a></li><li><a href="games.php?team=PIT" class=menu>Pittsburgh&nbsp;Penguins</a></li><li><a href="games.php?team=T.B" class=menu>Tampa&nbsp;Bay&nbsp;Lightning</a></li><li><a href="games.php?team=TOR" class=menu>Toronto&nbsp;Maple&nbsp;Leafs</a></li><li><a href="games.php?team=WSH" class=menu>Washington&nbsp;Capitals</a></li></ul></li>
+<li><a href="#" class=menu>West</a><ul class=menu style="top: -100%"><li><a href="games.php?team=ANA" class=menu>Anaheim&nbsp;Ducks</a></li><li><a href="games.php?team=CGY" class=menu>Calgary&nbsp;Flames</a></li><li><a href="games.php?team=CHI" class=menu>Chicago&nbsp;Blackhawks</a></li><li><a href="games.php?team=COL" class=menu>Colorado&nbsp;Avalanche</a></li><li><a href="games.php?team=DAL" class=menu>Dallas&nbsp;Stars</a></li><li><a href="games.php?team=EDM" class=menu>Edmonton&nbsp;Oilers</a></li><li><a href="games.php?team=L.A" class=menu>Los&nbsp;Angeles&nbsp;Kings</a></li><li><a href="games.php?team=MIN" class=menu>Minnesota&nbsp;Wild</a></li><li><a href="games.php?team=NSH" class=menu>Nashville&nbsp;Predators</a></li><li><a href="games.php?team=S.J" class=menu>San&nbsp;Jose&nbsp;Sharks</a></li><li><a href="games.php?team=SEA" class=menu>Seattle&nbsp;Kraken</a></li><li><a href="games.php?team=STL" class=menu>St&nbsp;Louis&nbsp;Blues</a></li><li><a href="games.php?team=UTA" class=menu>Utah&nbsp;Mammoth</a></li><li><a href="games.php?team=VAN" class=menu>Vancouver&nbsp;Canucks</a></li><li><a href="games.php?team=VGK" class=menu>Vegas&nbsp;Golden&nbsp;Knights</a></li><li><a href="games.php?team=WPG" class=menu>Winnipeg&nbsp;Jets</a></li></ul></li>
+<li><a href="games.php" class=menu>All&nbsp;Teams</a></li></ul></li>
+<li class=menu><a href="#" class=menu>Players</a><ul class=menu><li><a href="playerteams.php?stdoi=oi" class=menu>On-Ice</a></li><li><a href="playerteams.php?stdoi=std" class=menu>Individual</a></li><li><a href="playerteams.php?stdoi=g" class=menu>Goalies</a></li><li><a href="playerteams.php?stdoi=bio" class=menu>Bios</a></li><li><a href="pairings.php" class=menu>Defensive&nbsp;Pairs</a></li><li><a href="playercompare.php" class=menu>Compare</a></li><li><a href="playerlist.php" class=menu>Player&nbsp;Index</a></li><li><a href="linestats.php" class=menu>Line&nbsp;Tool</a></li><li><a href="shiftperformance.php" class=menu>Shift&nbsp;Performance</a></li></ul></li><li class=menu><a href="#" class=menu>Teams</a><ul class=menu><li><a href="#" class=menu>Team&nbsp;Reports</a><ul class=menu><li><a href="#" class=menu>East </a><ul class=menu><li><a href="teamreport.php?team=BOS" class=menu>Boston&nbsp;Bruins</a></li><li><a href="teamreport.php?team=BUF" class=menu>Buffalo&nbsp;Sabres</a></li><li><a href="teamreport.php?team=CAR" class=menu>Carolina&nbsp;Hurricanes</a></li><li><a href="teamreport.php?team=CBJ" class=menu>Columbus&nbsp;Blue&nbsp;Jackets</a></li><li><a href="teamreport.php?team=DET" class=menu>Detroit&nbsp;Red&nbsp;Wings</a></li><li><a href="teamreport.php?team=FLA" class=menu>Florida&nbsp;Panthers</a></li><li><a href="teamreport.php?team=MTL" class=menu>Montreal&nbsp;Canadiens</a></li><li><a href="teamreport.php?team=N.J" class=menu>New&nbsp;Jersey&nbsp;Devils</a></li><li><a href="teamreport.php?team=NYI" class=menu>New&nbsp;York&nbsp;Islanders</a></li><li><a href="teamreport.php?team=NYR" class=menu>New&nbsp;York&nbsp;Rangers</a></li><li><a href="teamreport.php?team=OTT" class=menu>Ottawa&nbsp;Senators</a></li><li><a href="teamreport.php?team=PHI" class=menu>Philadelphia&nbsp;Flyers</a></li><li><a href="teamreport.php?team=PIT" class=menu>Pittsburgh&nbsp;Penguins</a></li><li><a href="teamreport.php?team=T.B" class=menu>Tampa&nbsp;Bay&nbsp;Lightning</a></li><li><a href="teamreport.php?team=TOR" class=menu>Toronto&nbsp;Maple&nbsp;Leafs</a></li><li><a href="teamreport.php?team=WSH" class=menu>Washington&nbsp;Capitals</a></li></ul></li>
+<li><a href="#" class=menu>West</a><ul class=menu style="top: -100%"><li><a href="teamreport.php?team=ANA" class=menu>Anaheim&nbsp;Ducks</a></li><li><a href="teamreport.php?team=CGY" class=menu>Calgary&nbsp;Flames</a></li><li><a href="teamreport.php?team=CHI" class=menu>Chicago&nbsp;Blackhawks</a></li><li><a href="teamreport.php?team=COL" class=menu>Colorado&nbsp;Avalanche</a></li><li><a href="teamreport.php?team=DAL" class=menu>Dallas&nbsp;Stars</a></li><li><a href="teamreport.php?team=EDM" class=menu>Edmonton&nbsp;Oilers</a></li><li><a href="teamreport.php?team=L.A" class=menu>Los&nbsp;Angeles&nbsp;Kings</a></li><li><a href="teamreport.php?team=MIN" class=menu>Minnesota&nbsp;Wild</a></li><li><a href="teamreport.php?team=NSH" class=menu>Nashville&nbsp;Predators</a></li><li><a href="teamreport.php?team=S.J" class=menu>San&nbsp;Jose&nbsp;Sharks</a></li><li><a href="teamreport.php?team=SEA" class=menu>Seattle&nbsp;Kraken</a></li><li><a href="teamreport.php?team=STL" class=menu>St&nbsp;Louis&nbsp;Blues</a></li><li><a href="teamreport.php?team=UTA" class=menu>Utah&nbsp;Mammoth</a></li><li><a href="teamreport.php?team=VAN" class=menu>Vancouver&nbsp;Canucks</a></li><li><a href="teamreport.php?team=VGK" class=menu>Vegas&nbsp;Golden&nbsp;Knights</a></li><li><a href="teamreport.php?team=WPG" class=menu>Winnipeg&nbsp;Jets</a></li></ul></li>
+</ul></li>
+<li><a href="teamtable.php" class=menu>Season&nbsp;Stats</a></li><li><a href="standings.php" class=menu>Standings</a></li></ul></li><li class=menu><a href="#" class=menu>Tools</a><ul class=menu><li>Available&nbsp;to&nbsp;Early<br>Access&nbsp;Subcribers:<br><font size=-2 color=#585858><i>&nbsp;&nbsp;&nbsp;Rolling&nbsp;Average&nbsp;Charts</i></font></li></ul></li><li class=menu><a href="#" class=menu>Trivia</a><ul class=menu><li><a href="teamstreaks.php" class=menu>Team&nbsp;Streaks</a></li><li><a href="altstandings.php" class=menu>Alternate&nbsp;Standings</a></li><li><a href="playernumbers.php" class=menu>Player&nbsp;Numbers</a></li></ul></li></ul>
+</div>
+</div>
+<div style="margin:5px; padding:5px; min-height:25px;"></div>
+<div style="width: 100%; overflow: auto;">
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- Header Responsive -->
+ <center>
+<ins class="adsbygoogle"
+     style="display:block;min-width:400px;max-width:970px;width:100%;height:90px"
+     data-ad-client="ca-pub-8142307985704945"
+     data-ad-slot="8680455719"
+     data-ad-format="auto"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+ </center>
+</div>
+<div style="padding-bottom:50px;"><div class="content nh">
+<h1>Matt Savoie<br><font size=+1>C - Edmonton Oilers</font></h1><form>
+From <select id='fromseason' name='fromseason' onchange="UpdateThruSeason()"><option value='20072008'>2007-2008</option><option value='20082009'>2008-2009</option><option value='20092010'>2009-2010</option><option value='20102011'>2010-2011</option><option value='20112012'>2011-2012</option><option value='20122013'>2013</option><option value='20132014'>2013-2014</option><option value='20142015'>2014-2015</option><option value='20152016'>2015-2016</option><option value='20162017'>2016-2017</option><option value='20172018'>2017-2018</option><option value='20182019'>2018-2019</option><option value='20192020'>2019-2020</option><option value='20202021'>2020-2021</option><option value='20212022'>2021-2022</option><option value='20222023'>2022-2023</option><option value='20232024'>2023-2024</option><option value='20242025'>2024-2025</option><option value='20252026' selected>2025-2026</option></select>
+Thru <select id='thruseason' name='thruseason'><option value='20072008' disabled>2007-2008</option><option value='20082009' disabled>2008-2009</option><option value='20092010' disabled>2009-2010</option><option value='20102011' disabled>2010-2011</option><option value='20112012' disabled>2011-2012</option><option value='20122013' disabled>2013</option><option value='20132014' disabled>2013-2014</option><option value='20142015' disabled>2014-2015</option><option value='20152016' disabled>2015-2016</option><option value='20162017' disabled>2016-2017</option><option value='20172018' disabled>2017-2018</option><option value='20182019' disabled>2018-2019</option><option value='20192020'>2019-2020</option><option value='20202021'>2020-2021</option><option value='20212022'>2021-2022</option><option value='20222023'>2022-2023</option><option value='20232024'>2023-2024</option><option value='20242025'>2024-2025</option><option value='20252026' selected>2025-2026</option></select>
+<script>
+function UpdateThruSeason() {
+			var fromseas = document.getElementById('fromseason');
+			var thruseas = document.getElementById('thruseason');
+			var fromindex = fromseas.selectedIndex;
+			var thruindex = thruseas.selectedIndex;
+			
+			if (thruindex < fromindex) {
+				thruindex = fromindex;
+				document.getElementById('thruseason').selectedIndex = thruindex;
+			} else if (thruindex - fromindex > 2) {
+				thruindex = fromindex + 2;
+				document.getElementById('thruseason').selectedIndex = thruindex;
+			}
+			
+			for (i = 0; i < document.getElementById('thruseason').options.length; i++) { 
+				if (i < fromindex) {
+					document.getElementById('thruseason').options[i].disabled = 'disabled';
+				} else if (i > fromindex + 2) {
+					document.getElementById('thruseason').options[i].disabled = 'disabled';
+				} else {
+					document.getElementById('thruseason').options[i].disabled = '';
+				}
+			}
+		}
+</script>
+<select name='stype'><option value='1'>Pre-Season</option><option value='2'>Regular Season</option><option value='3' selected>Playoffs</option></select>
+<select name='sit'><option value='all'>All Strengths</option><option value='ev'>Even Strength</option><option value='5v5'>5v5</option><option value='sva'>5v5 Score & Venue Adjusted</option><option value='pp'>Power Play</option><option value='5v4'>5 on 4 PP</option><option value='pk'>Penalty Kill</option><option value='4v5' selected>4 on 5 PK</option><option value='3v3'>3 on 3</option><option value='enf'>With Empty Net</option><option value='ena'>Against Empty Net</option></select>
+<select name='stdoi'>
+<option value='oi'>On-Ice</option>
+<option value='std' selected>Individual</option>
+</select>
+<select name='rate'>
+<option value='n' selected>Counts</option>
+<option value='y'>Rates</option>
+<option value='r'>Relative</option>
+</select>
+<select name='v'>
+<option value='p'>Player Summary</option>
+<option value='t'>Teammates</option>
+<option value='o'>Opposition</option>
+<option value='g' selected>Game Log</option>
+<option value='s'>Scoring</option>
+</select>
+<select name="playerid">
+<option value='8474641'>Adam Henrique</option>
+<option value='8482703'>Colton Dach</option>
+<option value='8478971'>Connor Ingram</option>
+<option value='8478402'>Connor McDavid</option>
+<option value='8476473'>Connor Murphy</option>
+<option value='8477508'>Curtis Lazar</option>
+<option value='8477498'>Darnell Nurse</option>
+<option value='8480803'>Evan Bouchard</option>
+<option value='8478458'>Jack Roslovic</option>
+<option value='8478013'>Jake Walman</option>
+<option value='8477450'>Jason Dickinson</option>
+<option value='8484509'>Josh Samanski</option>
+<option value='8477953'>Kasperi Kapanen</option>
+<option value='8477934'>Leon Draisaitl</option>
+<option value='8483512' selected>Matt Savoie</option>
+<option value='8475218'>Mattias Ekholm</option>
+<option value='8476454'>Ryan Nugent-Hopkins</option>
+<option value='8479365'>Trent Frederic</option>
+<option value='8477465'>Tristan Jarry</option>
+<option value='8480834'>Ty Emberson</option>
+<option value='8481617'>Vasily Podkolzin</option>
+<option value='8475786'>Zach Hyman</option>
+</select>
+<input type="submit" value="Submit"></form></div>
+<div class="content nh">
+<div>
+<h2>Game Log</h2>
+<table id=indreg class=indreg>
+<thead>
+<tr>
+<th class=lh>Game</th>
+<th>Team</th>
+<th class='time'>TOI</th>
+<th class=pts>Goals</th><th class=pts>Total Assists</th><th class=pts>First Assists</th><th class=pts>Second Assists</th><th class=pts>Total Points</th><th class=pts>IPP</th>
+<th class=sh>Shots</th><th class=sh>S%</th><th class=sh>ixG</th><th class=sh>iCF</th><th class=sh>iFF</th><th class=sh>iSCF</th><th class=sh>iHDCF</th><th class=sh>Rebounds Created</th>
+<th class=pn>PIM</th><th class=pn>Total Penalties</th><th class=pn>Minor</th><th class=pn>Major</th><th class=pn>Misconduct</th><th class=pn>Penalties Drawn</th>
+<th class=rt>Giveaways</th><th class=rt>Takeaways</th><th class=rt>Hits</th><th class=rt>Hits Taken</th><th class=rt>Shots Blocked</th>
+<th class=fo>Faceoffs Won</th><th class=fo>Faceoffs Lost</th><th class=fo>Faceoffs %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30186">2026-04-30 EDM at ANA</a></td>
+<td>EDM</td><td>2.1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30185">2026-04-28 ANA at EDM</a></td>
+<td>EDM</td><td>0.6</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30184">2026-04-26 EDM at ANA</a></td>
+<td>EDM</td><td>1.4833333333333</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30183">2026-04-24 EDM at ANA</a></td>
+<td>EDM</td><td>1.8166666666667</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>1</td><td>0</td><td>0.08</td><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30182">2026-04-22 ANA at EDM</a></td>
+<td>EDM</td><td>1.4666666666667</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+<tr>
+<td class=lh><a href="game.php?season=20252026&game=30181">2026-04-20 ANA at EDM</a></td>
+<td>EDM</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<!--0.011690139770508--></div>
+<div class=footer id=footer>
+<div style="float:right; padding: 0.4em;"><a class=menu href="/glossary.php" style="vertical-align:middle;">Glossary</a> <a class=menu href="/contact.php" style="vertical-align:middle;">Contact</a> <a class=menu href="/privacy.php" style="vertical-align:middle;">Privacy</a> <a class=menu href="/scraping.php" style="vertical-align:middle;">Scraping</a> <a href="https://www.patreon.com/NaturalStatTrick"><img src="/images/become_a_patron_button.png" style="vertical-align:middle;"></a>
+<a href="https://bsky.app/profile/naturalstattrick.com"><img src="/images/bsky_social.png" style="vertical-align:middle;"></a>
+</div>
+</div>
+</div></body><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9fafad521a852594',t:'MTc3ODY1NDQ4Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
