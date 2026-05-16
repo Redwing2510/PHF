@@ -23,6 +23,7 @@ def apple_touch_icon():
 # Per-season cache: {'20252026': {...}, '20242025': {...}}
 _season_cache: dict = {}
 _season_build_lock = threading.Lock()   # single global lock guards all builds
+_extended_cache: dict = {}             # season_str -> list of extended grade dicts
 
 _CACHE_DIR = os.path.join(os.path.dirname(__file__), 'season_cache')
 
@@ -135,19 +136,75 @@ def player_games(player_id: int):
         '''SELECT game_id, team, opponent, game_date, position, toi_min,
                   off, dfn, overall, has_tracking
            FROM player_game_grades
-           WHERE player_id=? AND season=?
+           WHERE player_id=? AND season=? AND CAST(game_id AS TEXT) LIKE ?
            ORDER BY game_date ASC, game_id ASC''',
-        (player_id, mp_year)
+        (player_id, mp_year, f'{mp_year}02%')
     ).fetchall()
     conn.close()
     from flask import jsonify
     return jsonify([dict(r) for r in rows])
 
 
+@app.route('/api/season-extended/<season_str>')
+def season_extended_api(season_str):
+    if season_str not in dict(_SEASONS):
+        return jsonify([])
+    if season_str in _extended_cache:
+        return jsonify(_extended_cache[season_str])
+    mp_year = int(season_str[:4])
+    conn = sqlite3.connect('cache.db')
+    rows = conn.execute(
+        "SELECT player_id, toi_min, off, dfn, overall FROM player_game_grades "
+        "WHERE season=? AND CAST(game_id AS TEXT) LIKE ?",
+        [mp_year, f'{mp_year}02%']
+    ).fetchall()
+    conn.close()
+    acc = {}
+    for pid, toi_min, off, dfn, overall in rows:
+        if pid not in acc:
+            acc[pid] = {'gp': 0, 'toi': 0.0, 'off_w': 0.0, 'dfn_w': 0.0, 'overall_w': 0.0}
+        d = acc[pid]
+        toi = toi_min or 0.0
+        d['gp'] += 1
+        d['toi'] += toi
+        d['off_w'] += (off or 0.0) * toi
+        d['dfn_w'] += (dfn or 0.0) * toi
+        d['overall_w'] += (overall or 0.0) * toi
+    raw = []
+    for pid, d in acc.items():
+        if d['toi'] < 60:
+            continue
+        raw.append({
+            'player_id': pid,
+            'gp': d['gp'],
+            'off': d['off_w'] / d['toi'],
+            'dfn': d['dfn_w'] / d['toi'],
+            'overall': d['overall_w'] / d['toi'],
+        })
+
+    def _renorm(vals, target_mean=60.0, target_sd=12.0):
+        import statistics
+        if len(vals) < 2:
+            return vals
+        m = statistics.mean(vals)
+        s = statistics.stdev(vals) or 1.0
+        return [max(0.0, min(100.0, (v - m) / s * target_sd + target_mean)) for v in vals]
+
+    for col in ('off', 'dfn', 'overall'):
+        normed = _renorm([r[col] for r in raw])
+        for r, v in zip(raw, normed):
+            r[col] = round(v, 1)
+
+    result = raw
+    _extended_cache[season_str] = result
+    return jsonify(result)
+
+
 @app.route('/refresh')
 def refresh():
     season_str = request.args.get('season', '20252026')
     _season_cache.pop(season_str, None)
+    _extended_cache.pop(season_str, None)
     path = _disk_cache_path(season_str)
     if os.path.exists(path):
         os.remove(path)
@@ -181,16 +238,31 @@ def _ensure_game_dates():
 
     print(f'  Fetching dates for {len(missing)} games from NHL schedules...', flush=True)
 
-    # Build game_id -> date from all team schedules
+    # First try to resolve from already-cached schedules (covers all seasons)
     found = {}
+    for (data,) in conn.execute('SELECT data FROM schedules').fetchall():
+        try:
+            for g in json.loads(data):
+                gid = g.get('id')
+                date = g.get('gameDate', '')
+                if gid and date and gid in missing:
+                    found[gid] = date
+        except Exception:
+            pass
+
+    # Fall back to live API for any still-missing games in the current season
+    still_missing = missing - set(found)
     for team in TEAMS:
+        if not still_missing:
+            break
         try:
             games = fetch_schedule(team, SEASON)
             for g in games:
                 gid = g.get('id')
                 date = g.get('gameDate', '')
-                if gid and date and gid in missing:
+                if gid and date and gid in still_missing:
                     found[gid] = date
+                    still_missing.discard(gid)
         except Exception:
             pass
 
@@ -430,6 +502,9 @@ def game_grades(game_id):
 
 @app.route('/game/<int:game_id>')
 def game(game_id):
+    from flask import abort
+    abort(404)
+    season = request.args.get('season', '20252026')  # unreachable
     season = request.args.get('season', '20252026')
     player_stats, all_players, ctx, game_data, play_log = process_game(
         game_id=game_id, season=season, verbose=False
@@ -577,23 +652,36 @@ def api_player(player_id):
                 ranked = sorted(qualified, key=lambda p: p.get(key) or 0, reverse=True)
                 return next((i + 1 for i, p in enumerate(ranked) if p['player_id'] == player_id), None)
             grades = {
-                'overall':        player.get('overall'),
-                'overall_letter': player.get('overall_letter'),
-                'off':            player.get('off'),
-                'off_letter':     player.get('off_letter'),
-                'dfn':            player.get('dfn'),
-                'dfn_letter':     player.get('dfn_letter'),
-                'rank':           player.get('rank'),
-                'pos_group':      pos_group,
-                'pos_total':      pos_total,
-                'off_rank':       _rank('off'),
-                'dfn_rank':       _rank('dfn'),
-                'ms_gp':          ms_gp,
-                'gp':             player.get('gp'),
-                'toi_per_game':   player.get('toi_per_game'),
-                'goals':          player.get('goals'),
-                'assists':        player.get('assists'),
-                'points':         player.get('points'),
+                'overall':           player.get('overall'),
+                'overall_letter':    player.get('overall_letter'),
+                'off':               player.get('off'),
+                'off_letter':        player.get('off_letter'),
+                'dfn':               player.get('dfn'),
+                'dfn_letter':        player.get('dfn_letter'),
+                'overall_mp':        player.get('overall_mp'),
+                'overall_mp_letter': player.get('overall_mp_letter'),
+                'off_mp':            player.get('off_mp'),
+                'off_mp_letter':     player.get('off_mp_letter'),
+                'dfn_mp':            player.get('dfn_mp'),
+                'dfn_mp_letter':     player.get('dfn_mp_letter'),
+                'overall_blend':     player.get('overall_blend'),
+                'off_blend':         player.get('off_blend'),
+                'off_blend_letter':  player.get('off_blend_letter'),
+                'rank':              player.get('rank'),
+                'pos_group':         pos_group,
+                'pos_total':         pos_total,
+                'off_rank':          _rank('off'),
+                'dfn_rank':          _rank('dfn'),
+                'ms_gp':              ms_gp,
+                'gp':                 player.get('gp'),
+                'toi_per_game':       player.get('toi_per_game'),
+                'goals':              player.get('goals'),
+                'assists':            player.get('assists'),
+                'points':             player.get('points'),
+                'sub_toi_per_game':   player.get('sub_toi_per_game'),
+                'sub_goals':          player.get('sub_goals'),
+                'sub_assists':        player.get('sub_assists'),
+                'sub_points':         player.get('sub_points'),
             }
     return jsonify({'player_id': player_id, 'bio': bio, 'grades': grades})
 

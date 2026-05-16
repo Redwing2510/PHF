@@ -423,20 +423,19 @@ def _extract_game_table(html: str, table_id: str) -> list[dict]:
         return []
 
 
-def _todays_completed_playoff_games() -> list[int]:
-    """Return NHL game IDs for completed playoff games today."""
-    today = date.today().isoformat()
-    print(f'  Checking NHL schedule for {today}...')
+def _completed_playoff_games_on(check_date: str) -> list[int]:
+    """Return NHL game IDs for completed playoff games on a given YYYY-MM-DD date."""
+    print(f'  Checking NHL schedule for {check_date}...')
     try:
         data = requests.get(
-            f'https://api-web.nhle.com/v1/schedule/{today}', timeout=10
+            f'https://api-web.nhle.com/v1/schedule/{check_date}', timeout=10
         ).json()
     except Exception as e:
         print(f'  NHL API error: {e}')
         return []
     game_ids = []
     for day in data.get('gameWeek', []):
-        if day.get('date') != today:
+        if day.get('date') != check_date:
             continue
         for g in day.get('games', []):
             if g.get('gameType') == 3 and g.get('gameState') in ('OFF', 'FINAL', '7'):
@@ -574,14 +573,19 @@ STEPS = {'collect': collect, 'download': download, 'load': load, 'rebuild': rebu
 if __name__ == '__main__':
     args = sys.argv[1:]
     if args and args[0] == 'update':
-        if len(args) >= 2:
+        if len(args) >= 2 and args[1].isdigit():
             # Explicit game ID: python3 playoff_pipeline.py update 2025030236
             update_game(int(args[1]))
         else:
-            # Auto-detect today's completed playoff games
-            game_ids = _todays_completed_playoff_games()
+            # Date to check: today (default) or yesterday (for 1 AM run)
+            from datetime import timedelta
+            if len(args) >= 2 and args[1] == 'yesterday':
+                check_date = (date.today() - timedelta(days=1)).isoformat()
+            else:
+                check_date = date.today().isoformat()
+            game_ids = _completed_playoff_games_on(check_date)
             if not game_ids:
-                print('  No completed playoff games found today.')
+                print(f'  No completed playoff games found on {check_date}.')
             else:
                 print(f'  Found {len(game_ids)} completed game(s): {game_ids}')
                 for gid in game_ids:

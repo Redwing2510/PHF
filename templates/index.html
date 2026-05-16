@@ -427,7 +427,7 @@ function showGames(abbrev, month) {
     const a = document.createElement('a');
     a.className = 'game-row';
     const noData = g.round > 0 && !g.has_grades;
-    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : (g.round > 0 ? '#' : `/game/${g.id}?season=${g.season}`);
+    a.href = g.has_grades ? `/game-grades/${g.id}?season=${g.season}` : '#';
     if (noData) { a.style.opacity = '0.5'; a.style.pointerEvents = 'none'; }
 
     const dateMatch = g.label.match(/\((.+?)\)/);
@@ -471,7 +471,7 @@ function setView(mode) {
   document.getElementById('rs-panels').style.display = mode === 'regular'  ? '' : 'none';
   document.getElementById('po-panels').style.display = mode === 'playoffs' ? '' : 'none';
   if (mode === 'regular') showTeams();
-  else renderBracket();
+  else { renderBracket(); history.replaceState({view:'bracket'},'',''); }
 }
 
 // ── Playoff bracket ───────────────────────────────────────────────────────
@@ -537,10 +537,15 @@ function slotHTML(round, seriesNum) {
   const id = `bk-${round}-${seriesNum}`;
 
   if (s) {
+    const awayWon = s.away_wins >= 4, homeWon = s.home_wins >= 4;
+    const awayColor = awayWon ? '#c9a227' : homeWon ? 'var(--muted)' : '';
+    const homeColor = homeWon ? '#c9a227' : awayWon ? 'var(--muted)' : '';
+    const awaySpanStyle = awayColor ? ` style="color:${awayColor}"` : '';
+    const homeSpanStyle = homeColor ? ` style="color:${homeColor}"` : '';
     return `<div class="bs-slot" id="${id}" onclick="showSeriesGames(${round},${seriesNum})">
-      <div class="bs-team"><img class="bs-logo" src="${s.away_logo}" onerror="this.style.display='none'"><span class="bs-abbrev">${s.away}</span><span class="bs-wins">${s.away_wins}</span></div>
+      <div class="bs-team"><img class="bs-logo" src="${s.away_logo}" onerror="this.style.display='none'"><span class="bs-abbrev"${awaySpanStyle}>${s.away}</span><span class="bs-wins"${awaySpanStyle}>${s.away_wins}</span></div>
       <div class="bs-div"></div>
-      <div class="bs-team"><img class="bs-logo" src="${s.home_logo}" onerror="this.style.display='none'"><span class="bs-abbrev">${s.home}</span><span class="bs-wins">${s.home_wins}</span></div>
+      <div class="bs-team"><img class="bs-logo" src="${s.home_logo}" onerror="this.style.display='none'"><span class="bs-abbrev"${homeSpanStyle}>${s.home}</span><span class="bs-wins"${homeSpanStyle}>${s.home_wins}</span></div>
     </div>`;
   }
 
@@ -664,13 +669,22 @@ function drawBracketLines() {
   connH('bk-3-1','left','bk-4-1','right');
 }
 
-function showBracket() {
+function showBracket(pushState=true) {
   document.getElementById('bracket-view').style.display = '';
   document.getElementById('panel-po-games').style.display = 'none';
   setBreadcrumb([{ label: 'Playoffs' }]);
+  if(pushState) history.replaceState({view:'bracket'},'','');
 }
 
+window.addEventListener('popstate', e => {
+  if(e.state){
+    if(e.state.view==='bracket') showBracket(false);
+    else if(e.state.view==='series') showBracket(false);
+  }
+});
+
 function showSeriesGames(roundNum, seriesNum) {
+  history.pushState({view:'series',round:roundNum,series:seriesNum},'','');
   document.getElementById('bracket-view').style.display = 'none';
   document.getElementById('panel-po-games').style.display = '';
 

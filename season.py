@@ -579,11 +579,11 @@ def _fetch_standings(season_str: str) -> dict:
 # ── Grade descriptions ────────────────────────────────────────────────────────
 # Update these whenever the algorithm changes so tooltips stay accurate.
 GRADE_DESCRIPTIONS = {
-    'overall': 'Play-by-play score across all situations. Every shot, hit, turnover, faceoff, and on-ice event contributes. 60 = league average.',
-    'off':     'Goals, assists, and individual expected goals (iXG) per 60 min, plus on-ice shot generation. Measures direct offensive contribution.',
-    'dfn':     'Blocked shots and hits per 60 min. For defensemen, also includes shot suppression (xGA against), penalty killing, and possession impact.',
+    'overall': 'Weighted combination of the offensive and defensive sub-grades, adjusted by position. Forwards are weighted more heavily toward offense, defensemen toward defense. 60 = league average.',
+    'off':     'Driven by passing quality, shooting volume and danger, and offensive zone activity from A3Z tracking. Blended with MP/NST metrics including venue-adjusted individual expected goals (iXG) and powerplay production.',
+    'dfn':     'For forwards, focuses on zone exits and defensive zone coverage from A3Z tracking, blended with on-ice shot suppression from MP/NST. For defensemen, also incorporates zone entry denials and penalty killing performance.',
     'poss':    'On-ice expected goals percentage (xGF%). Above 50 means your team controls play when you\'re on the ice.',
-    'fo':      'Faceoff score weighted by zone and situation. DZ wins worth more than OZ wins; shorthanded wins valued highest. Requires 10+ faceoffs.',
+    'fo':      'Weighted by zone and situation. Defensive zone wins are worth more than offensive zone wins, and shorthanded draws carry the highest weight. Requires 10+ faceoffs and is only available in Manual A3Z mode.',
 }
 
 
@@ -605,7 +605,6 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     _po_folder     = f"{_year}-{_year + 1}"              # e.g. "2025-2026"
     _sub_dirs = [
         _ML_LOGS_DIR / 'Regular Season' / _season_folder,
-        _ML_LOGS_DIR / 'Playoffs'       / _po_folder,
     ]
     for _sub_dir in _sub_dirs:
         if _sub_dir.exists():
@@ -793,6 +792,17 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
                 e.mp_pp_toi     += mp_pp_row[1] or 0.0
 
     # ── Overwrite MP fields with full-season totals ───────────────────────────
+    # Save subset (tracked-game) stats before Moneypuck overwrites them below.
+    _subset_stats: dict = {
+        pid: {
+            'goals':   e.goals, 'pa': e.primary_assists, 'sa': e.secondary_assists,
+            'sog':     e.shots_on_goal, 'hits': e.hits, 'blocks': e.blocked_shots,
+            'gva':     e.giveaways, 'tka': e.takeaways, 'pim': e.pim,
+            'toi_s':   e.toi_seconds,
+        }
+        for pid, e in season_acc.items()
+    }
+
     # All mp_* fields accumulated above were filtered to our game subset.
     # Replace them with season-wide aggregates so off_mp/dfn_mp scores are based
     # on the full ~82-game season rather than our ~266-game coverage subset.
@@ -806,8 +816,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             "SUM(ixg_adj), SUM(ixg_hd), SUM(onice_xgf_adj), "
             "SUM(goals), SUM(primary_assists), SUM(secondary_assists), "
             "SUM(shots_on_goal), SUM(hits), SUM(takeaways), SUM(giveaways), SUM(pim) "
-            "FROM moneypuck_games WHERE situation='all' AND season=? GROUP BY player_id",
-            [_mp_season_year]
+            "FROM moneypuck_games WHERE situation='all' AND season=? "
+            "AND CAST(game_id AS TEXT) LIKE ? GROUP BY player_id",
+            [_mp_season_year, f'{_mp_season_year}02%']
         ):
             pid = _row[0]
             if pid not in season_acc:
@@ -1399,6 +1410,18 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'gva':            e.giveaways,
             'tka':            e.takeaways,
             'pim':            e.pim,
+            'sub_goals':      _subset_stats[pid]['goals'],
+            'sub_assists':    _subset_stats[pid]['pa'] + _subset_stats[pid]['sa'],
+            'sub_points':     _subset_stats[pid]['goals'] + _subset_stats[pid]['pa'] + _subset_stats[pid]['sa'],
+            'sub_sog':        _subset_stats[pid]['sog'],
+            'sub_hits':       _subset_stats[pid]['hits'],
+            'sub_blocks':     _subset_stats[pid]['blocks'],
+            'sub_gva':        _subset_stats[pid]['gva'],
+            'sub_tka':        _subset_stats[pid]['tka'],
+            'sub_pim':        _subset_stats[pid]['pim'],
+            'sub_toi_per_game': (lambda s: f"{int(s//60)}:{int(s%60):02d}")(
+                _subset_stats[pid]['toi_s'] / e.gp
+            ) if e.gp > 0 else '0:00',
             'fo_pct':         f"{round((e.es_fo_won + e.pp_fo_won + e.pk_fo_won) / fo_total * 100, 1)}%" if fo_total >= 10 else '—',
             'fo_pct_val':     round((e.es_fo_won + e.pp_fo_won + e.pk_fo_won) / fo_total * 100, 1) if fo_total >= 10 else None,
             'ms_gp':          e.ms_gp,

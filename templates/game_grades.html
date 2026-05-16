@@ -18,6 +18,15 @@
 .gh-dash{font-size:36px;color:var(--muted);font-weight:300}
 .gh-final{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);background:var(--surface3);border:1px solid var(--border);border-radius:20px;padding:3px 12px;}
 .gh-date{font-size:12px;color:var(--muted);}
+@media(max-width:480px){
+  .game-header{padding:24px 20px;}
+  .gh-team{min-width:90px;}
+  .gh-logo{width:56px;height:56px;}
+  .gh-abbrev{font-size:26px;}
+  .gh-sep{padding:0 20px;min-width:auto;}
+  .gh-scores{font-size:48px;gap:12px;}
+  .gh-dash{font-size:32px;}
+}
 
 .play-grade-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 10px;margin-bottom:20px;transition:color .15s,border-color .15s;}
 .play-grade-link:hover{color:var(--text2);border-color:var(--border2);}
@@ -66,12 +75,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 {% block content %}
 <a class="back-link" href="javascript:history.back()">← Back</a>
 
-{% if has_play_grades %}
-<a class="play-grade-link" href="/game/{{ game_id }}?season={{ season }}">
-  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9V9h2v4zm0-6H9V5h2v2z"/></svg>
-  View detailed play-by-play grades
-</a>
-{% endif %}
 
 <div class="game-header">
   <div class="gh-team">

@@ -22,10 +22,20 @@
 .example-box strong{color:var(--text)}
 .event-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
 .event-table th{text-align:left;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:6px 12px;border-bottom:1px solid var(--border)}
-.event-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.event-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.event-table td:last-child{white-space:nowrap;width:130px;text-align:right}
+.event-table th:last-child{text-align:right}
 .event-table tr:last-child td{border-bottom:none}
 .pos-val{color:#4ade80;font-weight:700}
 .neg-val{color:#f87171;font-weight:700}
+.impact-chip{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.impact-vhigh{background:rgba(16,185,129,.18);color:#34d399}
+.impact-high{background:rgba(74,222,128,.12);color:#86efac}
+.impact-pos{background:rgba(74,222,128,.07);color:#6ee7b7}
+.impact-small{background:rgba(156,163,175,.1);color:#9ca3af}
+.impact-neg{background:rgba(248,113,113,.12);color:#fca5a5}
+.impact-hneg{background:rgba(248,113,113,.22);color:#f87171}
+.event-table tr.group-header td{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent);padding:10px 12px 4px;border-bottom:none;background:none;text-align:left}
 
 /* Grade scale visual */
 .gs-outer{position:relative;padding:120px 0 130px;margin:32px 0 42px}
@@ -36,7 +46,7 @@
 .gs-node.gs-end-neg{background:#b91c1c;border-color:#b91c1c;width:32px;height:32px;font-size:11px;font-weight:800;color:#fff}
 .gs-node.gs-end-pos{background:#0d9488;border-color:#0d9488;width:32px;height:32px;font-size:11px;font-weight:800;color:#fff}
 .gs-node.gs-zero{background:var(--surface3);border-color:#9ca3af;width:30px;height:30px;font-size:11px;font-weight:800;color:var(--text)}
-/* Annotations — children of their node for perfect alignment */
+/* Annotations: children of their node for perfect alignment */
 .gs-node-ann{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:140px;pointer-events:none;z-index:10}
 .gs-node-ann.below{top:100%;padding-top:4px}
 .gs-node-ann.above{bottom:100%;padding-bottom:4px;flex-direction:column-reverse}
@@ -64,24 +74,52 @@
 <div class="meth-wrap">
 
   <div class="meth-hero">
-    <h1>Learn About PHG Scores</h1>
-    <p>PHG scores have been built on the same principle PFF pioneered in football: grade every player on every play, not just the outcomes that show up in the box score. Every shot, hit, turnover, faceoff, and on-ice event contributes to a player's score. The result is a more complete picture of how a player actually performed, regardless of whether the bounces went their way.</p>
+    <h1>Learn About PHG Grades</h1>
+    <p>PHG is built on the same principle PFF pioneered in football: evaluate every player beyond just the box score. Instead of raw points and goals, we combine grading of on-ice events with advanced hockey data to give every skater a single, easy-to-understand grade. The higher the grade, the better the player performed.</p>
   </div>
 
   <div class="meth-section">
-    <h2>What We Do</h2>
+    <h2>Two Ways to View Grades</h2>
     <div class="meth-body">
-      <p>The PHG scoring system evaluates every skater on every play-by-play event in a game. We believe every shift counts, and that granular event-level data reveals things that traditional stats cannot. The system is built on grading <strong>contribution to production</strong> on a given play, not just the end result.</p>
-      <p>Did a player create a high-danger shot chance that the goalie robbed? That player contributed positively and receives credit for the quality of the opportunity, even though it didn't go in. Did a defenseman give the puck away in his own zone directly leading to a scoring chance? That turnover gets penalized regardless of whether the opposing team scored.</p>
-      <p>This approach eliminates luck from the equation. A goal scored on a weak shot from the perimeter receives less credit than a goal scored from in tight. A blocked shot on a high-danger chance is worth more than one blocked at the point. The grade reflects the actual impact of the play, not just whether it appeared on the scoresheet.</p>
+      <p>Our most complete grades come from <strong>Manual A3Z + MP/NST</strong> mode, which blends human-tracked microstat data from the <a href="https://www.allthreezones.com" target="_blank" rel="noopener" style="color:var(--accent)">All Three Zones project</a> with advanced metrics from <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a>. When A3Z tracking is available, it captures things no automated system can, and that makes the grade more accurate.</p>
+      <p><strong>Manual A3Z + MP/NST (default)</strong> is our primary and most detailed view. A portion of games each season are manually charted, on-ice event by on-ice event, by <a href="https://www.allthreezones.com" target="_blank" rel="noopener" style="color:var(--accent)">All Three Zones</a>, a hockey microstats tracking project by Corey Sznajder, capturing things automated systems miss like zone exits, defensive-zone coverage, and board battles. For those tracked games, A3Z grades are blended with data from <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a> to produce the most complete picture of each player. GP in this mode reflects only the games that were manually tracked by A3Z, not the full season.</p>
+      <p><strong>All Games (MP/NST)</strong> shows grades across all regular season games, powered entirely by <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a> data. No manual tracking is used here. This is useful for seeing how a player grades across a full season, especially for players whose teams had fewer manually tracked games. Faceoff grades are not available in this mode since that data requires manual tracking.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Navigating the Site</h2>
+    <div class="meth-body">
+      <p><strong>Exploring individual players:</strong> Clicking any player in the season leaderboard opens their profile. At the top you will see their season grades and basic stats. Below that is a game-by-game log showing their Overall, Offensive, and Defensive grade for each game they played. Games that included A3Z manual tracking are marked in the opponent column. The game log is useful for context, since a strong season grade built on consistent nights tells a different story than one carried by two or three standout performances.</p>
+      <p><strong>Team Rankings:</strong> The Teams tab on the season page shows how every team ranks against one another using the same grading system. Teams are ranked by averaging the grades of their qualified players, so you can compare rosters by Overall, Offensive, and Defensive grade side by side. You can also toggle between Manual A3Z + MP/NST and All Games (MP/NST) to see how team rankings shift depending on which mode is active.</p>
+      <p><strong>Game Lookup:</strong> The Game Lookup page, linked in the top navigation, lets you find individual game grades for any game in the season. For regular season games, browse by team and then by month to find a specific matchup. For playoff games, navigate through the bracket. Clicking a graded game shows every skater's Overall, Offensive, and Defensive grade for that night alongside their time on ice. This is useful for breaking down a single game in detail rather than looking at a player's season-long arc.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>How Manual A3Z Grades Work</h2>
+    <div class="meth-body">
+      <p>Data for manually tracked games comes from the <a href="https://www.allthreezones.com" target="_blank" rel="noopener" style="color:var(--accent)">All Three Zones project</a> by Corey Sznajder. A huge thanks to Corey for making this level of detail publicly available. PHG then takes that raw microstat data and converts every event type into a grade delta, a custom-built system that assigns a positive or negative value to each on-ice action based on its impact. That conversion, and the weighting behind it, is the core of what PHG built.</p>
+      <p>Each delta represents how much a play helped or hurt the team. Did a player create a high-danger shot chance that the goalie robbed? They get credit for the quality of the opportunity even though it didn't go in. Did a defenseman give the puck away in his own zone leading to a scoring chance? That turnover gets penalized regardless of whether the other team scored.</p>
+      <p>This eliminates a lot of luck. A goal on a weak shot from the perimeter earns less credit than a snipe from the high slot. A blocked shot on a dangerous chance is worth more than one blocked from the point. The grade reflects the actual impact of the play, not just whether it ended up on the scoresheet.</p>
+      <p>These A3Z-derived grades are then blended with <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a> data using custom weights. On the offensive side this includes metrics like venue-adjusted individual expected goals (iXG), on-ice expected goals percentage, and powerplay production. On the defensive side it pulls in on-ice expected goals against, high-danger chance suppression, and penalty killing performance. The exact weighting varies by position, reflecting that what makes a great defenseman is different from what makes a great forward.</p>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>How MP/NST Grades Work</h2>
+    <div class="meth-body">
+      <p>In <strong>All Games (MP/NST)</strong> mode, grades are built from aggregated season statistics provided by <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a>. These include metrics like individual expected goals per 60 minutes (iXG/60), on-ice shot share (CF%), high-danger chance rates, and more.</p>
+      <p>Rather than grading individual plays, this approach looks at a player's rate stats across many games and asks whether that player is generating more or fewer high-quality chances than expected for someone in their role. The result is normalized the same way, 60 = league average, one standard deviation = 12 points, so grades are directly comparable between modes.</p>
+      <p>The tradeoff is that MP/NST grades are based on what automated tracking captures. They can miss things a human observer would catch: a defenseman who breaks up plays before they become shots, or a forward who constantly creates opportunities that don't show up as shots on goal. That is exactly why A3Z manual tracking gets blended in.</p>
     </div>
   </div>
 
   <div class="meth-section">
     <h2>The Grading Scale</h2>
     <div class="meth-body">
-      <p>Each player receives a grade delta on every play-by-play event, with 0 representing a neutral or expected play. Most events fall within a <strong>-2.0 to +2.0</strong> range. Goals are the exception. A goal bonus stacks on top of the shot delta, reflecting that scoring is the highest-impact play in hockey, the same way a touchdown carries outsized weight in football. A typical goal results in a combined delta of around <strong>+3.4</strong>. Raw deltas are accumulated across all events in a game, then normalized to a 0-100 scale where <strong>60 = league average</strong> and one standard deviation equals 12 points.</p>
-      <p>Forwards and defensemen are normalized separately against their own position group, so a defenseman's score reflects how he performed relative to other defensemen, not forwards.</p>
+      <p>All grades, whether from A3Z manual tracking or MP/NST, are normalized to the same 0-100 scale. <strong>60 = league average</strong>. One standard deviation equals 12 points, meaning a grade of 72 puts a player roughly one standard deviation above average, and a grade of 48 puts them one below. Forwards and defensemen are normalized separately so grades reflect performance relative to the same position group.</p>
+      <p>For manually tracked games, each on-ice event earns a delta between roughly <strong>-2.0 and +2.0</strong>. Goals are the exception. A goal bonus stacks on top of the shot delta, reflecting that scoring is the single highest-impact play in hockey. A typical goal results in a combined delta of around <strong>+3.4</strong>.</p>
     </div>
 
     <!-- Visual grade scale -->
@@ -136,25 +174,33 @@
       </div>
     </div>
 
-    <div class="meth-body">
-      <p>Here are examples of how individual events translate to grade deltas:</p>
+    <div class="meth-body" style="margin-top:52px">
+      <p>Here is how different on-ice events affect a player's grade:</p>
     </div>
 
     <table class="event-table">
-      <thead><tr><th>Event</th><th>Grade Delta</th></tr></thead>
+      <thead><tr><th>Event</th><th>Impact</th></tr></thead>
       <tbody>
-        <tr><td>Goal (0.20 xG shot)</td><td class="pos-val">+3.4 total (shot + bonus)</td></tr>
-        <tr><td>Primary assist</td><td class="pos-val">+1.875</td></tr>
-        <tr><td>Shot on goal (0.30 xG)</td><td class="pos-val">+1.1</td></tr>
-        <tr><td>Takeaway in defensive zone</td><td class="pos-val">+1.5</td></tr>
-        <tr><td>Block on high-danger shot (0.25 xG)</td><td class="pos-val">+0.875</td></tr>
-        <tr><td>Penalty drawn</td><td class="pos-val">+0.8</td></tr>
-        <tr><td>Hit in defensive zone</td><td class="pos-val">+0.45</td></tr>
-        <tr><td>Penalty taken</td><td class="neg-val">-1.5</td></tr>
-        <tr><td>Giveaway in defensive zone</td><td class="neg-val">-2.0</td></tr>
-        <tr><td>Giveaway in neutral zone</td><td class="neg-val">-1.0</td></tr>
+        <tr class="group-header"><td colspan="2">Scoring</td></tr>
+        <tr><td>Goal from in close</td><td><span class="impact-chip impact-vhigh">Very High</span></td></tr>
+        <tr><td>Primary assist on a goal</td><td><span class="impact-chip impact-high">High</span></td></tr>
+        <tr><td>Goal from the perimeter</td><td><span class="impact-chip impact-pos">Positive</span></td></tr>
+        <tr><td>Shot from in close</td><td><span class="impact-chip impact-pos">Positive</span></td></tr>
+        <tr class="group-header"><td colspan="2">Zone Play</td></tr>
+        <tr><td>Zone entry carry with a scoring chance</td><td><span class="impact-chip impact-high">High</span></td></tr>
+        <tr><td>Zone entry carry or pass</td><td><span class="impact-chip impact-pos">Positive</span></td></tr>
+        <tr><td>Defensive zone exit</td><td><span class="impact-chip impact-pos">Positive</span></td></tr>
+        <tr><td>Failed zone exit or entry</td><td><span class="impact-chip impact-neg">Negative</span></td></tr>
+        <tr class="group-header"><td colspan="2">Defense &amp; Penalties</td></tr>
+        <tr><td>Zone entry denial</td><td><span class="impact-chip impact-pos">Positive</span></td></tr>
+        <tr><td>Giveaway in own zone</td><td><span class="impact-chip impact-hneg">High Negative</span></td></tr>
+        <tr><td>Penalty taken</td><td><span class="impact-chip impact-neg">Negative</span></td></tr>
       </tbody>
     </table>
+
+    <div class="meth-body" style="margin-top:14px">
+      <p style="font-size:12px;color:var(--muted)">Each impact level corresponds to a weighted point value that accumulates across a full game before being normalized to the 0–100 scale.</p>
+    </div>
 
     <div class="scale-row" style="margin-top:24px">
       <span class="scale-chip" style="background:#b91c1c">F  &nbsp;&lt; 50</span>
@@ -166,52 +212,46 @@
   </div>
 
   <div class="meth-section">
-    <h2>Zone and Situation Awareness</h2>
+    <h2>Zone and Situation Awareness (Manual A3Z Grades)</h2>
     <div class="meth-body">
-      <p>Not all plays of the same type are equal. PHG adjusts grade deltas based on where on the ice the event occurred and what the game situation was. A giveaway in your own defensive zone is graded far more harshly than one at the offensive blue line. A hit protecting your net carries more weight than a forecheck hit in the offensive zone.</p>
-      <p>The same logic applies to faceoffs. Winning a defensive zone draw while shorthanded is one of the most valuable plays a center can make, worth up to <strong>+1.20</strong>. Losing that same faceoff is penalized at <strong>-1.50</strong>. Powerplay faceoffs in the offensive zone are also amplified since losing one squanders the man advantage before it even starts.</p>
-      <p>Shorthanded situations apply a <strong>1.5x multiplier</strong> to defensive plays like blocks, hits, and takeaways, reflecting the higher stakes of those actions while a team is killing a penalty.</p>
+      <p>Within A3Z's manually tracked games, not every play of the same type carries equal weight. PHG adjusts grade points based on where on the ice the event occurred and the game situation.</p>
+      <p>Zone exits and entries are a good example. Carrying the puck cleanly out of your own zone is positive, but failing to exit under pressure is penalized. Getting the puck into the offensive zone with control is rewarded more than a dump-in that goes nowhere. A zone entry that creates a scoring chance carries more weight than one that doesn't.</p>
+      <p>Entry denials work the same way. A defenseman who stops a clean carry-in at his blue line is protecting high-danger territory and gets credit accordingly.</p>
+      <p>Faceoffs are also adjusted by zone and situation. Winning a defensive zone draw while killing a penalty is one of the most valuable plays a center can make. Losing that same draw is penalized heavily. Powerplay faceoffs in the offensive zone are weighted higher too, since losing one wastes the man advantage before it even begins. Shorthanded situations apply an elevated multiplier to faceoffs across the board.</p>
     </div>
   </div>
 
   <div class="meth-section">
     <h2>Grade Components</h2>
     <div class="meth-body" style="margin-bottom:16px">
-      <p>The Overall score is built from every play-by-play event. Sub-grades break performance into four specific areas, each normalized separately so they can be compared across position groups.</p>
+      <p>Every player receives four grades. Overall is the headline number. The three sub-grades break performance into specific areas, each normalized separately so they can be compared across position groups. Sub-grades draw from both manual tracking and MP/NST data depending on which mode is active.</p>
     </div>
 
     <div class="grade-card">
       <div class="grade-card-label">OVERALL</div>
       <div class="grade-card-body">
-        <h3>Overall Score</h3>
+        <h3>Overall Grade</h3>
         <p>{{ desc.overall }}</p>
       </div>
     </div>
     <div class="grade-card">
       <div class="grade-card-label">OFF</div>
       <div class="grade-card-body">
-        <h3>Offensive Score</h3>
+        <h3>Offensive Grade</h3>
         <p>{{ desc.off }}</p>
       </div>
     </div>
     <div class="grade-card">
       <div class="grade-card-label">DEF</div>
       <div class="grade-card-body">
-        <h3>Defensive Score</h3>
+        <h3>Defensive Grade</h3>
         <p>{{ desc.dfn }}</p>
-      </div>
-    </div>
-    <div class="grade-card">
-      <div class="grade-card-label">POSS</div>
-      <div class="grade-card-body">
-        <h3>Possession Score</h3>
-        <p>{{ desc.poss }}</p>
       </div>
     </div>
     <div class="grade-card">
       <div class="grade-card-label">FO</div>
       <div class="grade-card-body">
-        <h3>Faceoff Score</h3>
+        <h3>Faceoff Grade</h3>
         <p>{{ desc.fo }}</p>
       </div>
     </div>
@@ -220,17 +260,18 @@
   <div class="meth-section">
     <h2>Why Not Just Use Goals and Assists?</h2>
     <div class="meth-body">
-      <p>Traditional stats reward players who score, but hockey is a team sport where most players never lead the league in points. A shutdown defenseman who suppresses high-danger chances all game, kills penalties, and blocks shots contributes enormously without showing up in the box score. A fourth-line center who wins every key defensive-zone faceoff doesn't get credit in a goal column.</p>
-      <p>Points are also noisy. A player who scores on a 5% shooting night got lucky. A player who consistently creates high-danger chances but doesn't get the bounces deserves credit too. PHG measures the <strong>quality and impact of every action</strong>, not just whether the puck crossed the line.</p>
-      <p>The result: players who consistently do the right things grade out well even in low-scoring stretches, and players riding shooting luck or powerplay time don't get inflated scores they don't deserve.</p>
+      <p>Goals and assists only tell part of the story. Most players, especially those who are not primary point producers, contribute in ways that never show up on the scoresheet. A shutdown defenseman who smothers high-danger chances all night, blocks shots, and kills penalties had an excellent game even if he finished with zero points. A fourth-line center who wins every critical defensive-zone faceoff directly protects his team's lead, but the goal column gives him nothing.</p>
+      <p>Points can also be noisy. A player who scores twice on weak shots from the perimeter benefited from puck luck. A player who creates four high-danger chances that the goalie stones deserves credit even with no points to show for it. PHG measures the <strong>quality and impact of every action</strong>, not just whether the puck crossed the line.</p>
+      <p>The result: players who consistently do the right things grade out well even in low-scoring stretches, and players riding hot shooting nights or heavy powerplay time don't get grades they don't deserve.</p>
     </div>
   </div>
 
   <div class="meth-section">
     <h2>Qualifications</h2>
     <div class="meth-body">
-      <p>Players must appear in at least <strong>50% of their team's games</strong> to qualify for season rankings. Players below this threshold are still shown but excluded from rank calculations. Faceoff scores require a minimum of <strong>10 faceoffs</strong> taken across the season.</p>
-      <p>Season grades are not simply an average of game grades. A player who posts consistent scores game after game will grade out higher than one who has a single outstanding night surrounded by poor performances. Sustained performance across a full season is harder to maintain and is reflected accordingly.</p>
+      <p>In <strong>Manual A3Z + MP/NST</strong> mode, players must appear in at least <strong>50% of their team's manually tracked games</strong> to qualify for season rankings. In <strong>All Games (MP/NST)</strong> mode, the threshold is <strong>50% of their team's games played</strong> in the season. Players below the threshold are still shown but grayed out and excluded from rank calculations.</p>
+      <p>Faceoff grades require a minimum of <strong>10 faceoffs</strong> taken across the season and are only available in Manual A3Z + MP/NST mode.</p>
+      <p>Season grades are not simply an average of game grades. A player who posts consistent grades game after game will grade out higher than one who has a single outstanding night surrounded by poor performances. Sustained performance across a full season is harder to maintain and is reflected accordingly.</p>
     </div>
   </div>
 
