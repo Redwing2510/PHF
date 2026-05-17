@@ -373,6 +373,60 @@ def load():
 _NST_TO_NHL = {'L.A': 'LAK', 'T.B': 'TBL', 'N.J': 'NJD', 'S.J': 'SJS'}
 
 
+def _store_game_score(game_id: int):
+    """Fetch the final score from the NHL boxscore API and persist it to cache.db."""
+    try:
+        data = requests.get(
+            f'https://api-web.nhle.com/v1/gamecenter/{game_id}/boxscore', timeout=10
+        ).json()
+        home_score = data.get('homeTeam', {}).get('score')
+        away_score = data.get('awayTeam', {}).get('score')
+        if home_score is None or away_score is None:
+            print(f'  Score not available yet for {game_id}')
+            return
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS game_scores (
+                game_id INTEGER PRIMARY KEY,
+                home_score INTEGER NOT NULL,
+                away_score INTEGER NOT NULL
+            )
+        ''')
+        conn.execute(
+            'INSERT OR REPLACE INTO game_scores (game_id, home_score, away_score) VALUES (?,?,?)',
+            (game_id, home_score, away_score)
+        )
+        conn.commit()
+        conn.close()
+        print(f'  Score stored: {game_id} home={home_score} away={away_score}')
+    except Exception as e:
+        print(f'  Could not store score for {game_id}: {e}')
+
+
+def _refresh_team_schedules(nhl_teams: list[str]):
+    """Re-fetch NHL schedule data for the given teams and overwrite the DB cache.
+
+    The bracket reads scores from the schedules table, which may have been
+    cached before this game was played (no scores yet). Forcing a re-fetch
+    here ensures the final score shows up in the bracket immediately.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    for team in nhl_teams:
+        try:
+            url = f'https://api-web.nhle.com/v1/club-schedule-season/{team}/{FROM_SEASON}'
+            r = requests.get(url, timeout=10)
+            games = r.json().get('games', [])
+            conn.execute(
+                'INSERT OR REPLACE INTO schedules (team, season, data, saved_at) VALUES (?,?,?,?)',
+                (team, FROM_SEASON, json.dumps(games), time.time())
+            )
+            print(f'  Schedule refreshed: {team}')
+        except Exception as e:
+            print(f'  Schedule refresh failed for {team}: {e}')
+    conn.commit()
+    conn.close()
+
+
 def _nst_game_id(game_id: int) -> int:
     """2025030235 → 30235 (last 5 digits used by NST game.php)."""
     return int(str(game_id)[-5:])
@@ -551,19 +605,29 @@ def update_game(game_id: int):
     print(f'  Inserted: {inserted}  OI updated: {oi_updated}  Skipped (name unmatched): {skipped}')
     if skipped:
         print('  Tip: run "collect" if new players appeared and re-run update.')
+    nhl_teams = [_NST_TO_NHL.get(t, t) for t in nst_teams]
+    _refresh_team_schedules(nhl_teams)
+    _store_game_score(game_id)
     rebuild()
 
 
 # ── Step 4: Rebuild ───────────────────────────────────────────────────────────
 
 def rebuild():
-    """Trigger Flask season cache refresh to rebuild per-game grades."""
+    """Clear the season disk cache so Flask rebuilds grades on next page load."""
     print('── Step 4: Rebuilding season grades ──')
+    cache_file = Path(__file__).parent / 'season_cache' / f'{FROM_SEASON}.json'
+    if cache_file.exists():
+        cache_file.unlink()
+        print(f'  Cleared {cache_file.name} — grades will rebuild on next page load.')
+    else:
+        print(f'  Cache file not found, nothing to clear.')
+    # Also try HTTP refresh in case Flask is reachable
     try:
-        r = requests.get('http://localhost:5001/refresh?season=20252026', timeout=120)
-        print(f'  2025-26 rebuild: {r.status_code}')
-    except Exception as e:
-        print(f'  Could not reach Flask server: {e}')
+        r = requests.get('http://localhost:5001/refresh?season=20252026', timeout=5)
+        print(f'  Flask refresh: {r.status_code}')
+    except Exception:
+        pass
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

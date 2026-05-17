@@ -289,6 +289,14 @@ def _get_cached_game_list():
     # Also include game_dates for any games not in schedules
     date_map = {r[0]: r[1] for r in conn.execute('SELECT game_id, game_date FROM game_dates').fetchall()}
 
+    # Override scores from boxscore cache (schedule endpoint omits scores for recent playoff games)
+    try:
+        score_map = {r[0]: (r[1], r[2]) for r in conn.execute(
+            'SELECT game_id, home_score, away_score FROM game_scores'
+        ).fetchall()}
+    except Exception:
+        score_map = {}
+
     # Set of game_ids that have full play-grade data cached
     cached_gids = {r[0] for r in conn.execute('SELECT game_id FROM games').fetchall()}
 
@@ -328,6 +336,8 @@ def _get_cached_game_list():
         date_label = datetime.strptime(date_str, '%Y-%m-%d').strftime('%b %d') if date_str else ''
         home_score = g.get('homeTeam', {}).get('score')
         away_score = g.get('awayTeam', {}).get('score')
+        if gid in score_map:
+            home_score, away_score = score_map[gid]
 
         if game_type == 3:
             # Playoff: YYYY03RRSGN \u2192 [6:8]=round, [8]=series, [9]=game_num
@@ -668,10 +678,15 @@ def api_player(player_id):
                 'off_blend':         player.get('off_blend'),
                 'off_blend_letter':  player.get('off_blend_letter'),
                 'rank':              player.get('rank'),
+                'blend_rank':        _rank('overall_blend'),
+                'overall_mp_rank':   _rank('overall_mp'),
                 'pos_group':         pos_group,
                 'pos_total':         pos_total,
                 'off_rank':          _rank('off'),
                 'dfn_rank':          _rank('dfn'),
+                'off_blend_rank':    _rank('off_blend'),
+                'off_mp_rank':       _rank('off_mp'),
+                'dfn_mp_rank':       _rank('dfn_mp'),
                 'ms_gp':              ms_gp,
                 'gp':                 player.get('gp'),
                 'toi_per_game':       player.get('toi_per_game'),

@@ -709,6 +709,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-team="{{ row.team }}"
       data-pos="{{ row.pos_group }}"
       data-qualified="{{ 'true' if row.qualified else 'false' }}"
+      data-qualified-manual="{{ 'true' if row.qualified_manual else 'false' }}"
       data-global-rank="{{ row.rank }}"
       data-ms-gp="{{ row.ms_gp }}"
       data-overall-mp="{{ row.overall_mp }}"
@@ -1377,9 +1378,14 @@ let dzBlendMode = true;
 function applyDzBlend() {
   document.querySelectorAll('.player-row').forEach(row => {
     if (row.dataset.pos === 'def') {
-      // D: blend the defensive sub-score
-      const dfnVal     = dzBlendMode ? (parseFloat(row.dataset.dfnTrk)     || 0) : (parseFloat(row.dataset.dfnMp)    || 0);
-      const overallVal = dzBlendMode ? (parseFloat(row.dataset.overallTrk)  || 0) : (parseFloat(row.dataset.overallMp) || 0);
+      const offVal     = dzBlendMode ? (parseFloat(row.dataset.offBlend)    || 0) : (parseFloat(row.dataset.offMp)    || 0);
+      const dfnVal     = dzBlendMode ? (parseFloat(row.dataset.dfnTrk)      || 0) : (parseFloat(row.dataset.dfnMp)    || 0);
+      const overallVal = dzBlendMode ? (parseFloat(row.dataset.overallBlend) || 0) : (parseFloat(row.dataset.overallMp) || 0);
+
+      const offTd = row.cells[6];
+      offTd.dataset.val = offVal.toFixed(2);
+      const offSub = offTd.querySelector('.grade-sub');
+      if (offSub) { offSub.style.background = gradeBg(offVal); offSub.textContent = offVal.toFixed(1); }
 
       const dfnTd = row.cells[7];
       dfnTd.dataset.val = dfnVal.toFixed(2);
@@ -1395,14 +1401,19 @@ function applyDzBlend() {
         if (sEl) sEl.textContent = overallVal.toFixed(1);
       }
     } else {
-      // Forwards: blend the offensive sub-score (50% MP + 50% ATZ tracking)
       const offVal     = dzBlendMode ? (parseFloat(row.dataset.offBlend)    || 0) : (parseFloat(row.dataset.offMp)    || 0);
+      const dfnVal     = dzBlendMode ? (parseFloat(row.dataset.dfnTrk)      || 0) : (parseFloat(row.dataset.dfnMp)    || 0);
       const overallVal = dzBlendMode ? (parseFloat(row.dataset.overallBlend) || 0) : (parseFloat(row.dataset.overallMp) || 0);
 
       const offTd = row.cells[6];
       offTd.dataset.val = offVal.toFixed(2);
       const offSub = offTd.querySelector('.grade-sub');
       if (offSub) { offSub.style.background = gradeBg(offVal); offSub.textContent = offVal.toFixed(1); }
+
+      const dfnTd = row.cells[7];
+      dfnTd.dataset.val = dfnVal.toFixed(2);
+      const dfnSub = dfnTd.querySelector('.grade-sub');
+      if (dfnSub) { dfnSub.style.background = gradeBg(dfnVal); dfnSub.textContent = dfnVal.toFixed(1); }
 
       const overallTd = row.cells[5];
       overallTd.dataset.val = overallVal.toFixed(2);
@@ -1414,9 +1425,16 @@ function applyDzBlend() {
       }
     }
   });
+  // In manual mode, qualify by ms_gp vs team tracked games; otherwise restore full-season qualified
+  document.querySelectorAll('.player-row').forEach(row => {
+    const qual = dzBlendMode ? row.dataset.qualifiedManual : (row.dataset.qualifiedOrig ?? row.dataset.qualified);
+    row.dataset.qualified = qual;
+    row.classList.toggle('limited', qual !== 'true');
+  });
   if (['overall','off','dfn'].includes(sortCol)) sortTable(sortCol, true);
   _updateTeamChips();
   sortTeams(teamSortCol);
+  applyFilters();
 }
 
 function applyStatsMode() {
@@ -1890,10 +1908,24 @@ function _renderPlayerModal(data){
     ovLetter = dzBlendMode ? g.overall_letter                : g.overall_mp_letter;
     off      = dzBlendMode ? (g.off_blend      ?? g.off)     : g.off_mp;
     offLetter= dzBlendMode ? (g.off_blend_letter ?? g.off_letter) : g.off_mp_letter;
-    dfn      = dzBlendMode ? (g.pos_group==='def' ? g.dfn : g.dfn_mp) : g.dfn_mp;
-    dfnLetter= dzBlendMode ? (g.pos_group==='def' ? g.dfn_letter : g.dfn_mp_letter) : g.dfn_mp_letter;
+    dfn      = dzBlendMode ? g.dfn : g.dfn_mp;
+    dfnLetter= dzBlendMode ? g.dfn_letter : g.dfn_mp_letter;
   }
-  const gradeRows=[['Overall',overall,ovLetter,g.rank],['Offense',off,offLetter,g.off_rank],['Defense',dfn,dfnLetter,g.dfn_rank]];
+  let ovRank, offRank, dfnRank;
+  if(fullSeasonMode && fullSeasonData){
+    ovRank  = g.overall_mp_rank;
+    offRank = g.off_mp_rank;
+    dfnRank = g.dfn_mp_rank;
+  } else if(dzBlendMode){
+    ovRank  = g.blend_rank;
+    offRank = g.off_blend_rank;
+    dfnRank = g.dfn_rank;
+  } else {
+    ovRank  = g.overall_mp_rank;
+    offRank = g.off_mp_rank;
+    dfnRank = g.dfn_mp_rank;
+  }
+  const gradeRows=[['Overall',overall,ovLetter,ovRank],['Offense',off,offLetter,offRank],['Defense',dfn,dfnLetter,dfnRank]];
   document.getElementById('pm-grades').innerHTML=gradeRows.map(([lbl,val,letter,rank])=>{
     if(val==null)return'';
     const color=_gradeColor(val);

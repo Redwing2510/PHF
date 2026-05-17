@@ -799,10 +799,24 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'sog':          e.shots_on_goal, 'hits': e.hits, 'blocks': e.blocked_shots,
             'gva':          e.giveaways, 'tka': e.takeaways, 'pim': e.pim,
             'toi_s':        e.toi_seconds,
+            'mp_ixg_adj':         e.mp_ixg_adj,
+            'mp_ixg_hd':          e.mp_ixg_hd,
+            'mp_onice_xgf':       e.mp_onice_xgf_adj,
+            'mp_pp_ixg':          e.mp_pp_ixg_adj,
+            'mp_pp_toi_s':        e.mp_pp_toi,
             'ms_toi_s':           e.ms_toi_seconds,
+            'mp_xga':             e.mp_xga,
+            'mp_xga_hd':          e.mp_xga_hd,
+            'mp_onice_xg_pct':    e.mp_onice_xg_pct_sum,
+            'mp_office_xg_pct':   e.mp_office_xg_pct_sum,
+            'mp_xg_pct_gp':       e.mp_xg_pct_gp,
         }
         for pid, e in season_acc.items()
     }
+    _mcd = _subset_stats.get(8478402)
+    if _mcd:
+        print(f'[MCD] ms_toi_s={_mcd["ms_toi_s"]:.0f}s mp_xga={_mcd["mp_xga"]:.4f} mp_xga_hd={_mcd["mp_xga_hd"]:.4f} xg_pct_gp={_mcd["mp_xg_pct_gp"]}')
+
 
     # All mp_* fields accumulated above were filtered to our game subset.
     # Replace them with season-wide aggregates so off_mp/dfn_mp scores are based
@@ -845,9 +859,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             e.pim                   = int(round(_row[17] or 0))
         for _row in _fs_conn.execute(
             "SELECT player_id, SUM(ixg_adj), SUM(icetime) "
-            "FROM moneypuck_games WHERE situation='5on4' AND season=? "
-            "AND CAST(game_id AS TEXT) LIKE ? GROUP BY player_id",
-            [_mp_season_year, f'{_mp_season_year}02%']
+            "FROM moneypuck_games WHERE situation='5on4' AND season=? GROUP BY player_id",
+            [_mp_season_year]
         ):
             pid = _row[0]
             if pid not in season_acc:
@@ -857,9 +870,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             e.mp_pp_toi     = _row[2] or 0.0
         for _row in _fs_conn.execute(
             "SELECT player_id, SUM(onice_xga_adj), SUM(onice_xga_hd), SUM(icetime) "
-            "FROM moneypuck_games WHERE situation='4on5' AND season=? "
-            "AND CAST(game_id AS TEXT) LIKE ? GROUP BY player_id",
-            [_mp_season_year, f'{_mp_season_year}02%']
+            "FROM moneypuck_games WHERE situation='4on5' AND season=? GROUP BY player_id",
+            [_mp_season_year]
         ):
             pid = _row[0]
             if pid not in season_acc:
@@ -873,9 +885,8 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             "SUM(dzone_shift_starts) * 1.0 / NULLIF("
             "  SUM(dzone_shift_starts)+SUM(ozone_shift_starts)"
             "  +SUM(nzone_shift_starts)+SUM(fly_shift_starts), 0) "
-            "FROM moneypuck_games WHERE situation='all' AND season=? "
-            "AND CAST(game_id AS TEXT) LIKE ? GROUP BY player_id",
-            [_mp_season_year, f'{_mp_season_year}02%']
+            "FROM moneypuck_games WHERE situation='all' AND season=? GROUP BY player_id",
+            [_mp_season_year]
         ):
             pid = _row[0]
             if pid not in season_acc:
@@ -893,16 +904,11 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
 
     # ── Stage 2 normalization ─────────────────────────────────────────────────
     team_max_gp: Dict[str, int] = {}
-    team_max_ms_gp: Dict[str, int] = {}
     for pid, e in season_acc.items():
-        team_max_gp[e.team]    = max(team_max_gp.get(e.team, 0),    e.gp)
-        team_max_ms_gp[e.team] = max(team_max_ms_gp.get(e.team, 0), e.ms_gp)
+        team_max_gp[e.team] = max(team_max_gp.get(e.team, 0), e.gp)
 
     def min_gp_for_team(pid: int) -> int:
         return max(1, round(team_max_gp[season_acc[pid].team] * 0.50))
-
-    def min_ms_gp_for_team(pid: int) -> int:
-        return max(1, round(team_max_ms_gp[season_acc[pid].team] * 0.50))
 
     qual_pids = [p for p in season_acc if season_acc[p].gp >= min_gp_for_team(p)]
     lim_pids  = [p for p in season_acc if season_acc[p].gp <  min_gp_for_team(p)]
@@ -1211,7 +1217,32 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     off_mp_normed = _norm_sub(off_mp_blended, pos_list)
     off_mp_scores = {p: off_mp_normed[i] for i, p in enumerate(all_pids)}
 
+    # off_mp_sub: same formula as off_mp but using subset-game MP stats (for D manual-mode off grade)
+    def _sub_mp_toi_h(pid):
+        return max(_subset_stats[pid]['ms_toi_s'] / 3600.0, 0.01)
 
+    sub_ixg_p60   = [_subset_stats[p]['mp_ixg_adj']   / _sub_mp_toi_h(p) for p in all_pids]
+    sub_ixghd_p60 = [_subset_stats[p]['mp_ixg_hd']    / _sub_mp_toi_h(p) for p in all_pids]
+    sub_xgf_p60   = [_subset_stats[p]['mp_onice_xgf'] / _sub_mp_toi_h(p) for p in all_pids]
+    sub_pts_p60   = [(_subset_stats[p]['goals'] + _subset_stats[p]['pa']) / _sub_mp_toi_h(p) for p in all_pids]
+    sub_pp_p60    = [_subset_stats[p]['mp_pp_ixg'] / max(_subset_stats[p]['mp_pp_toi_s'] / 3600.0, 0.01) for p in all_pids]
+
+    sub_ixg_n   = _norm_sub(_shrink_rates(sub_ixg_p60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_ixghd_n = _norm_sub(_shrink_rates(sub_ixghd_p60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_xgf_n   = _norm_sub(_shrink_rates(sub_xgf_p60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_pts_n   = _norm_sub(_shrink_rates(sub_pts_p60,   all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_pp_n    = _norm_sub(_shrink_rates(sub_pp_p60,    all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+
+    sub_off_mp_blended = []
+    for i, pid in enumerate(all_pids):
+        ia = sub_ixg_n[i]; ih = sub_ixghd_n[i]
+        xf = sub_xgf_n[i]; pp = sub_pp_n[i]; pt = sub_pts_n[i]
+        if season_acc[pid].position in fwd_positions:
+            sub_off_mp_blended.append(0.20*ia + 0.15*ih + 0.15*xf + 0.20*pp + 0.30*pt)
+        else:
+            sub_off_mp_blended.append(0.20*ia + 0.15*ih + 0.45*xf + 0.20*pt)
+    sub_off_mp_normed = _norm_sub(sub_off_mp_blended, pos_list)
+    off_mp_sub_scores = {p: sub_off_mp_normed[i] for i, p in enumerate(all_pids)}
 
     # --- dfn_mp: 100% MoneyPuck baseline (no tracking data) ---
     # MP on/off xG delta: avg onice_xg_pct minus avg office_xg_pct (full season)
@@ -1233,6 +1264,32 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         dfn_mp_blended.append(0.40*xg + 0.20*xg_hd + 0.25*delta + 0.15*pk)
     dfn_mp_normed = _norm_sub(dfn_mp_blended, pos_list)
     dfn_mp_scores = {p: dfn_mp_normed[i] for i, p in enumerate(all_pids)}
+
+    # dfn_mp_sub: same formula but using subset-game MP stats (for F in manual mode)
+    # mp_pk_xga/mp_pk_toi are not available in subset, so use ms_toi_s as denominator
+    # and full-season pk_scores_map for the 15% PK weight.
+    def _sub_dfn_toi_h(pid):
+        return max(_subset_stats[pid]['ms_toi_s'] / 3600.0, 0.01)
+
+    sub_xga_p60    = [-_subset_stats[p]['mp_xga']    / _sub_dfn_toi_h(p) for p in all_pids]
+    sub_xga_hd_p60 = [-_subset_stats[p]['mp_xga_hd'] / _sub_dfn_toi_h(p) for p in all_pids]
+    sub_onoff_delta = [
+        (_subset_stats[p]['mp_onice_xg_pct'] / _subset_stats[p]['mp_xg_pct_gp'])
+        - (_subset_stats[p]['mp_office_xg_pct'] / _subset_stats[p]['mp_xg_pct_gp'])
+        if _subset_stats[p]['mp_xg_pct_gp'] > 0 else 0.0
+        for p in all_pids
+    ]
+
+    sub_xga_n    = _norm_sub(_shrink_rates(sub_xga_p60,    all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_xga_hd_n = _norm_sub(_shrink_rates(sub_xga_hd_p60, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+    sub_onoff_n  = _norm_sub(_shrink_rates(sub_onoff_delta, all_pids, season_acc, SUB_GRADE_PRIOR_MIN), pos_list)
+
+    sub_dfn_mp_blended = [
+        0.40 * sub_xga_n[i] + 0.20 * sub_xga_hd_n[i] + 0.25 * sub_onoff_n[i] + 0.15 * pk_scores_map[all_pids[i]]
+        for i in range(len(all_pids))
+    ]
+    sub_dfn_mp_normed = _norm_sub(sub_dfn_mp_blended, pos_list)
+    dfn_mp_sub_scores = {p: sub_dfn_mp_normed[i] for i, p in enumerate(all_pids)}
 
     fo_pids = [p for p in all_pids if _fo_raw(season_acc[p]) is not None]
     fo_normed: Dict[int, float] = {}
@@ -1368,19 +1425,22 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         dfn_v        = min(100.0, round(def_scores.get(pid, 60.0),        1))
         dfn_legacy_v = min(100.0, round(def_scores_legacy.get(pid, 60.0), 1))
         off_mp_v     = min(100.0, round(off_mp_scores.get(pid, 60.0),     1))
-
+        off_mp_sub_v = min(100.0, round(off_mp_sub_scores.get(pid, 60.0), 1))
         dfn_mp_v     = min(100.0, round(dfn_mp_scores.get(pid, 60.0),     1))
-
+        dfn_mp_sub_v = min(100.0, round(dfn_mp_sub_scores.get(pid, 60.0), 1))
         is_d  = e.position == 'D'
-        # O/D Blend: F off = 50% ATZ + 50% MP; D off = pure ATZ (matches what overall_v already uses)
-        off_blend_v  = min(100.0, round(0.5 * off_mp_v + 0.5 * off_v, 1)) if not is_d else off_v
+        # O/D Blend: F off = 50% MP + 50% ATZ; D off = subset MP only (tracked games)
+        off_blend_v  = min(100.0, round(0.5 * off_mp_v + 0.5 * off_v, 1)) if not is_d else off_mp_sub_v
         # Overall: F = 80% OFF + 20% DFN, D = 20% OFF + 80% DFN
         # QoC adjustment applied to overall only (±3 pts max)
         off_w, dfn_w  = (0.80, 0.20) if not is_d else (0.20, 0.80)
         overall_v       = min(100.0, round(off_w * off_v        + dfn_w * dfn_v        + qoc_adj.get(pid, 0.0), 1))
         overall_leg_v   = min(100.0, round(off_w * off_v        + dfn_w * dfn_legacy_v + qoc_adj.get(pid, 0.0), 1))
         overall_mp_v    = min(100.0, round(off_w * off_mp_v     + dfn_w * dfn_mp_v     + qoc_adj.get(pid, 0.0), 1))
-        overall_blend_v = min(100.0, round(off_w * off_blend_v  + dfn_w * dfn_v        + qoc_adj.get(pid, 0.0), 1)) if not is_d else overall_v
+        overall_blend_v = (
+            min(100.0, round(off_w * off_blend_v + dfn_w * dfn_mp_sub_v + qoc_adj.get(pid, 0.0), 1)) if not is_d
+            else min(100.0, round(0.20 * off_mp_sub_v + 0.80 * dfn_v + qoc_adj.get(pid, 0.0), 1))
+        )
         players.append({
             'player_id':        pid,
             'name':             e.name,
@@ -1390,7 +1450,6 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'gp':               e.mp_xg_pct_gp if e.mp_xg_pct_gp > 0 else e.gp,
             'gp_subset':        e.gp,
             'qualified':        season_acc[pid].gp >= min_gp_for_team(pid),
-            'qualified_manual': season_acc[pid].ms_gp >= min_ms_gp_for_team(pid),
             'overall':          overall_v,
             'overall_letter':   score_to_letter(overall_v),
             'overall_mp':       overall_mp_v,
@@ -1399,14 +1458,16 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             'off_letter':       score_to_letter(off_v),
             'off_mp':           off_mp_v,
             'off_mp_letter':    score_to_letter(off_mp_v),
-
+            'off_mp_sub':       off_mp_sub_v,
+            'off_mp_sub_letter': score_to_letter(off_mp_sub_v),
             'dfn':              dfn_v,
             'dfn_letter':       score_to_letter(dfn_v),
             'dfn_legacy':       dfn_legacy_v,
             'dfn_legacy_letter': score_to_letter(dfn_legacy_v),
             'dfn_mp':           dfn_mp_v,
             'dfn_mp_letter':    score_to_letter(dfn_mp_v),
-
+            'dfn_mp_sub':       dfn_mp_sub_v,
+            'dfn_mp_sub_letter': score_to_letter(dfn_mp_sub_v),
             'dfn_trk_active':   (pid in _d_trk_active) if is_d else None,
             'off_blend':        off_blend_v,
             'off_blend_letter': score_to_letter(off_blend_v),
