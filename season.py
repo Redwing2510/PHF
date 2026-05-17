@@ -622,6 +622,23 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     total_games = len(game_ids)
     print(f'  {total_games} games to process ({len([g for g in game_ids if game_load(g) is None])} not yet cached)...', flush=True)
 
+    # Collect playoff xlsx IDs for per-game tracking blend only (not season accumulation)
+    _po_game_ids: set[int] = set()
+    _po_dir = _ML_LOGS_DIR / 'Playoffs' / _po_folder
+    if _po_dir.exists():
+        for _f in sorted(_po_dir.glob('*.xlsx')):
+            if _f.name.startswith('~$'):
+                continue
+            try:
+                _file_id = int(_f.stem.split()[0])
+                _full_id = int(f"{_year}0{_file_id:05d}")
+                _po_game_ids.add(_full_id)
+            except (ValueError, IndexError):
+                pass
+    playoff_game_ids = sorted(_po_game_ids)
+    if playoff_game_ids:
+        print(f'  {len(playoff_game_ids)} playoff game(s) with manual tracking found.', flush=True)
+
     # ── accumulate stats from each game ───────────────────────────────────────
     season_acc: Dict[int, SeasonEntry] = {}
     fo_grades_by_game  = load_fo_grades()
@@ -1526,7 +1543,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
 
     from game_grade_builder import build_player_game_grades
     print('  Building per-game grades...', flush=True)
-    build_player_game_grades(season_str, season_acc, game_ids)
+    build_player_game_grades(season_str, season_acc, game_ids + playoff_game_ids)
 
     _sy = int(season_str[:4])
     return {

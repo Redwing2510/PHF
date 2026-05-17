@@ -266,6 +266,69 @@
   border-radius:10px;
   background:var(--surface);
 }
+
+/* ── Mobile: sticky name column, condensed player info ── */
+.td-name-logo{ display:none; }
+.td-name-text{ display:contents; }
+.td-name-sub{ display:none; font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; }
+@media(max-width:640px){
+  .td-name-sub{ display:block; }
+  .td-name-logo{ display:block; width:24px; height:24px; object-fit:contain; flex-shrink:0; }
+  .td-name-text{ display:flex; flex-direction:column; min-width:0; }
+  .grades-table .td-name-inner{ display:flex; align-items:center; gap:7px; }
+  /* Hide columns folded into the name sub-line */
+  .grades-table .td-team,
+  .grades-table .td-pos,
+  .grades-table .td-gp{ display:none !important; }
+  /* Hide matching header cells */
+  .grades-table .col-row th:nth-child(3),
+  .grades-table .col-row th:nth-child(4),
+  .grades-table .col-row th:nth-child(5){ display:none !important; }
+  .grades-table{ min-width:700px; border-collapse:separate; border-spacing:0; }
+  .grades-table thead th{ background:var(--surface2) !important; z-index:3; }
+  /* Sticky rank — col header and body cells */
+  .grades-table .td-rank,
+  .grades-table .col-row th:nth-child(1){
+    position:-webkit-sticky; position:sticky;
+    left:0; z-index:2; background:var(--surface);
+    width:28px; min-width:28px;
+  }
+  /* Sticky group-row PLAYERS header — no explicit width; colspan determines it */
+  .grades-table .group-row th:nth-child(1){
+    position:-webkit-sticky; position:sticky;
+    left:0; z-index:2; background:var(--surface);
+    box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
+  }
+  /* Sticky name — both header and body */
+  .grades-table .td-name,
+  .grades-table .col-row th:nth-child(2){
+    position:-webkit-sticky; position:sticky;
+    left:28px; z-index:2; background:var(--surface);
+    width:178px !important; min-width:178px !important; max-width:178px !important;
+    box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
+  }
+  /* Align NAME header text with first letter of player names (logo 24px + gap 7px) */
+  .grades-table .col-row th:nth-child(2){ padding-left:40px; }
+  .grades-table .td-name .td-name-text{
+    width:178px; overflow:hidden;
+  }
+  .grades-table .td-name .td-name-text > :first-child{
+    display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .grades-table{ font-size:11px !important; }
+  .grades-table td{ padding:6px 4px !important; }
+  .grades-table thead tr.col-row th{ padding:6px 4px !important; }
+  .grades-table .td-rank{ padding:6px 3px !important; text-align:center; }
+  .grades-table .td-stats{ min-width:28px !important; }
+  .grades-table td.td-grade{ padding:4px 1px !important; }
+  .grades-table thead tr.col-row th.th-grade{ padding:6px 2px !important; letter-spacing:0 !important; font-size:9px !important; }
+  .grades-table thead tr.col-row th.th-grade .tip-icon svg{ width:13px !important; height:13px !important; }
+  .no-trk-badge{ display:none !important; }
+  .th-full{ display:none !important; }
+  .th-short{ display:inline !important; }
+  .grade-badge{ padding:3px 7px !important; gap:3px !important; }
+  .grade-badge .g-score{ font-size:13px !important; }
+}
 .grades-table{
   border-collapse:collapse;
   width:100%;
@@ -306,6 +369,7 @@
 }
 .grades-table thead tr.col-row th:hover{color:var(--text2)}
 .grades-table thead tr.col-row th.th-name{text-align:left}
+.th-short{ display:none; }
 .grades-table thead tr.col-row th.th-grade{
   text-align:center;
   color:#06b6d4;
@@ -677,7 +741,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th style="text-align:center" data-col="team">TEAM</th>
       <th style="text-align:center" data-col="position">POS</th>
       <th style="text-align:center" data-col="gp">GP</th>
-      <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.overall }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
+      <th class="th-grade sorted" data-col="overall"><span class="th-full">OVERALL</span><span class="th-short">OVR</span><span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.overall }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.off }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.dfn }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
       <th class="th-grade" data-col="fo">FO<span class="sort-arrow">↓</span><span class="tip-icon has-tip" data-tip="{{ grade_desc.fo }}"><svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm0 4a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 10 9.5z"/></svg></span></th>
@@ -732,7 +796,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       data-overall-blend="{{ row.overall_blend }}"
       >
     <td class="td-rank">{{ row.rank }}</td>
-    <td class="td-name">{{ row.name }}</td>
+    <td class="td-name"><div class="td-name-inner"><img class="td-name-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" onerror="this.style.display='none'"><div class="td-name-text">{{ row.name }}<span class="td-name-sub">{{ row.team }} · {{ row.position }} · <span class="name-gp">{{ row.gp_subset }}</span> GP</span></div></div></td>
     <td class="td-team">
       <div class="td-team-inner">
         <img class="td-team-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" alt="{{ row.team }}" onerror="this.style.display='none'">
@@ -1457,7 +1521,10 @@ document.getElementById('dzblend-toggle').addEventListener('click', function() {
     document.getElementById('full-season-toggle').classList.remove('active');
   }
   document.querySelectorAll('.player-row').forEach(row => {
-    row.cells[4].textContent = dzBlendMode ? row.dataset.gpSubset : row.dataset.gpFull;
+    const gp = dzBlendMode ? row.dataset.gpSubset : row.dataset.gpFull;
+    row.cells[4].textContent = gp;
+    const gpSub = row.querySelector('.name-gp');
+    if (gpSub) gpSub.textContent = gp;
   });
   applyStatsMode();
   applyDzBlend();
@@ -1592,6 +1659,8 @@ document.querySelectorAll('.player-row').forEach(row => {
 // Set GP and stats to subset since Manual+MP/NST is on by default
 document.querySelectorAll('.player-row').forEach(row => {
   row.cells[4].textContent = row.dataset.gpSubset;
+  const gpSub = row.querySelector('.name-gp');
+  if (gpSub) gpSub.textContent = row.dataset.gpSubset;
 });
 applyStatsMode();
 applyDzBlend();    // apply D-blend on top (default ON for D rows)
@@ -1614,6 +1683,30 @@ document.querySelectorAll('.sidebar-team, .sidebar-conf, .sidebar-div').forEach(
     if (window.innerWidth <= 768) toggleMobileSidebar();
   });
 });
+
+/* ── Mobile: fix group-row colspans + sync sticky left values ── */
+function fixMobileSticky() {
+  const playersHdr = document.querySelector('.grades-table .group-row th:first-child');
+  if (!playersHdr) return;
+  if (window.innerWidth <= 640) {
+    playersHdr.colSpan = 2;
+    // Measure actual rank column width so NAME left offset is exact
+    const rankTh = document.querySelector('.grades-table .col-row th:nth-child(1)');
+    if (rankTh) {
+      const rankW = Math.round(rankTh.getBoundingClientRect().width);
+      document.querySelectorAll(
+        '.grades-table .td-name, .grades-table .col-row th:nth-child(2)'
+      ).forEach(el => { el.style.left = rankW + 'px'; });
+    }
+  } else {
+    playersHdr.colSpan = 5;
+    document.querySelectorAll(
+      '.grades-table .td-name, .grades-table .col-row th:nth-child(2)'
+    ).forEach(el => { el.style.left = ''; });
+  }
+}
+window.addEventListener('load', fixMobileSticky);
+window.addEventListener('resize', fixMobileSticky);
 </script>
 </div>{# end .season-main #}
 </div>{# end .page-layout #}

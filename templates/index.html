@@ -194,6 +194,7 @@
   white-space:nowrap;
   margin-left:auto;
 }
+.ms-badge{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#818cf8;background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.3);border-radius:20px;padding:2px 8px;margin-left:8px;white-space:nowrap;}
 
 /* ── Grade scale ── */
 .scale{
@@ -451,7 +452,10 @@ function showGames(abbrev, month) {
         <div class="game-row-label">${g.away} at ${g.home}</div>
         <div class="game-row-sub">${typeLine}</div>
       </div>
-      <div class="game-row-date">${dateStr}</div>
+      <div style="display:flex;align-items:center;margin-left:auto;gap:12px;">
+        ${g.has_ms_grades ? '<span class="ms-badge">⬡ Microstat</span>' : ''}
+        <div class="game-row-date">${dateStr}</div>
+      </div>
     `;
     list.appendChild(a);
   }
@@ -711,7 +715,10 @@ function showSeriesGames(roundNum, seriesNum) {
         <div class="game-row-label">${g.away} at ${g.home}</div>
         <div class="game-row-sub">Game ${g.game_num}${noData ? ' — Data Not Available Yet' : ''}</div>
       </div>
-      <div class="game-row-date">${dateStr}</div>
+      <div style="display:flex;align-items:center;margin-left:auto;gap:12px;">
+        ${g.has_ms_grades ? '<span class="ms-badge">⬡ Microstat</span>' : ''}
+        <div class="game-row-date">${dateStr}</div>
+      </div>
     `;
     list.appendChild(a);
   }

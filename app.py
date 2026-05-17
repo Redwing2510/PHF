@@ -306,6 +306,14 @@ def _get_cached_game_list():
     except Exception:
         graded_gids = set()
 
+    # Set of game_ids where at least one player has microstat tracking
+    try:
+        ms_gids = {r[0] for r in conn.execute(
+            'SELECT DISTINCT game_id FROM player_game_grades WHERE has_tracking=1'
+        ).fetchall()}
+    except Exception:
+        ms_gids = set()
+
     conn.close()
 
     # Use all game IDs from schedules (covers RS + playoffs for both seasons)
@@ -361,7 +369,8 @@ def _get_cached_game_list():
                       'season': season_str,
                       'home_score': home_score, 'away_score': away_score,
                       'has_grades': gid in graded_gids,
-                      'has_play_grades': gid in cached_gids})
+                      'has_play_grades': gid in cached_gids,
+                      'has_ms_grades': gid in ms_gids})
     return games
 
 
@@ -499,6 +508,8 @@ def game_grades(game_id):
             d['fo_grade']  = None
             d['fo_letter'] = None
 
+    has_ms_grades = any(d.get('has_tracking') for d in grades)
+
     return render_template('game_grades.html',
         game_id=game_id, season=season,
         game_date=game_date,
@@ -507,6 +518,7 @@ def game_grades(game_id):
         away_logo=away_logo, home_logo=home_logo,
         grades=grades,
         has_play_grades=has_play_grades,
+        has_ms_grades=has_ms_grades,
     )
 
 

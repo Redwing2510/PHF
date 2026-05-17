@@ -239,6 +239,16 @@ def _norm_name(name: str) -> str:
     return name.replace('\xa0', ' ').strip().lower()
 
 
+def _name_parts(norm: str):
+    """Return (first_initial, last_name) from a normalized name, or (None, None)."""
+    parts = norm.split()
+    if len(parts) < 2:
+        return None, None
+    last = parts[-1]
+    first = parts[0].rstrip('.')  # handles "j." → "j"
+    return first[0] if first else None, last
+
+
 _TEAM_ALIASES = {'L.A': 'LAK', 'N.J': 'NJD', 'S.J': 'SJS', 'T.B': 'TBL'}
 
 def _norm_team(team: str) -> str:
@@ -780,13 +790,46 @@ def get_microstat_record(game_id: int, name: str, team: str = '', position: str 
     records = load_microstat_records()
     norm  = _norm_name(name)
     short = int(str(game_id)[-5:])
+    norm_team = _norm_team(team) if team else ''
     pos_grp = _pos_group(position) if position else ''
+
+    # Exact match
     if team and pos_grp:
-        return records.get((short, norm, _norm_team(team), pos_grp))
-    # Fallback: find any record matching game+name
-    for (gid, n, _t, _p), r in records.items():
-        if gid == short and n == norm:
+        r = records.get((short, norm, norm_team, pos_grp))
+        if r:
             return r
+    else:
+        for (gid, n, _t, _p), r in records.items():
+            if gid == short and n == norm:
+                return r
+
+    # Fallback 1: first-initial + last-name, same team
+    # (handles "J. Hagens" ↔ "James Hagens", spelling variants, etc.)
+    init, last = _name_parts(norm)
+    if not init or not last:
+        return None
+    candidates = []
+    for (gid, n, t, p), r in records.items():
+        if gid != short:
+            continue
+        if norm_team and t != norm_team:
+            continue
+        ri, rl = _name_parts(n)
+        if ri and rl == last and ri[0] == init[0]:
+            candidates.append(r)
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # Fallback 2: ignore team (handles mid-season trades where season_acc team ≠ playoff team)
+    candidates = []
+    for (gid, n, _t, _p), r in records.items():
+        if gid != short:
+            continue
+        ri, rl = _name_parts(n)
+        if ri and rl == last and ri[0] == init[0]:
+            candidates.append(r)
+    if len(candidates) == 1:
+        return candidates[0]
     return None
 
 

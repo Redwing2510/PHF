@@ -41,7 +41,7 @@ PLAYOFF_YEAR = 2026          # calendar year playoffs are played
 MP_SEASON    = 2025          # moneypuck season key (year season starts)
 
 DB_PATH      = Path(__file__).parent / 'cache.db'
-DATA_DIR     = Path(__file__).parent / 'NST Playoff Data'
+DATA_DIR     = Path(__file__).parent / 'NST Playoff Data' / f'{FROM_SEASON}'
 PLAYERS_FILE = DATA_DIR / 'playoff_player_ids.json'
 
 REQUEST_DELAY = 1.0          # seconds between requests within a batch
@@ -624,7 +624,7 @@ def rebuild():
         print(f'  Cache file not found, nothing to clear.')
     # Also try HTTP refresh in case Flask is reachable
     try:
-        r = requests.get('http://localhost:5001/refresh?season=20252026', timeout=5)
+        r = requests.get(f'http://localhost:5001/refresh?season={FROM_SEASON}', timeout=5)
         print(f'  Flask refresh: {r.status_code}')
     except Exception:
         pass
@@ -636,6 +636,20 @@ STEPS = {'collect': collect, 'download': download, 'load': load, 'rebuild': rebu
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+
+    # --season YYYY  — override constants for a prior playoff year
+    if '--season' in args:
+        _si = args.index('--season')
+        _yr = int(args[_si + 1])
+        args = args[:_si] + args[_si + 2:]
+        MP_SEASON    = _yr
+        PLAYOFF_YEAR = _yr + 1
+        FROM_SEASON  = f'{_yr}{_yr + 1}'
+        THRU_SEASON  = FROM_SEASON
+        DATA_DIR     = Path(__file__).parent / 'NST Playoff Data' / FROM_SEASON
+        PLAYERS_FILE = DATA_DIR / 'playoff_player_ids.json'
+        print(f'  Season override: {FROM_SEASON} (playoff year {PLAYOFF_YEAR})')
+
     if args and args[0] == 'update':
         if len(args) >= 2 and args[1].isdigit():
             # Explicit game ID: python3 playoff_pipeline.py update 2025030236
