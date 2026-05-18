@@ -26,6 +26,8 @@ echo "Syncing files to server..."
 rsync -av "${EXCLUDES[@]}" /Users/nicklamanna/Documents/PHF/ "$SERVER:$REMOTE/"
 
 if $WITH_LOGS; then
+  echo "Syncing cache.db..."
+  rsync -av /Users/nicklamanna/Documents/PHF/cache.db "$SERVER:$REMOTE/cache.db"
   echo "Clearing server season cache (logs updated)..."
   ssh "$SERVER" "rm -f /opt/phf/season_cache/*.json"
 fi

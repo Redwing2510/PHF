@@ -123,7 +123,44 @@ def index():
     if season_str not in dict(_SEASONS):
         season_str = '20252026'
     data = _get_season_data(season_str)
-    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS)
+    active_tab = request.args.get('tab', 'players')
+    if active_tab not in ('players', 'teams'):
+        active_tab = 'players'
+    teams_mode = request.args.get('tmode', 'manual')
+    if teams_mode not in ('manual', 'all'):
+        teams_mode = 'manual'
+    active_pos = request.args.get('pos', 'all')
+    if active_pos not in ('all', 'fwd', 'def'):
+        active_pos = 'all'
+    dz_blend = request.args.get('dz', 'on') == 'on'
+    full_season = request.args.get('fs', 'off') == 'on'
+    show_unqualified = request.args.get('uq', 'off') == 'on'
+    _known_groups = {'ALL', 'EAST', 'WEST', 'Atlantic', 'Metropolitan', 'Central', 'Pacific'}
+    active_team = request.args.get('team', 'ALL') or 'ALL'
+    if active_team not in _known_groups:
+        player_teams = {p['team'] for p in data['players']}
+        if active_team not in player_teams:
+            active_team = 'ALL'
+    # Pre-compute team info bar data for server-side render
+    active_team_grade = None
+    active_team_ranks = {}
+    if active_team not in _known_groups:
+        tgs = data.get('team_grades', [])
+        active_team_grade = next((t for t in tgs if t['team'] == active_team), None)
+        if active_team_grade:
+            def _rank_by(key):
+                vals = sorted((t for t in tgs if t.get(key)), key=lambda t: t[key], reverse=True)
+                pos = next((i+1 for i, t in enumerate(vals) if t['team'] == active_team), None)
+                total = len(vals)
+                pct = (100 - ((pos-1)/(total-1))*100) if pos and total > 1 else (100 if pos == 1 else None)
+                return {'rank': pos, 'pct': pct}
+            active_team_ranks = {
+                'overall': _rank_by('overall_blend'),
+                'fwd':     _rank_by('fwd_blend'),
+                'dfn':     _rank_by('dfn_blend'),
+                'fo':      _rank_by('fo_g'),
+            }
+    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS, active_tab=active_tab, teams_mode=teams_mode, active_pos=active_pos, dz_blend=dz_blend, full_season=full_season, show_unqualified=show_unqualified, active_team=active_team, active_team_grade=active_team_grade, active_team_ranks=active_team_ranks)
 
 
 @app.route('/api/player/<int:player_id>/games')

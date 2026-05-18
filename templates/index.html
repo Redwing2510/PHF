@@ -2,10 +2,9 @@
 {% block title %} — Game Lookup{% endblock %}
 
 {% block style %}
-.season-tabs{display:flex;gap:6px;align-items:center;}
-.season-tab{padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--border);}
-.season-tab:hover{color:var(--text);}
-.season-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.season-select{padding:7px 36px 7px 14px;border-radius:8px;font-size:14px;font-weight:700;color:var(--text);background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.season-select:focus{outline:none;border-color:var(--accent);}
+.season-select:hover{border-color:var(--accent);}
 
 .view-tabs{display:flex;gap:0;margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:fit-content;}
 .view-tab{padding:6px 20px;font-size:13px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;transition:background .12s,color .12s;}
@@ -66,7 +65,7 @@
 .bk-round-hdr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:center;height:30px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;white-space:nowrap;}
 .bk-cards{display:flex;flex-direction:column;justify-content:space-around;height:348px;}
 .bs-slot{border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:8px 10px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;}
-.bs-slot:hover{border-color:var(--accent);background:var(--surface2);}
+@media(hover:hover){.bs-slot:hover{border-color:var(--accent);background:var(--surface2);}}
 .bs-slot.bs-tbd{opacity:.3;cursor:default;pointer-events:none;}
 .bs-team{display:flex;align-items:center;gap:6px;padding:2px 0;}
 .bs-logo{width:20px;height:20px;object-fit:contain;flex-shrink:0;}
@@ -158,10 +157,7 @@
   color:var(--text);
   transition:border-color .12s, background .12s;
 }
-.game-row:hover{
-  border-color:var(--accent);
-  background:var(--surface2);
-}
+@media(hover:hover){.game-row:hover{border-color:var(--accent);background:var(--surface2);}}
 .game-row-logos{
   display:flex;
   align-items:center;
@@ -195,6 +191,21 @@
   margin-left:auto;
 }
 .ms-badge{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#818cf8;background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.3);border-radius:20px;padding:2px 8px;margin-left:8px;white-space:nowrap;}
+.game-row-label{white-space:nowrap;}
+.game-row-sc{font-size:13px;font-weight:800;color:var(--text);min-width:14px;text-align:center;}
+.game-row-right{display:flex;align-items:center;margin-left:auto;gap:12px;flex-shrink:0;}
+
+@media(max-width:640px){
+  .game-row{padding:10px 12px;gap:8px;}
+  .game-row-logos{min-width:auto;gap:5px;}
+  .game-row-logo{width:22px;height:22px;}
+  .game-row-label{font-size:12px;}
+  .game-row-sub{font-size:11px;}
+  .game-row-sc{font-size:12px;}
+  .game-row-date{font-size:11px;}
+  .game-row-right{flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+  .ms-badge{font-size:9px;padding:2px 6px;margin-left:0;}
+}
 
 /* ── Grade scale ── */
 .scale{
@@ -229,12 +240,11 @@
   <div class="lookup-header">
     <div class="lookup-eyebrow">Game Lookup</div>
     <div class="lookup-title">{{ dict(seasons)[active_season] }} NHL Season</div>
-    <div class="season-tabs" style="margin-top:16px;">
+    <select class="season-select" style="margin-top:16px;" onchange="window.location='/game-lookup?season='+this.value">
       {% for s_str, s_label in seasons %}
-        <a class="season-tab{% if s_str == active_season %} active{% endif %}"
-           href="/game-lookup?season={{ s_str }}">{{ s_label }}</a>
+        <option value="{{ s_str }}"{% if s_str == active_season %} selected{% endif %}>{{ s_label }}</option>
       {% endfor %}
-    </div>
+    </select>
     <div class="view-tabs">
       <button class="view-tab active" id="vt-regular" onclick="setView('regular')">Regular Season</button>
       <button class="view-tab" id="vt-playoffs" onclick="setView('playoffs')">Playoffs</button>
@@ -452,7 +462,7 @@ function showGames(abbrev, month) {
         <div class="game-row-label">${g.away} at ${g.home}</div>
         <div class="game-row-sub">${typeLine}</div>
       </div>
-      <div style="display:flex;align-items:center;margin-left:auto;gap:12px;">
+      <div class="game-row-right">
         ${g.has_ms_grades ? '<span class="ms-badge">⬡ Microstat</span>' : ''}
         <div class="game-row-date">${dateStr}</div>
       </div>
@@ -705,17 +715,20 @@ function showSeriesGames(roundNum, seriesNum) {
     if (noData) { a.style.opacity = '0.5'; a.style.pointerEvents = 'none'; }
     const dateMatch = g.label.match(/\((.+?)\)/);
     const dateStr = dateMatch ? dateMatch[1] : '';
+    const hasScore = g.away_score != null && g.home_score != null;
     a.innerHTML = `
       <div class="game-row-logos">
         <img class="game-row-logo" src="${g.away_logo}" alt="${g.away}" onerror="this.style.display='none'">
+        ${hasScore ? `<span class="game-row-sc">${g.away_score}</span>` : ''}
         <span class="game-row-vs">@</span>
+        ${hasScore ? `<span class="game-row-sc">${g.home_score}</span>` : ''}
         <img class="game-row-logo" src="${g.home_logo}" alt="${g.home}" onerror="this.style.display='none'">
       </div>
       <div>
         <div class="game-row-label">${g.away} at ${g.home}</div>
         <div class="game-row-sub">Game ${g.game_num}${noData ? ' — Data Not Available Yet' : ''}</div>
       </div>
-      <div style="display:flex;align-items:center;margin-left:auto;gap:12px;">
+      <div class="game-row-right">
         ${g.has_ms_grades ? '<span class="ms-badge">⬡ Microstat</span>' : ''}
         <div class="game-row-date">${dateStr}</div>
       </div>

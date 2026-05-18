@@ -544,7 +544,7 @@ def _fetch_standings(season_str: str) -> dict:
     if today.year < next_year or (today.year == next_year and today.month <= 7):
         endpoint = 'now'
     else:
-        endpoint = f'{next_year}-04-20'
+        endpoint = f'{next_year}-04-15'
     url = f'https://api-web.nhle.com/v1/standings/{endpoint}'
     try:
         ctx = ssl.create_default_context()

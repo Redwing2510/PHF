@@ -16,10 +16,9 @@
   letter-spacing:-1px;
   color:var(--text);
 }
-.season-tabs{display:flex;gap:6px;align-items:center;}
-.season-tab{padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--border);}
-.season-tab:hover{color:var(--text);}
-.season-tab.active{background:#c9a227;color:#fff;border-color:#c9a227;}
+.season-select{padding:7px 36px 7px 14px;border-radius:8px;font-size:14px;font-weight:700;color:var(--text);background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.season-select:focus{outline:none;border-color:var(--accent);}
+.season-select:hover{border-color:var(--accent);}
 .season-meta{
   font-size:13px;
   color:var(--muted);
@@ -181,6 +180,9 @@
 }
 .tg-conf-badge.east{color:#38bdf8;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2)}
 .tg-conf-badge.west{color:#fb923c;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.2)}
+.tg-conf-sub{display:none;font-size:10px;font-weight:700;letter-spacing:.6px}
+.tg-conf-sub.east{color:#38bdf8}
+.tg-conf-sub.west{color:#fb923c}
 .tg-grade-cell{text-align:center;border-left:1px solid var(--border2);padding:11px 10px !important}
 .tg-record-cell{
   text-align:center;border-left:1px solid var(--border2);padding:11px 14px;
@@ -272,6 +274,8 @@
 .td-name-text{ display:contents; }
 .td-name-sub{ display:none; font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; }
 @media(max-width:640px){
+  .tg-conf-badge{display:none}
+  .tg-conf-sub{display:inline}
   .td-name-sub{ display:block; }
   .td-name-logo{ display:block; width:24px; height:24px; object-fit:contain; flex-shrink:0; }
   .td-name-text{ display:flex; flex-direction:column; min-width:0; }
@@ -328,6 +332,30 @@
   .th-short{ display:inline !important; }
   .grade-badge{ padding:3px 7px !important; gap:3px !important; }
   .grade-badge .g-score{ font-size:13px !important; }
+  /* Teams table sticky columns on mobile */
+  #teams-table{ border-collapse:separate; border-spacing:0; min-width:500px; font-size:10px; }
+  #teams-table thead th{ background:var(--surface2) !important; z-index:3; padding:6px 5px !important; font-size:9px !important; }
+  #teams-table td{ padding:6px 5px !important; border-bottom:1px solid var(--border); }
+  #teams-table .tg-full{ font-size:11px; }
+  #teams-table .tg-abbrev{ font-size:9px; }
+  #teams-table .tg-team-inner{ gap:6px; }
+  #teams-table .tg-logo{ width:20px; height:20px; }
+  #teams-table .tg-rank{ font-size:11px !important; padding:6px 3px !important; }
+  #teams-table .tg-team-cell{ min-width:170px; max-width:170px; width:170px; }
+  #teams-table .tg-rank,
+  #teams-table thead tr th:nth-child(1){
+    position:-webkit-sticky; position:sticky;
+    left:0; z-index:2; background:var(--surface);
+    width:44px; min-width:44px; max-width:44px;
+    border-right:none;
+  }
+  #teams-table .tg-team-cell,
+  #teams-table thead tr th:nth-child(2){
+    position:-webkit-sticky; position:sticky;
+    left:44px; z-index:2; background:var(--surface);
+    border-left:none;
+    box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
+  }
 }
 .grades-table{
   border-collapse:collapse;
@@ -615,7 +643,9 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   border-radius:6px;
   letter-spacing:-.2px;
 }
-
+.table-loading{display:flex;align-items:center;justify-content:center;padding:60px 0;gap:12px;color:var(--muted);font-size:13px;font-weight:600;}
+.table-spinner{width:32px;height:32px;flex-shrink:0;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
 {% endblock %}
 
 {% block content %}
@@ -625,7 +655,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <aside class="team-sidebar" id="team-sidebar">
   <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle team filter">‹</button>
   <div class="sidebar-inner">
-    <button class="sidebar-team active" data-team="ALL">
+    <button class="sidebar-team {% if active_team == 'ALL' %}active{% endif %}" data-team="ALL">
       <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/NHL_dark.svg" alt="NHL">
       <span class="st-abbrev">All Teams</span>
     </button>
@@ -646,7 +676,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     {% for div_name, teams in divs %}
     <button class="sidebar-div" data-div="{{ div_name }}">{{ div_name }}</button>
     {% for team in teams %}{% if team in team_set %}
-    <button class="sidebar-team" data-team="{{ team }}">
+    <button class="sidebar-team {% if active_team == team %}active{% endif %}" data-team="{{ team }}">
       <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ team }}_dark.svg" alt="{{ team }}" onerror="this.style.display='none'">
       <span class="st-abbrev">{{ team }}</span>
     </button>
@@ -660,14 +690,21 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <div class="season-main">
 <div class="season-hero">
   <div class="season-title">{{ data.season_label }} NHL Season</div>
-  <div class="season-tabs">
+  <select class="season-select" onchange="(function(s){
+    var tab   = document.getElementById('view-teams-btn').classList.contains('active')?'teams':'players';
+    var tmode = document.getElementById('teams-allgames-toggle').classList.contains('active')?'all':'manual';
+    var pos   = (document.querySelector('.filter-btn.active')||{}).dataset?.pos||'all';
+    var dz    = document.getElementById('dzblend-toggle').classList.contains('active')?'on':'off';
+    var fs    = document.getElementById('full-season-toggle').classList.contains('active')?'on':'off';
+    var team = typeof activeTeam !== 'undefined' ? activeTeam : 'ALL';
+    var uq   = document.getElementById('unqualified-toggle').classList.contains('active')?'on':'off';
+    window.location='/?season='+s+'&tab='+tab+'&tmode='+tmode+'&pos='+pos+'&dz='+dz+'&fs='+fs+'&team='+encodeURIComponent(team)+'&uq='+uq;
+  })(this.value)">
     {% for s_str, s_label in seasons %}
-      <a class="season-tab{% if s_str == active_season %} active{% endif %}"
-         href="/?season={{ s_str }}">{{ s_label }}</a>
+      <option value="{{ s_str }}"{% if s_str == active_season %} selected{% endif %}>{{ s_label }}</option>
     {% endfor %}
-  </div>
-  <div class="season-meta" id="season-meta">{{ data.total_games }} games · {{ data.players|length }} skaters</div>
-  <a class="refresh-link" href="/refresh?season={{ active_season }}" title="Re-fetch &amp; rebuild">↺ Refresh</a>
+  </select>
+  <div class="season-meta" id="season-meta"{% if active_tab == 'teams' %} style="display:none"{% endif %}>{{ data.total_games }} games · {{ data.players | selectattr('qualified_manual') | list | length }} skaters</div>
 </div>
 
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -677,57 +714,165 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 </button>
 
 <!-- ── Team info bar (shown when a specific team is selected) ── -->
-<div class="team-info-bar" id="team-info-bar">
-  <img class="ti-logo" id="ti-logo" src="" alt="">
+{%- set _TEAM_FULL_EARLY = {'ANA':'Anaheim Ducks','BOS':'Boston Bruins','BUF':'Buffalo Sabres','CAR':'Carolina Hurricanes','CBJ':'Columbus Blue Jackets','CGY':'Calgary Flames','CHI':'Chicago Blackhawks','COL':'Colorado Avalanche','DAL':'Dallas Stars','DET':'Detroit Red Wings','EDM':'Edmonton Oilers','FLA':'Florida Panthers','LAK':'Los Angeles Kings','MIN':'Minnesota Wild','MTL':'Montréal Canadiens','NJD':'New Jersey Devils','NSH':'Nashville Predators','NYI':'New York Islanders','NYR':'New York Rangers','OTT':'Ottawa Senators','PHI':'Philadelphia Flyers','PIT':'Pittsburgh Penguins','SEA':'Seattle Kraken','SJS':'San Jose Sharks','STL':'St. Louis Blues','TBL':'Tampa Bay Lightning','TOR':'Toronto Maple Leafs','UTA':'Utah Hockey Club','VAN':'Vancouver Canucks','VGK':'Vegas Golden Knights','WSH':'Washington Capitals','WPG':'Winnipeg Jets'} -%}
+{%- set _atg = active_team_grade -%}
+{%- set _atr = active_team_ranks -%}
+<div class="team-info-bar" id="team-info-bar"{% if _atg %} style="display:flex"{% endif %}>
+  <img class="ti-logo" id="ti-logo" src="{% if _atg %}https://assets.nhle.com/logos/nhl/svg/{{ active_team }}_dark.svg{% endif %}" alt="">
   <div class="ti-left">
-    <span class="ti-name" id="ti-name"></span>
-    <span class="ti-record" id="ti-record"></span>
+    <span class="ti-name" id="ti-name">{% if _atg %}{{ _TEAM_FULL_EARLY.get(active_team, active_team) }}{% endif %}</span>
+    <span class="ti-record" id="ti-record">{% if _atg and _atg.w is not none %}{{ _atg.w }}-{{ _atg.l }}-{{ _atg.otl }}  ·  {{ _atg.pts }} pts{% endif %}</span>
   </div>
   <div class="ti-sep"></div>
   <div class="ti-grades">
     <div class="ti-grade-item">
       <span class="ti-grade-label">OVERALL</span>
-      <span class="grade-chip grade-chip-lg" id="ti-overall"></span>
+      <span class="grade-chip grade-chip-lg" id="ti-overall"{% if _atr.overall and _atr.overall.pct is not none %} style="background:{{ _atr.overall.pct | grade_bg }}"{% endif %}>{% if _atr.overall and _atr.overall.rank %}#{{ _atr.overall.rank }}{% endif %}</span>
     </div>
     <div class="ti-grade-item">
       <span class="ti-grade-label">OFF</span>
-      <span class="grade-chip" id="ti-off"></span>
+      <span class="grade-chip" id="ti-off"{% if _atr.fwd and _atr.fwd.pct is not none %} style="background:{{ _atr.fwd.pct | grade_bg }}"{% endif %}>{% if _atr.fwd and _atr.fwd.rank %}#{{ _atr.fwd.rank }}{% endif %}</span>
     </div>
     <div class="ti-grade-item">
       <span class="ti-grade-label">DEF</span>
-      <span class="grade-chip" id="ti-def-g"></span>
+      <span class="grade-chip" id="ti-def-g"{% if _atr.dfn and _atr.dfn.pct is not none %} style="background:{{ _atr.dfn.pct | grade_bg }}"{% endif %}>{% if _atr.dfn and _atr.dfn.rank %}#{{ _atr.dfn.rank }}{% endif %}</span>
     </div>
     <div class="ti-grade-item">
       <span class="ti-grade-label">FO</span>
-      <span class="grade-chip" id="ti-fo-g"></span>
+      <span class="grade-chip" id="ti-fo-g"{% if _atr.fo and _atr.fo.pct is not none %} style="background:{{ _atr.fo.pct | grade_bg }}"{% endif %}>{% if _atr.fo and _atr.fo.rank %}#{{ _atr.fo.rank }}{% endif %}</span>
     </div>
   </div>
 </div>
 
-<div class="view-toggle">
-  <button class="view-btn active" id="view-players-btn" onclick="setView('players')">Players</button>
-  <button class="view-btn"        id="view-teams-btn"   onclick="setView('teams')">Teams</button>
+<div class="view-toggle" id="view-toggle" style="visibility:hidden">
+  <button class="view-btn {% if active_tab == 'players' %}active{% endif %}" id="view-players-btn" onclick="setView('players')">Players</button>
+  <button class="view-btn {% if active_tab == 'teams' %}active{% endif %}"   id="view-teams-btn"   onclick="setView('teams')">Teams</button>
 </div>
 
-<div id="players-view">
-<div class="filters">
+<!-- ── Teams ranking view (shown when All Teams selected) ── -->
+{%- set TEAM_FULL = {
+  'ANA':'Anaheim Ducks','BOS':'Boston Bruins','BUF':'Buffalo Sabres',
+  'CAR':'Carolina Hurricanes','CBJ':'Columbus Blue Jackets','CGY':'Calgary Flames',
+  'CHI':'Chicago Blackhawks','COL':'Colorado Avalanche','DAL':'Dallas Stars',
+  'DET':'Detroit Red Wings','EDM':'Edmonton Oilers','FLA':'Florida Panthers',
+  'LAK':'Los Angeles Kings','MIN':'Minnesota Wild','MTL':'Montréal Canadiens',
+  'NJD':'New Jersey Devils','NSH':'Nashville Predators','NYI':'New York Islanders',
+  'NYR':'New York Rangers','OTT':'Ottawa Senators','PHI':'Philadelphia Flyers',
+  'PIT':'Pittsburgh Penguins','SEA':'Seattle Kraken','SJS':'San Jose Sharks',
+  'STL':'St. Louis Blues','TBL':'Tampa Bay Lightning','TOR':'Toronto Maple Leafs',
+  'UTA':'Utah Hockey Club','VAN':'Vancouver Canucks','VGK':'Vegas Golden Knights',
+  'WSH':'Washington Capitals','WPG':'Winnipeg Jets'
+} -%}
+{%- set TEAM_CONF_T = {
+  'BOS':'east','BUF':'east','DET':'east','FLA':'east','MTL':'east','OTT':'east','TBL':'east','TOR':'east',
+  'CAR':'east','CBJ':'east','NJD':'east','NYI':'east','NYR':'east','PHI':'east','PIT':'east','WSH':'east',
+  'CHI':'west','COL':'west','DAL':'west','MIN':'west','NSH':'west','STL':'west','UTA':'west','WPG':'west',
+  'ANA':'west','CGY':'west','EDM':'west','LAK':'west','SEA':'west','SJS':'west','VAN':'west','VGK':'west'
+} -%}
+<div id="teams-view"{% if active_tab != 'teams' %} style="display:none"{% endif %}>
+<div class="filters" style="margin-bottom:10px">
+  <button class="ms-toggle-btn {% if teams_mode == 'manual' %}active{% endif %}" id="teams-manual-toggle">Manual (A3Z) + MP/NST</button>
+  <button class="ms-toggle-btn {% if teams_mode == 'all' %}active{% endif %}" id="teams-allgames-toggle">All Games (MP/NST)</button>
+</div>
+<div class="table-loading" id="table-loading">
+<svg class="table-spinner" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" stroke="#818cf8" stroke-width="2" fill="rgba(129,140,248,.08)"/>
+  <polygon points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5" stroke="rgba(129,140,248,.3)" stroke-width="1" fill="none"/>
+</svg>
+Loading grades...
+</div>
+<div class="table-wrap" id="teams-table-wrap" style="display:none">
+<table id="teams-table">
+  <thead>
+    <tr class="col-row">
+      <th>#</th>
+      <th>TEAM</th>
+      <th class="tg-th-record" data-col="pts" onclick="sortTeams('pts')" style="cursor:pointer">RECORD<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade tg-sorted" data-col="overall" onclick="sortTeams('overall')"><span class="th-full">OVERALL</span><span class="th-short">OVR</span><span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="fwd"   onclick="sortTeams('fwd')">FWD<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="dfn"   onclick="sortTeams('dfn')">DEF<span class="sort-arrow">↓</span></th>
+      <th class="tg-th-grade" data-col="fo_g"  onclick="sortTeams('fo_g')">FO<span class="sort-arrow">↓</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in data.team_grades %}
+  <tr class="team-grade-row"
+      data-team="{{ t.team }}"
+      data-overall="{{ t.overall or 0 }}"
+      data-fwd="{{ t.fwd or 0 }}"
+      data-dfn="{{ t.dfn or 0 }}"
+      data-overall-mp="{{ t.overall_mp or 0 }}"
+      data-fwd-mp="{{ t.fwd_mp or 0 }}"
+      data-dfn-mp="{{ t.dfn_mp or 0 }}"
+      data-overall-blend="{{ t.overall_blend or 0 }}"
+      data-fwd-blend="{{ t.fwd_blend or 0 }}"
+      data-dfn-blend="{{ t.dfn_blend or 0 }}"
+      data-fo_g="{{ t.fo_g or 0 }}"
+      data-pts="{{ t.pts or 0 }}">
+    <td class="tg-rank" data-rank="{{ t.rank }}">{{ t.rank }}</td>
+    <td class="tg-team-cell">
+      <div class="tg-team-inner">
+        <img class="tg-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ t.team }}_dark.svg" alt="{{ t.team }}" onerror="this.style.display='none'">
+        <div class="tg-names">
+          <span class="tg-full">{{ TEAM_FULL.get(t.team, t.team) }}</span>
+          <span class="tg-abbrev">{{ t.team }} <span class="tg-conf-sub {{ TEAM_CONF_T.get(t.team, 'east') }}">· {{ 'EAST' if TEAM_CONF_T.get(t.team) == 'east' else 'WEST' }}</span></span>
+        </div>
+        <span class="tg-conf-badge {{ TEAM_CONF_T.get(t.team, 'east') }}">{{ 'EAST' if TEAM_CONF_T.get(t.team) == 'east' else 'WEST' }}</span>
+      </div>
+    </td>
+    <td class="tg-record-cell">
+      {% if t.w or t.l %}
+      {{ t.w }}-{{ t.l }}-{{ t.otl }}<span class="tg-pts">{{ t.pts }}pts</span>
+      {% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% set ov = t.overall_mp if t.overall_mp is not none else t.overall %}
+      {% if ov is not none %}<span class="grade-chip grade-chip-lg tg-overall-chip" data-mp="{{ t.overall_mp or 0 }}" data-trk="{{ t.overall or 0 }}" style="background:{{ ov | grade_bg }}">{{ ov }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% set fv = t.fwd_mp if t.fwd_mp is not none else t.fwd %}
+      {% if fv is not none %}<span class="grade-chip tg-fwd-chip" data-mp="{{ t.fwd_mp or 0 }}" data-trk="{{ t.fwd or 0 }}" style="background:{{ fv | grade_bg }}">{{ fv }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% set dv = t.dfn_mp if t.dfn_mp is not none else t.dfn %}
+      {% if dv is not none %}<span class="grade-chip tg-dfn-chip" data-mp="{{ t.dfn_mp or 0 }}" data-trk="{{ t.dfn or 0 }}" style="background:{{ dv | grade_bg }}">{{ dv }}</span>{% else %}—{% endif %}
+    </td>
+    <td class="tg-grade-cell">
+      {% if t.fo_g is not none %}<span class="grade-chip" style="background:{{ t.fo_g | grade_bg }}">{{ t.fo_g }}</span>{% else %}—{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>{# end #teams-view #}
+
+<div id="players-view"{% if active_tab == 'teams' %} style="display:none"{% endif %}>
+<div class="filters" id="players-filters" style="visibility:hidden">
   <div class="filter-group" id="pos-filters">
-    <button class="filter-btn active" data-pos="all">All</button>
-    <button class="filter-btn" data-pos="fwd">Forwards</button>
-    <button class="filter-btn" data-pos="def">Defense</button>
+    <button class="filter-btn {% if active_pos == 'all' %}active{% endif %}" data-pos="all">All</button>
+    <button class="filter-btn {% if active_pos == 'fwd' %}active{% endif %}" data-pos="fwd">Forwards</button>
+    <button class="filter-btn {% if active_pos == 'def' %}active{% endif %}" data-pos="def">Defense</button>
   </div>
 <button class="ms-toggle-btn" id="ms-toggle" title="Microstat mode: overlay AllThreeZones manual tracking data" style="display:none">MS Mode</button>
   <button class="ms-toggle-btn" id="atz-toggle" title="Add AllThreeZones tracking data on top of MoneyPuck baseline scores" style="display:none">ATZ +Tracking</button>
-  <button class="ms-toggle-btn active" id="dzblend-toggle" title="Blends manual tracked game grades with MP/NST data (default on)">Manual (A3Z) + MP/NST</button>
-  <button class="ms-toggle-btn" id="full-season-toggle" title="All 82 regular season games graded using MP/NST data only (no manual tracking)">All Games (MP/NST)</button>
-  <button class="ms-toggle-btn" id="unqualified-toggle" title="Show players who haven't met the minimum games-played threshold">Show Unqualified</button>
+  <button class="ms-toggle-btn {% if dz_blend %}active{% endif %}" id="dzblend-toggle" title="Blends manual tracked game grades with MP/NST data (default on)">Manual (A3Z) + MP/NST</button>
+  <button class="ms-toggle-btn {% if full_season %}active{% endif %}" id="full-season-toggle" title="All 82 regular season games graded using MP/NST data only (no manual tracking)">All Games (MP/NST)</button>
+  <button class="ms-toggle-btn {% if show_unqualified %}active{% endif %}" id="unqualified-toggle" title="Show players who haven't met the minimum games-played threshold">Show Unqualified (< 50% team GP)</button>
   <div class="player-search">
     <input id="player-search" type="search" placeholder="Search player name..." autocomplete="off">
   </div>
 </div>
 
 <!-- ── Grades table ── -->
-<div class="table-wrap">
+<div class="table-loading" id="players-loading">
+<svg class="table-spinner" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" stroke="#818cf8" stroke-width="2" fill="rgba(129,140,248,.08)"/>
+  <polygon points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5" stroke="rgba(129,140,248,.3)" stroke-width="1" fill="none"/>
+</svg>
+Loading grades...
+</div>
+<div class="table-wrap" id="table-wrap" style="display:none">
 <table class="grades-table" id="grades-table">
   <thead>
     <tr class="group-row">
@@ -760,7 +905,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
       <th data-col="fo_pct">FO%</th>
     </tr>
   </thead>
-  <tbody id="table-body">
+  <tbody id="table-body" style="visibility:hidden">
   {% for row in data.players %}
   <tr class="player-row{% if not row.qualified %} limited{% endif %}"
       onclick="openPlayerModal({{ row.player_id }})"
@@ -853,96 +998,6 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 </table>
 </div>
 </div>{# end #players-view #}
-
-<!-- ── Teams ranking view (shown when All Teams selected) ── -->
-{%- set TEAM_FULL = {
-  'ANA':'Anaheim Ducks','BOS':'Boston Bruins','BUF':'Buffalo Sabres',
-  'CAR':'Carolina Hurricanes','CBJ':'Columbus Blue Jackets','CGY':'Calgary Flames',
-  'CHI':'Chicago Blackhawks','COL':'Colorado Avalanche','DAL':'Dallas Stars',
-  'DET':'Detroit Red Wings','EDM':'Edmonton Oilers','FLA':'Florida Panthers',
-  'LAK':'Los Angeles Kings','MIN':'Minnesota Wild','MTL':'Montréal Canadiens',
-  'NJD':'New Jersey Devils','NSH':'Nashville Predators','NYI':'New York Islanders',
-  'NYR':'New York Rangers','OTT':'Ottawa Senators','PHI':'Philadelphia Flyers',
-  'PIT':'Pittsburgh Penguins','SEA':'Seattle Kraken','SJS':'San Jose Sharks',
-  'STL':'St. Louis Blues','TBL':'Tampa Bay Lightning','TOR':'Toronto Maple Leafs',
-  'UTA':'Utah Hockey Club','VAN':'Vancouver Canucks','VGK':'Vegas Golden Knights',
-  'WSH':'Washington Capitals','WPG':'Winnipeg Jets'
-} -%}
-{%- set TEAM_CONF_T = {
-  'BOS':'east','BUF':'east','DET':'east','FLA':'east','MTL':'east','OTT':'east','TBL':'east','TOR':'east',
-  'CAR':'east','CBJ':'east','NJD':'east','NYI':'east','NYR':'east','PHI':'east','PIT':'east','WSH':'east',
-  'CHI':'west','COL':'west','DAL':'west','MIN':'west','NSH':'west','STL':'west','UTA':'west','WPG':'west',
-  'ANA':'west','CGY':'west','EDM':'west','LAK':'west','SEA':'west','SJS':'west','VAN':'west','VGK':'west'
-} -%}
-<div id="teams-view">
-<div class="filters" style="margin-bottom:10px">
-  <button class="ms-toggle-btn active" id="teams-manual-toggle">Manual (A3Z) + MP/NST</button>
-  <button class="ms-toggle-btn" id="teams-allgames-toggle">All Games (MP/NST)</button>
-</div>
-<div class="table-wrap">
-<table id="teams-table">
-  <thead>
-    <tr class="col-row">
-      <th>#</th>
-      <th>TEAM</th>
-      <th class="tg-th-record">RECORD</th>
-      <th class="tg-th-grade tg-sorted" data-col="overall" onclick="sortTeams('overall')">OVERALL<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="fwd"   onclick="sortTeams('fwd')">FWD<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="dfn"   onclick="sortTeams('dfn')">DEF<span class="sort-arrow">↓</span></th>
-      <th class="tg-th-grade" data-col="fo_g"  onclick="sortTeams('fo_g')">FO<span class="sort-arrow">↓</span></th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for t in data.team_grades %}
-  <tr class="team-grade-row"
-      data-team="{{ t.team }}"
-      data-overall="{{ t.overall or 0 }}"
-      data-fwd="{{ t.fwd or 0 }}"
-      data-dfn="{{ t.dfn or 0 }}"
-      data-overall-mp="{{ t.overall_mp or 0 }}"
-      data-fwd-mp="{{ t.fwd_mp or 0 }}"
-      data-dfn-mp="{{ t.dfn_mp or 0 }}"
-      data-overall-blend="{{ t.overall_blend or 0 }}"
-      data-fwd-blend="{{ t.fwd_blend or 0 }}"
-      data-dfn-blend="{{ t.dfn_blend or 0 }}"
-      data-fo_g="{{ t.fo_g or 0 }}">
-    <td class="tg-rank" data-rank="{{ t.rank }}">{{ t.rank }}</td>
-    <td class="tg-team-cell">
-      <div class="tg-team-inner">
-        <img class="tg-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ t.team }}_dark.svg" alt="{{ t.team }}" onerror="this.style.display='none'">
-        <div class="tg-names">
-          <span class="tg-full">{{ TEAM_FULL.get(t.team, t.team) }}</span>
-          <span class="tg-abbrev">{{ t.team }}</span>
-        </div>
-        <span class="tg-conf-badge {{ TEAM_CONF_T.get(t.team, 'east') }}">{{ 'EAST' if TEAM_CONF_T.get(t.team) == 'east' else 'WEST' }}</span>
-      </div>
-    </td>
-    <td class="tg-record-cell">
-      {% if t.w or t.l %}
-      {{ t.w }}-{{ t.l }}-{{ t.otl }}<span class="tg-pts">{{ t.pts }}pts</span>
-      {% else %}—{% endif %}
-    </td>
-    <td class="tg-grade-cell">
-      {% set ov = t.overall_mp if t.overall_mp is not none else t.overall %}
-      {% if ov is not none %}<span class="grade-chip grade-chip-lg tg-overall-chip" data-mp="{{ t.overall_mp or 0 }}" data-trk="{{ t.overall or 0 }}" style="background:{{ ov | grade_bg }}">{{ ov }}</span>{% else %}—{% endif %}
-    </td>
-    <td class="tg-grade-cell">
-      {% set fv = t.fwd_mp if t.fwd_mp is not none else t.fwd %}
-      {% if fv is not none %}<span class="grade-chip tg-fwd-chip" data-mp="{{ t.fwd_mp or 0 }}" data-trk="{{ t.fwd or 0 }}" style="background:{{ fv | grade_bg }}">{{ fv }}</span>{% else %}—{% endif %}
-    </td>
-    <td class="tg-grade-cell">
-      {% set dv = t.dfn_mp if t.dfn_mp is not none else t.dfn %}
-      {% if dv is not none %}<span class="grade-chip tg-dfn-chip" data-mp="{{ t.dfn_mp or 0 }}" data-trk="{{ t.dfn or 0 }}" style="background:{{ dv | grade_bg }}">{{ dv }}</span>{% else %}—{% endif %}
-    </td>
-    <td class="tg-grade-cell">
-      {% if t.fo_g is not none %}<span class="grade-chip" style="background:{{ t.fo_g | grade_bg }}">{{ t.fo_g }}</span>{% else %}—{% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
-</div>{# end #teams-view #}
 
 <script>
 const TEAM_META = {{ data.team_meta | tojson }};
@@ -1091,14 +1146,15 @@ function sortTeams(col) {
   document.querySelectorAll('#teams-table th.tg-th-grade').forEach(th => {
     th.classList.toggle('tg-sorted', th.dataset.col === col);
   });
+  const recordTh = document.querySelector('#teams-table th.tg-th-record');
+  if (recordTh) recordTh.classList.toggle('tg-sorted', col === 'pts');
   const tbody = document.querySelector('#teams-table tbody');
   const rows  = Array.from(tbody.querySelectorAll('.team-grade-row'));
   rows.sort((a, b) => {
-    const av = _teamVals(a), bv = _teamVals(b);
-    const val = col === 'fwd' ? 'fv' : col === 'dfn' ? 'dv' : col === 'fo_g'
-      ? (parseFloat(b.dataset.fo_g) || 0) - (parseFloat(a.dataset.fo_g) || 0)
-      : 'ov';
+    if (col === 'pts') return (parseFloat(b.dataset.pts) || 0) - (parseFloat(a.dataset.pts) || 0);
     if (col === 'fo_g') return (parseFloat(b.dataset.fo_g) || 0) - (parseFloat(a.dataset.fo_g) || 0);
+    const av = _teamVals(a), bv = _teamVals(b);
+    const val = col === 'fwd' ? 'fv' : col === 'dfn' ? 'dv' : 'ov';
     return bv[val] - av[val];
   });
   rows.forEach(r => tbody.appendChild(r));
@@ -1125,9 +1181,9 @@ const TEAM_DIV = {
   ANA:'Pacific',CGY:'Pacific',EDM:'Pacific',LAK:'Pacific',SEA:'Pacific',SJS:'Pacific',VAN:'Pacific',VGK:'Pacific'
 };
 
-let activeTeam = 'ALL';
-let activePos  = 'all';
-let showUnqualified = false;
+let activeTeam = '{{ active_team or "ALL" }}';
+let activePos  = '{{ active_pos }}';
+let showUnqualified = {{ 'true' if show_unqualified else 'false' }};
 let activeSearch = '';
 
 /* ── filter & rerank ── */
@@ -1235,7 +1291,7 @@ async function _applyTeamsMode(allGames) {
   document.getElementById('teams-allgames-toggle').classList.toggle('active', allGames);
   if (allGames) {
     if (!fullSeasonData) {
-      const resp = await fetch('/api/season-extended/20252026');
+      const resp = await fetch('/api/season-extended/{{ active_season }}');
       const arr  = await resp.json();
       fullSeasonData = new Map(arr.map(d => [d.player_id, d]));
     }
@@ -1437,7 +1493,7 @@ document.getElementById('atz-toggle').addEventListener('click', function() {
 //   Forwards: off = 50% MP + 50% ATZ tracking; dfn stays MP; overall recalculated
 //   D: dfn = DZ%-weighted tracking+MP blend; overall from data-overall-trk
 // When OFF: everything stays pure MP
-let dzBlendMode = true;
+let dzBlendMode = {{ 'true' if dz_blend else 'false' }};
 
 function applyDzBlend() {
   document.querySelectorAll('.player-row').forEach(row => {
@@ -1531,7 +1587,7 @@ document.getElementById('dzblend-toggle').addEventListener('click', function() {
 });
 
 /* ── Full Season toggle (all MP games, not just tracked) ── */
-let fullSeasonMode = false;
+let fullSeasonMode = {{ 'true' if full_season else 'false' }};
 let fullSeasonData = null; // Map: player_id -> {gp, off, dfn, overall}
 let origGpMap = {};        // player_id -> original GP text
 
@@ -1553,9 +1609,13 @@ function gradeLetterFromScore(s) {
 
 async function applyFullSeason() {
   if (!fullSeasonData) {
-    const resp = await fetch('/api/season-extended/{{ active_season }}');
-    const arr = await resp.json();
-    fullSeasonData = new Map(arr.map(d => [d.player_id, d]));
+    try {
+      const resp = await fetch('/api/season-extended/{{ active_season }}');
+      const arr = await resp.json();
+      fullSeasonData = new Map(arr.map(d => [d.player_id, d]));
+    } catch(e) {
+      fullSeasonData = new Map();
+    }
   }
   document.querySelectorAll('.player-row').forEach(row => {
     const pid = parseInt(row.dataset.playerId);
@@ -1598,9 +1658,12 @@ async function applyFullSeason() {
     const statsKey = fullSeasonMode ? 'statsFull' : (dzBlendMode ? 'statsSubset' : 'statsFull');
     const vals = (row.dataset[statsKey] || '').split('|');
     Object.entries(CELL_TO_DATA).forEach(([ci, di]) => { row.cells[ci].textContent = vals[di] ?? ''; });
-    row.cells[4].textContent = fullSeasonMode
+    const gpVal = fullSeasonMode
       ? (fullSeasonData?.get(parseInt(row.dataset.playerId))?.gp ?? row.dataset.gpFull)
       : (dzBlendMode ? row.dataset.gpSubset : row.dataset.gpFull);
+    row.cells[4].textContent = gpVal;
+    const gpSub = row.querySelector('.name-gp');
+    if (gpSub) gpSub.textContent = gpVal;
     if (fullSeasonMode) {
       // FO grade (cells[8]) and FO% (cells[21]) — no full-season data, show dash
       const foGrade = row.cells[8].querySelector('.grade-sub');
@@ -1638,35 +1701,48 @@ document.getElementById('full-season-toggle').addEventListener('click', function
   applyFullSeason();
 });
 
-// Default: players view, MS mode on, MP-only scores.
-setView('players');
-document.getElementById('unqualified-toggle').textContent = 'Show Unqualified (< 50% team GP)';
-
+// Tab state is set server-side; no JS init call needed.
 document.getElementById('unqualified-toggle').addEventListener('click', function() {
   showUnqualified = !showUnqualified;
   this.classList.toggle('active', showUnqualified);
   applyFilters();
 });
 
-// ms-toggle off by default — MP baseline covers all players
-applyDataMode();   // initialize cells to MP scores before first sort
-// Store original qualified and FO values before any toggle changes them
-document.querySelectorAll('.player-row').forEach(row => {
-  row.dataset.qualifiedOrig = row.dataset.qualified;
-  row.dataset.foGradeOrig = row.cells[8].innerHTML;
-  row.dataset.foPctOrig = row.cells[21].textContent;
+requestAnimationFrame(() => {
+  // ms-toggle off by default — MP baseline covers all players
+  applyDataMode();   // initialize cells to MP scores before first sort
+  // Store original qualified and FO values before any toggle changes them
+  document.querySelectorAll('.player-row').forEach(row => {
+    row.dataset.qualifiedOrig = row.dataset.qualified;
+    row.dataset.foGradeOrig = row.cells[8].innerHTML;
+    row.dataset.foPctOrig = row.cells[21].textContent;
+  });
+  // Set GP and stats to subset since Manual+MP/NST is on by default
+  document.querySelectorAll('.player-row').forEach(row => {
+    row.cells[4].textContent = row.dataset.gpSubset;
+    const gpSub = row.querySelector('.name-gp');
+    if (gpSub) gpSub.textContent = row.dataset.gpSubset;
+  });
+  applyStatsMode();
+  applyDzBlend();
+  sortCol = '__init__';
+  sortTable('overall');
+  applyMsMode();
+  _applyTeamsMode({{ 'true' if teams_mode == 'all' else 'false' }});
+  document.getElementById('table-body').style.visibility = '';
+  document.getElementById('players-loading').style.display = 'none';
+  document.getElementById('table-loading').style.display = 'none';
+  document.getElementById('table-wrap').style.display = '';
+  document.getElementById('players-filters').style.visibility = '';
+  document.getElementById('view-toggle').style.visibility = '';
+  const ttw = document.getElementById('teams-table-wrap');
+  if (ttw) ttw.style.display = '';
+  if (activeTeam !== 'ALL') {
+    const sidebarBtn = document.querySelector(`.sidebar-team[data-team="${activeTeam}"], .sidebar-conf[data-conf="${activeTeam}"], .sidebar-div[data-div="${activeTeam}"]`);
+    if (sidebarBtn) _sidebarSetActive(sidebarBtn);
+    applyFilters();
+  }
 });
-// Set GP and stats to subset since Manual+MP/NST is on by default
-document.querySelectorAll('.player-row').forEach(row => {
-  row.cells[4].textContent = row.dataset.gpSubset;
-  const gpSub = row.querySelector('.name-gp');
-  if (gpSub) gpSub.textContent = row.dataset.gpSubset;
-});
-applyStatsMode();
-applyDzBlend();    // apply D-blend on top (default ON for D rows)
-sortCol = '__init__';
-sortTable('overall');
-applyMsMode();
 
 /* ── Mobile sidebar ── */
 function toggleMobileSidebar() {
