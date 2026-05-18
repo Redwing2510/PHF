@@ -235,8 +235,11 @@ class MicrostatGrade:
 # ---------------------------------------------------------------------------
 
 def _norm_name(name: str) -> str:
-    """Normalize player name: strip non-breaking spaces, lowercase."""
-    return name.replace('\xa0', ' ').strip().lower()
+    """Normalize player name: strip non-breaking spaces, lowercase, remove A3Z 'other ' prefix."""
+    n = name.replace('\xa0', ' ').strip().lower()
+    if n.startswith('other '):
+        n = n[6:]
+    return n
 
 
 def _name_parts(norm: str):
@@ -817,7 +820,12 @@ def get_microstat_record(game_id: int, name: str, team: str = '', position: str 
         ri, rl = _name_parts(n)
         if ri and rl == last and ri[0] == init[0]:
             candidates.append(r)
-    if len(candidates) == 1:
+    # Filter by position when known — prevents same-name players from stealing each other's records
+    if pos_grp:
+        pos_filtered = [c for c in candidates if c.position == pos_grp]
+        if len(pos_filtered) == 1:
+            return pos_filtered[0]
+    elif len(candidates) == 1:
         return candidates[0]
 
     # Fallback 2: ignore team (handles mid-season trades where season_acc team ≠ playoff team)
@@ -828,7 +836,11 @@ def get_microstat_record(game_id: int, name: str, team: str = '', position: str 
         ri, rl = _name_parts(n)
         if ri and rl == last and ri[0] == init[0]:
             candidates.append(r)
-    if len(candidates) == 1:
+    if pos_grp:
+        pos_filtered = [c for c in candidates if c.position == pos_grp]
+        if len(pos_filtered) == 1:
+            return pos_filtered[0]
+    elif len(candidates) == 1:
         return candidates[0]
     return None
 
