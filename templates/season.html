@@ -941,14 +941,14 @@ Loading grades...
       data-overall-blend="{{ row.overall_blend }}"
       >
     <td class="td-rank">{{ row.rank }}</td>
-    <td class="td-name"><div class="td-name-inner"><img class="td-name-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" onerror="this.style.display='none'"><div class="td-name-text">{{ row.name }}<span class="td-name-sub">{{ row.team }} · {{ row.position }} · <span class="name-gp">{{ row.gp_subset }}</span> GP</span></div></div></td>
+    <td class="td-name"><div class="td-name-inner"><img class="td-name-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" onerror="this.style.display='none'"><div class="td-name-text">{{ row.name }}<span class="td-name-sub">{{ row.team }} · {{ row.position | pos_display }} · <span class="name-gp">{{ row.gp_subset }}</span> GP</span></div></div></td>
     <td class="td-team">
       <div class="td-team-inner">
         <img class="td-team-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ row.team }}_dark.svg" alt="{{ row.team }}" onerror="this.style.display='none'">
         <span>{{ row.team }}</span>
       </div>
     </td>
-    <td class="td-pos">{{ row.position }}</td>
+    <td class="td-pos">{{ row.position | pos_display }}</td>
     <td class="td-stats td-gp" style="text-align:center">{{ row.gp }}</td>
 
     <!-- OVERALL -->
@@ -1392,6 +1392,16 @@ function sortTable(col, keepDirection = false) {
     // Use data-val when present (grade badges, pct columns with nested HTML)
     let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
     let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    if (col === 'name') {
+      const lastName = cell => {
+        const node = cell.querySelector('.td-name-text');
+        const full = node ? node.childNodes[0].textContent.trim() : aVal;
+        const parts = full.split(' ');
+        return parts.length > 1 ? parts.slice(1).join(' ') : full;
+      };
+      const aLast = lastName(aCell), bLast = lastName(bCell);
+      return sortAsc ? aLast.localeCompare(bLast) : bLast.localeCompare(aLast);
+    }
     if (col === 'toi_per_game') {
       aVal = toiToSec(aVal);
       bVal = toiToSec(bVal);
@@ -2047,7 +2057,8 @@ function _renderPlayerModal(data){
   hsEl.style.display='';
   hsEl.src=bio.headshot?`/api/headshot/${data.player_id}`:'';
   document.getElementById('pm-name').textContent=`${bio.firstName||''} ${bio.lastName||''}`.trim()||'—';
-  document.getElementById('pm-meta').textContent=[bio.position,bio.sweater?`#${bio.sweater}`:''].filter(Boolean).join('  ·  ');
+  const _posDisp = p => ({'L':'LW','R':'RW'}[p]||p);
+  document.getElementById('pm-meta').textContent=[_posDisp(bio.position),bio.sweater?`#${bio.sweater}`:''].filter(Boolean).join('  ·  ');
   const logoEl=document.getElementById('pm-teamlogo');
   logoEl.style.display='';
   logoEl.src=bio.teamLogo||'';

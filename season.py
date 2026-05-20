@@ -13,6 +13,7 @@ from models import PlayerStats
 from pipeline import process_game
 from grader import normalize_by_position_group, score_to_letter
 from loader import _get
+from position_overrides import POSITION_OVERRIDES
 from manual_loader import get_microstat_grade, get_microstat_record, _norm_name as _ml_norm_name
 from play_grader import get_play_grade, get_season_def_aggregates
 from fo_grade_loader import load_fo_grades, load_dz_fo_counts
@@ -275,6 +276,9 @@ def main():
             player_stats_raw, all_players_raw = cached
             from models import PlayerStats, PlayerInfo
             all_players = {int(k): PlayerInfo(**v) for k, v in all_players_raw.items()}
+            for pid, pi in all_players.items():
+                if pid in POSITION_OVERRIDES:
+                    pi.position = POSITION_OVERRIDES[pid]
             player_stats = {}
             for k, v in player_stats_raw.items():
                 s = PlayerStats(player_id=int(k))
@@ -680,6 +684,9 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             player_stats_raw, all_players_raw = cached
             from models import PlayerStats as _PS, PlayerInfo as _PI
             all_players = {int(k): _PI(**v) for k, v in all_players_raw.items()}
+            for pid, pi in all_players.items():
+                if pid in POSITION_OVERRIDES:
+                    pi.position = POSITION_OVERRIDES[pid]
             player_stats = {}
             for k, v in player_stats_raw.items():
                 s = _PS(player_id=int(k))

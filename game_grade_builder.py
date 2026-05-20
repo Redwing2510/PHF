@@ -59,32 +59,39 @@ def build_player_game_grades(
     season_str: str,
     season_acc: dict,          # pid → SeasonEntry
     game_ids: List[int],       # tracked game IDs (xlsx files) — used for tracking blend only
+    playoff_only: bool = False, # if True, only build/replace playoff game rows (game_id >= {year}030000)
 ) -> None:
     """
     Build and store per-game grades for ALL player-games in the season (full MP data).
     game_ids determines which games have manual tracking available to blend in.
-    Clears existing rows for this season before writing.
+    Clears existing rows for this season before writing (or just playoff rows if playoff_only=True).
     """
     mp_year = int(season_str[:4])
     tracked_gids = set(game_ids)
+    playoff_min_gid = int(f'{mp_year}030000')
 
-    # ── 1. Load MP per-game data (ALL games in season, not just tracked) ──────
+    # ── 1. Load MP per-game data ──────────────────────────────────────────────
     conn = sqlite3.connect(DB_PATH)
     _ensure_table(conn)
 
-    # Clear stale rows for this season
-    conn.execute('DELETE FROM player_game_grades WHERE season=?', (mp_year,))
+    # Clear stale rows — playoff_only mode only removes playoff game rows
+    if playoff_only:
+        conn.execute('DELETE FROM player_game_grades WHERE season=? AND game_id >= ?',
+                     (mp_year, playoff_min_gid))
+    else:
+        conn.execute('DELETE FROM player_game_grades WHERE season=?', (mp_year,))
     conn.commit()
 
-    # all-situation rows — full season, no game_id filter
+    # all-situation rows — scoped to playoff games if playoff_only
+    gid_filter = f' AND game_id >= {playoff_min_gid}' if playoff_only else ''
     all_rows: Dict[Tuple[int,int], dict] = {}
     for row in conn.execute(
         "SELECT player_id, game_id, team, icetime, "
         "ixg_adj, ixg_hd, onice_xgf_adj, "
         "onice_xga_adj, takeaways, giveaways, "
         "goals, primary_assists "
-        "FROM moneypuck_games "
-        "WHERE situation='all' AND season=?",
+        f"FROM moneypuck_games "
+        f"WHERE situation='all' AND season=?{gid_filter}",
         [mp_year]
     ).fetchall():
         pid, gid = row[0], row[1]
@@ -97,22 +104,22 @@ def build_player_game_grades(
             'goals': row[10] or 0.0, 'primary_assists': row[11] or 0.0,
         }
 
-    # PP rows — full season
+    # PP rows
     pp_rows: Dict[Tuple[int,int], dict] = {}
     for row in conn.execute(
-        "SELECT player_id, game_id, ixg_adj, icetime "
-        "FROM moneypuck_games "
-        "WHERE situation='5on4' AND season=?",
+        f"SELECT player_id, game_id, ixg_adj, icetime "
+        f"FROM moneypuck_games "
+        f"WHERE situation='5on4' AND season=?{gid_filter}",
         [mp_year]
     ).fetchall():
         pp_rows[(row[0], row[1])] = {'pp_ixg': row[2] or 0.0, 'pp_toi_s': row[3] or 0.0}
 
-    # PK rows — full season
+    # PK rows
     pk_rows: Dict[Tuple[int,int], dict] = {}
     for row in conn.execute(
-        "SELECT player_id, game_id, onice_xga_adj, icetime "
-        "FROM moneypuck_games "
-        "WHERE situation='4on5' AND season=?",
+        f"SELECT player_id, game_id, onice_xga_adj, icetime "
+        f"FROM moneypuck_games "
+        f"WHERE situation='4on5' AND season=?{gid_filter}",
         [mp_year]
     ).fetchall():
         pk_rows[(row[0], row[1])] = {'pk_xga': row[2] or 0.0, 'pk_toi_s': row[3] or 0.0}
@@ -123,11 +130,11 @@ def build_player_game_grades(
         for r in conn.execute('SELECT game_id, game_date FROM game_dates').fetchall()
     }
 
-    # Derive opponents: for each game, find both teams from MP data (all games)
+    # Derive opponents: for each game, find both teams from MP data
     game_teams: Dict[int, List[str]] = {}
     for row in conn.execute(
-        "SELECT DISTINCT game_id, team FROM moneypuck_games "
-        "WHERE situation='all' AND season=?",
+        f"SELECT DISTINCT game_id, team FROM moneypuck_games "
+        f"WHERE situation='all' AND season=?{gid_filter}",
         [mp_year]
     ).fetchall():
         game_teams.setdefault(row[0], []).append(row[1])

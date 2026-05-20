@@ -177,7 +177,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
     <td class="td-rank">—</td>
     <td class="td-name">
       <div class="td-name-line">{{ p.name }}{% if p.has_tracking %}<span class="trk-dot" title="Manual stats blended"></span>{% endif %}</div>
-      <div class="td-name-sub">{{ p.team }} · {{ p.position }}</div>
+      <div class="td-name-sub">{{ p.team }} · {{ p.position | pos_display }}</div>
     </td>
     <td class="td-grade" data-val="{{ '%.2f'|format(p.overall) }}">
       <div class="grade-badge" style="background:{{ p.overall|grade_bg }};color:#fff">
@@ -260,6 +260,16 @@ function sortTable(col) {
     const bCell = b.cells[idx];
     let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
     let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    if (col === 'name') {
+      const lastName = cell => {
+        const node = cell.querySelector('.td-name-text');
+        const full = node ? node.childNodes[0].textContent.trim() : cell.textContent.trim();
+        const parts = full.split(' ');
+        return parts.length > 1 ? parts.slice(1).join(' ') : full;
+      };
+      const aLast = lastName(aCell), bLast = lastName(bCell);
+      return sortAsc ? aLast.localeCompare(bLast) : bLast.localeCompare(aLast);
+    }
     const an = parseFloat(aVal), bn = parseFloat(bVal);
     if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
     return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);

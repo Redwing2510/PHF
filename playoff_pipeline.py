@@ -45,8 +45,8 @@ DATA_DIR     = Path(__file__).parent / 'NST Playoff Data' / f'{FROM_SEASON}'
 PLAYERS_FILE = DATA_DIR / 'playoff_player_ids.json'
 
 REQUEST_DELAY = 1.0          # seconds between requests within a batch
-BATCH_SIZE    = 500           # requests per batch (~150 tokens = 1 standard refill window)
-BATCH_PAUSE   = 10           # seconds to wait between batches (5 min for standard tokens to refill)
+BATCH_SIZE    = 14            # requests per batch (~150 tokens = 1 standard refill window)
+BATCH_PAUSE   = 305           # seconds to wait between batches (5 min for standard tokens to refill)
 
 # Situations to download
 SITUATIONS = ['all', '5v4', '4v5']

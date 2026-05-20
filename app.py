@@ -94,6 +94,7 @@ def _delta_color(delta) -> str:
 app.jinja_env.filters['grade_bg']    = _grade_bg
 app.jinja_env.filters['delta_bg']    = _delta_bg
 app.jinja_env.filters['delta_color'] = _delta_color
+app.jinja_env.filters['pos_display'] = lambda p: {'L': 'LW', 'R': 'RW'}.get(p, p) if p else p
 
 
 _SEASONS = [('20252026', '2025–26'), ('20242025', '2024–25')]

@@ -3,6 +3,7 @@ import time
 import requests
 from typing import Dict, List, Optional
 from models import Shift, PlayerInfo, GameContext
+from position_overrides import POSITION_OVERRIDES
 
 # ─── Roster cache — same team+season fetched once per process ────────────────
 _roster_cache: Dict[tuple, Dict[int, PlayerInfo]] = {}
@@ -95,7 +96,7 @@ def fetch_roster(team_abbrev: str, season: str, team_id: int, team_name: str) ->
         for player in data.get(group, []):
             pid = player['id']
             name = f"{player['firstName']['default']} {player['lastName']['default']}"
-            pos = player.get('positionCode', 'F')
+            pos = POSITION_OVERRIDES.get(pid, player.get('positionCode', 'F'))
             players[pid] = PlayerInfo(
                 player_id=pid,
                 name=name,
@@ -128,7 +129,7 @@ def build_roster_from_pbp(game_data: dict, ctx) -> Dict[int, PlayerInfo]:
     for spot in game_data.get('rosterSpots', []):
         pid = spot['playerId']
         name = f"{spot['firstName']['default']} {spot['lastName']['default']}"
-        pos = spot.get('positionCode', 'F')
+        pos = POSITION_OVERRIDES.get(pid, spot.get('positionCode', 'F'))
         team_id = spot['teamId']
         if team_id == home_id:
             team_abbrev = ctx.home_team_abbrev
