@@ -237,8 +237,13 @@ def build_player_game_grades(
     trk_off_n = trk_dfn_n = None
     trk_indices = [i for i, r in enumerate(records) if r['has_tracking']]
     if trk_indices:
-        trk_off_raw = [records[i]['trk_off_pts'] for i in trk_indices]
-        trk_dfn_raw = [records[i]['trk_dz_pts'] * 0.45 + records[i]['trk_ed_pts'] * 0.55
+        # Divide by TOI so tracking scores are rate-based (pts/min), consistent
+        # with mp_dfn/mp_off which are all per-60. Without this, high-minute
+        # players accumulate more raw events and get unfairly extreme scores.
+        trk_off_raw = [records[i]['trk_off_pts'] / max(records[i]['toi_min'], 5)
+                       for i in trk_indices]
+        trk_dfn_raw = [(records[i]['trk_dz_pts'] * 0.45 + records[i]['trk_ed_pts'] * 0.55)
+                       / max(records[i]['toi_min'], 5)
                        for i in trk_indices]
         trk_positions = [records[i]['pos'] for i in trk_indices]
         trk_off_normed  = normalize_by_position_group(list(zip(trk_off_raw, trk_positions)))
