@@ -238,7 +238,7 @@ def build_player_game_grades(
     trk_indices = [i for i, r in enumerate(records) if r['has_tracking']]
     if trk_indices:
         trk_off_raw = [records[i]['trk_off_pts'] for i in trk_indices]
-        trk_dfn_raw = [records[i]['trk_dz_pts'] * 0.65 + records[i]['trk_ed_pts'] * 0.35
+        trk_dfn_raw = [records[i]['trk_dz_pts'] * 0.45 + records[i]['trk_ed_pts'] * 0.55
                        for i in trk_indices]
         trk_positions = [records[i]['pos'] for i in trk_indices]
         trk_off_normed  = normalize_by_position_group(list(zip(trk_off_raw, trk_positions)))
@@ -261,8 +261,12 @@ def build_player_game_grades(
             mp_off = (0.20 * ixg_n[i] + 0.15 * ixg_hd_n[i] +
                       0.45 * xgf_n[i] + 0.20 * g_pa_n[i])
 
-        # MP dfn blend (simplified — no PK deployment per game, just xGA + net puck)
-        mp_dfn = 0.60 * npk_xga_n[i] + 0.40 * net_puck_n[i]
+        # MP dfn blend — for tracked games, reduce net_puck weight since giveaways
+        # are already captured in the exit tracking score (avoids double-counting)
+        if r['has_tracking']:
+            mp_dfn = 0.80 * npk_xga_n[i] + 0.20 * net_puck_n[i]
+        else:
+            mp_dfn = 0.60 * npk_xga_n[i] + 0.40 * net_puck_n[i]
 
         # Tracking blend: fwd off=50%, fwd dfn=30%, D off=30%, D dfn=50%
         trk_off_w = (0.50 if is_fwd else 0.30) if r['has_tracking'] else 0.0

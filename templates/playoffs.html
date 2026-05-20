@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+{% block title %} — 2025–26 Playoff Grades{% endblock %}
+
+{% block style %}
+.page-title{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+.filters{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.filter-group{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:3px;}
+.filter-btn{padding:4px 12px;border:none;border-radius:5px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,color .12s;}
+.filter-btn.active{background:var(--surface3);color:var(--text)}
+.filter-btn:hover:not(.active){color:var(--text2)}
+
+.search-wrap{margin-left:auto;min-width:220px;max-width:320px;width:100%;}
+.search-wrap input{width:100%;height:34px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);padding:0 12px;font-size:13px;}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-wrap input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(240,180,41,.18);}
+
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+.grades-table{border-collapse:collapse;width:100%;min-width:1200px;font-size:13px;}
+
+.grades-table thead tr.group-row th{background:var(--surface2);padding:6px 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);text-align:center;}
+.grades-table thead tr.group-row th.grade-group{color:#06b6d4;border-left:1px solid var(--border2);}
+.grades-table thead tr.group-row th.stats-group{border-left:1px solid var(--border2);}
+.grades-table thead tr.group-row th:first-child{border-left:none;}
+
+.grades-table thead tr.col-row th{background:var(--surface2);padding:8px 10px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:2px solid var(--border2);white-space:nowrap;cursor:pointer;user-select:none;}
+.grades-table thead tr.col-row th.th-name{text-align:left;}
+.grades-table thead tr.col-row th.th-grade{text-align:center;color:#06b6d4;border-left:1px solid var(--border2);}
+.grades-table thead tr.col-row th:hover{color:var(--text2);}
+
+.grades-table tbody tr.player-row{border-bottom:1px solid var(--border);transition:background .1s;}
+.grades-table tbody tr.player-row:hover{background:var(--surface2);}
+.grades-table tbody tr.player-row td{padding:8px 10px;text-align:right;white-space:nowrap;vertical-align:middle;}
+.grades-table tbody tr.player-row td.td-rank{color:var(--muted);font-size:12px;width:36px;text-align:center;}
+.grades-table tbody tr.player-row td.td-name{text-align:left;font-weight:600;color:var(--text);min-width:160px;}
+.grades-table tbody tr.player-row td.td-grade{text-align:center;border-left:1px solid var(--border2);}
+.grades-table tbody tr.player-row td.td-stats-sep{color:var(--text2);border-left:1px solid var(--border2);text-align:center;}
+.grades-table tbody tr.player-row td.td-stats{color:var(--text2);text-align:center;min-width:36px;}
+.grades-table thead tr.col-row th.th-stats-first{border-left:1px solid var(--border2);}
+
+@media(max-width:640px){
+  .grades-table .td-rank,
+  .grades-table thead tr.col-row th:nth-child(1),
+  .grades-table thead tr.group-row th:nth-child(1){
+    position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--surface);border-right:none;
+  }
+  .grades-table thead tr.col-row th:nth-child(1),
+  .grades-table thead tr.group-row th:nth-child(1){background:var(--surface2);z-index:3;}
+  .grades-table .td-name,
+  .grades-table thead tr.col-row th:nth-child(2){
+    position:-webkit-sticky;position:sticky;left:36px;z-index:2;background:var(--surface);
+    border-left:none;box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
+  }
+  .grades-table thead tr.col-row th:nth-child(2){background:var(--surface2);z-index:3;}
+}
+
+.grade-badge{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;border-radius:5px;font-weight:700;color:#fff;}
+.grade-badge .g-letter{font-size:10px;opacity:.85}
+.grade-badge .g-score{font-size:14px}
+.grade-sub{display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:2px 6px;border-radius:4px;font-size:12px;font-weight:600;color:#fff;}
+
+.td-name-logo{display:none;}
+.td-name-text{display:contents;}
+.td-name-sub{display:none;font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;}
+.td-name-inner{display:flex;align-items:center;gap:7px;}
+
+.grades-table tbody tr.player-row td.td-team{text-align:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;}
+.td-team-inner{display:flex;align-items:center;justify-content:center;gap:5px;}
+.td-team-logo{width:18px;height:18px;object-fit:contain;flex-shrink:0;}
+.grades-table tbody tr.player-row td.td-pos{text-align:center;font-size:11px;font-weight:600;color:var(--muted);}
+
+@media(max-width:640px){
+  .td-name-sub{display:block;}
+  .td-name-logo{display:block;width:24px;height:24px;object-fit:contain;flex-shrink:0;}
+  .td-name-text{display:flex;flex-direction:column;min-width:0;}
+  .grades-table .td-team,.grades-table .td-pos{display:none !important;}
+  .grades-table .col-row th:nth-child(3),.grades-table .col-row th:nth-child(4){display:none !important;}
+}
+
+.trk-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#818cf8;vertical-align:middle;margin-left:4px;flex-shrink:0;}
+
+.sort-arrow{display:inline-block;margin-left:3px;opacity:.4;font-size:9px}
+th.sorted .sort-arrow{opacity:1;color:var(--accent)}
+
+.hidden{display:none!important;}
+{% endblock %}
+
+{% block content %}
+<div class="page-title">2025–26 Playoff Grades</div>
+<div class="page-sub">Grades averaged across all playoff games played. Min. 3 games to qualify.</div>
+
+<div class="filters">
+  <div class="filter-group" id="pos-filters">
+    <button class="filter-btn active" data-pos="all">All</button>
+    <button class="filter-btn" data-pos="fwd">Forwards</button>
+    <button class="filter-btn" data-pos="def">Defense</button>
+    <button class="filter-btn" data-pos="C">C</button>
+    <button class="filter-btn" data-pos="LW">LW</button>
+    <button class="filter-btn" data-pos="RW">RW</button>
+    <button class="filter-btn" data-pos="D">D</button>
+  </div>
+  <select id="team-filter" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--text);outline:none;cursor:pointer;">
+    <option value="all">All Teams</option>
+    {% for t in teams %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+  </select>
+  <div class="search-wrap">
+    <input id="player-search" type="search" placeholder="Search player…" autocomplete="off" class="player-search">
+  </div>
+</div>
+
+<div class="table-wrap">
+<table class="grades-table">
+  <thead>
+    <tr class="group-row">
+      <th colspan="4" class="stats-group">── PLAYERS ──</th>
+      <th colspan="3" class="grade-group">── PHG SCORE ──</th>
+      <th colspan="14" class="stats-group">── STATS ──</th>
+    </tr>
+    <tr class="col-row">
+      <th data-col="rank" style="text-align:center">#<span class="sort-arrow">↓</span></th>
+      <th class="th-name" data-col="name">NAME</th>
+      <th style="text-align:center" data-col="team">TEAM</th>
+      <th style="text-align:center" data-col="pos">POS</th>
+      <th class="th-grade sorted" data-col="overall">OVERALL<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="off">OFF<span class="sort-arrow">↓</span></th>
+      <th class="th-grade" data-col="dfn">DEF<span class="sort-arrow">↓</span></th>
+      <th class="th-stats-first" data-col="toi_pg">TOI/GM<span class="sort-arrow">↓</span></th>
+      <th data-col="gp">GP<span class="sort-arrow">↓</span></th>
+      <th data-col="goals">G<span class="sort-arrow">↓</span></th>
+      <th data-col="assists">A<span class="sort-arrow">↓</span></th>
+      <th data-col="points">PTS<span class="sort-arrow">↓</span></th>
+      <th data-col="sog">SOG<span class="sort-arrow">↓</span></th>
+      <th data-col="hits">HIT<span class="sort-arrow">↓</span></th>
+      <th data-col="blocks">BLK<span class="sort-arrow">↓</span></th>
+      <th data-col="gva">GVA<span class="sort-arrow">↓</span></th>
+      <th data-col="tka">TKA<span class="sort-arrow">↓</span></th>
+      <th data-col="pim">PIM<span class="sort-arrow">↓</span></th>
+      <th data-col="cf_pct">CF%<span class="sort-arrow">↓</span></th>
+      <th data-col="xg_pct">xG%<span class="sort-arrow">↓</span></th>
+      <th data-col="fo_pct">FO%<span class="sort-arrow">↓</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in players %}
+    <tr class="player-row"
+        onclick="openPlayoffModal({{ p.player_id }}, this)"
+        style="cursor:pointer"
+        data-pos="{{ p.position }}"
+        data-team="{{ p.team }}"
+        data-overall="{{ p.overall }}"
+        data-overall-letter="{{ p.overall_letter }}"
+        data-off="{{ p.off }}"
+        data-off-letter="{{ p.off_letter }}"
+        data-dfn="{{ p.dfn }}"
+        data-dfn-letter="{{ p.dfn_letter }}"
+        data-gp="{{ p.gp }}"
+        data-toi="{{ p.toi_pg_raw }}"
+        data-goals="{{ p.goals }}"
+        data-assists="{{ p.assists }}"
+        data-points="{{ p.points }}">
+      <td class="td-rank">{{ loop.index }}</td>
+      <td class="td-name">
+        <div class="td-name-inner">
+          <img class="td-name-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ p.team }}_dark.svg" onerror="this.style.display='none'">
+          <div class="td-name-text">
+            {{ p.name }}
+            <span class="td-name-sub">{{ p.team }} · {{ p.position }}</span>
+          </div>
+        </div>
+      </td>
+      <td class="td-team">
+        <div class="td-team-inner">
+          <img class="td-team-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ p.team }}_dark.svg" alt="{{ p.team }}" onerror="this.style.display='none'">
+          <span>{{ p.team }}</span>
+        </div>
+      </td>
+      <td class="td-pos">{{ p.position }}</td>
+      <td class="td-grade" data-val="{{ p.overall }}">
+        <div class="grade-badge" style="background:{{ p.overall | grade_bg }}">
+          <span class="g-letter">{{ p.overall_letter }}</span>
+          <span class="g-score">{{ p.overall }}</span>
+        </div>
+      </td>
+      <td class="td-grade" data-val="{{ p.off }}">
+        <div class="grade-sub" style="background:{{ p.off | grade_bg }}">{{ p.off }}</div>
+      </td>
+      <td class="td-grade" data-val="{{ p.dfn }}">
+        <div class="grade-sub" style="background:{{ p.dfn | grade_bg }}">{{ p.dfn }}</div>
+      </td>
+      <td class="td-stats td-stats-sep" data-val="{{ p.toi_pg_raw }}">{{ p.toi_pg }}</td>
+      <td class="td-stats" data-val="{{ p.gp }}">{{ p.gp }}</td>
+      <td class="td-stats" data-val="{{ p.goals }}">{{ p.goals }}</td>
+      <td class="td-stats" data-val="{{ p.assists }}">{{ p.assists }}</td>
+      <td class="td-stats" data-val="{{ p.points }}">{{ p.points }}</td>
+      <td class="td-stats" data-val="{{ p.sog }}">{{ p.sog }}</td>
+      <td class="td-stats" data-val="{{ p.hits }}">{{ p.hits }}</td>
+      <td class="td-stats" data-val="{{ p.blocks }}">{{ p.blocks }}</td>
+      <td class="td-stats" data-val="{{ p.gva }}">{{ p.gva }}</td>
+      <td class="td-stats" data-val="{{ p.tka }}">{{ p.tka }}</td>
+      <td class="td-stats" data-val="{{ p.pim }}">{{ p.pim }}</td>
+      <td class="td-stats" data-val="{{ p.cf_pct }}">{{ p.cf_pct }}</td>
+      <td class="td-stats" data-val="{{ p.xg_pct }}">{{ p.xg_pct }}</td>
+      <td class="td-stats" data-val="{{ p.fo_pct }}">{{ p.fo_pct }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script>
+const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','toi_pg','gp','goals','assists','points','sog','hits','blocks','gva','tka','pim','cf_pct','xg_pct','fo_pct'];
+const colIndex = col => COL_ORDER.indexOf(col);
+
+let sortCol = 'overall', sortAsc = false;
+
+function sortTable(col) {
+  if (col === sortCol) { sortAsc = !sortAsc; }
+  else { sortCol = col; sortAsc = (col === 'name' || col === 'rank'); }
+  document.querySelectorAll('.col-row th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === sortCol);
+    const arr = th.querySelector('.sort-arrow');
+    if (arr && th.dataset.col === sortCol) arr.textContent = sortAsc ? '↑' : '↓';
+  });
+  const tbody = document.querySelector('.grades-table tbody');
+  const rows = Array.from(tbody.querySelectorAll('.player-row'));
+  rows.sort((a, b) => {
+    const aCell = a.cells[colIndex(sortCol)], bCell = b.cells[colIndex(sortCol)];
+    let aVal = aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent.trim();
+    let bVal = bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent.trim();
+    if (sortCol === 'name') {
+      const ln = cell => { const n = cell.querySelector('.td-name-text').childNodes[0].textContent.trim().split(' '); return n.length > 1 ? n.slice(1).join(' ') : n[0]; };
+      return sortAsc ? ln(aCell).localeCompare(ln(bCell)) : ln(bCell).localeCompare(ln(aCell));
+    }
+    const an = parseFloat(aVal), bn = parseFloat(bVal);
+    if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
+    return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+  rerank();
+  applyFilters();
+}
+
+function rerank() {
+  let rank = 1;
+  document.querySelectorAll('.player-row').forEach(r => {
+    if (r.style.display !== 'none') r.querySelector('.td-rank').textContent = rank++;
+  });
+}
+
+let activePosGroup = 'all', activeTeam = 'all', activeSearch = '';
+
+function applyFilters() {
+  let rank = 0;
+  document.querySelectorAll('.player-row').forEach(r => {
+    const pos   = r.dataset.pos;
+    const team  = r.dataset.team;
+    const name  = r.querySelector('.td-name').textContent.toLowerCase();
+    const isFwd = ['C','LW','RW'].includes(pos);
+
+    const posOk  = activePosGroup === 'all'
+      || (activePosGroup === 'fwd' && isFwd)
+      || (activePosGroup === 'def' && pos === 'D')
+      || activePosGroup === pos;
+    const teamOk = activeTeam === 'all' || team === activeTeam;
+    const filterOk = posOk && teamOk;
+    const srchOk = !activeSearch || name.includes(activeSearch);
+
+    const show = filterOk && srchOk;
+    r.style.display = show ? '' : 'none';
+
+    if (filterOk) {
+      rank++;
+      if (show) r.querySelector('.td-rank').textContent = rank;
+    } else if (show) {
+      r.querySelector('.td-rank').textContent = '—';
+    }
+  });
+}
+
+document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activePosGroup = btn.dataset.pos;
+    applyFilters();
+  });
+});
+
+
+document.getElementById('team-filter').addEventListener('change', e => {
+  activeTeam = e.target.value;
+  applyFilters();
+});
+
+document.getElementById('player-search').addEventListener('input', e => {
+  activeSearch = e.target.value.trim().toLowerCase();
+  applyFilters();
+});
+
+document.querySelectorAll('.col-row th[data-col]').forEach(th => {
+  th.addEventListener('click', () => sortTable(th.dataset.col));
+});
+</script>
+
+{# ── Playoff player modal ── #}
+<div id="player-modal-overlay" onclick="closePlayoffModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;"></div>
+<div id="player-modal" style="display:none;position:fixed;top:0;right:0;height:100%;width:380px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border2);z-index:901;overflow-y:auto;box-shadow:-8px 0 32px rgba(0,0,0,.4);transition:transform .25s ease;">
+  <div id="pm-header" style="padding:24px 24px 0;">
+    <button onclick="closePlayoffModal()" style="float:right;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    <div style="display:flex;align-items:flex-start;gap:16px;">
+      <img id="pm-headshot" src="" alt="" style="width:80px;height:80px;border-radius:10px;object-fit:cover;background:var(--surface);" onerror="this.style.display='none'">
+      <div style="flex:1;min-width:0;">
+        <div id="pm-name" style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--text);line-height:1.2;"></div>
+        <div id="pm-meta" style="font-size:13px;color:var(--muted);margin-top:4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <img id="pm-teamlogo" src="" alt="" style="height:28px;object-fit:contain;" onerror="this.style.display='none'">
+          <span id="pm-team" style="font-size:13px;font-weight:700;color:var(--text2);"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:20px 24px 0;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">Player Info</div>
+    <div id="pm-bio" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;"></div>
+  </div>
+  <div id="pm-draft-wrap" style="padding:12px 24px 0;display:none;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;">Draft</div>
+    <div id="pm-draft" style="font-size:13px;color:var(--text2);"></div>
+  </div>
+  <div style="margin:20px 24px 0;border-top:1px solid var(--border);"></div>
+  <div style="padding:20px 24px 0;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:14px;">2025–26 Playoff Grades</div>
+    <div id="pm-grades"></div>
+  </div>
+  <div style="padding:16px 24px 0;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">Playoff Stats</div>
+    <div id="pm-stats" style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;"></div>
+  </div>
+  <div style="margin:20px 24px 0;border-top:1px solid var(--border);"></div>
+  <div style="padding:16px 24px 32px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;">Playoff Game Log</div>
+    <div id="pm-gamelog"><div style="color:var(--muted);font-size:13px;">Loading…</div></div>
+  </div>
+</div>
+
+<style>
+.pm-bio-item{display:flex;flex-direction:column;gap:2px;}
+.pm-bio-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.pm-bio-value{font-size:13px;font-weight:600;color:var(--text2);}
+.pm-grade-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pm-grade-label{font-size:12px;font-weight:700;color:var(--muted);width:52px;flex-shrink:0;}
+.pm-grade-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;}
+.pm-grade-bar{height:100%;border-radius:4px;transition:width .4s ease;}
+.pm-grade-val{font-size:13px;font-weight:800;width:36px;text-align:right;flex-shrink:0;}
+.pm-grade-letter{font-size:11px;font-weight:700;width:22px;text-align:right;color:var(--muted);flex-shrink:0;}
+.pm-stat-cell{flex:1;padding:12px 8px;text-align:center;border-right:1px solid var(--border);}
+.pm-stat-cell:last-child{border-right:none;}
+.pm-stat-val{font-size:17px;font-weight:800;color:var(--text);}
+.pm-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:2px;}
+.gl-table{width:100%;border-collapse:collapse;font-size:12px;}
+.gl-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:4px 6px;text-align:center;border-bottom:1px solid var(--border);}
+.gl-table th:first-child,.gl-table td:first-child{text-align:left;padding-left:2px;}
+.gl-table td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border2);color:var(--text2);}
+.gl-table tr:last-child td{border-bottom:none;}
+.gl-chip{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;color:#fff;}
+.gl-trk-icon{display:inline-block;width:7px;height:7px;border-radius:50%;background:#818cf8;vertical-align:middle;margin-left:3px;}
+</style>
+
+<script>
+function _gradeColor(v){
+  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#4d7c0f';
+  if(v>=60)return'#b45309';if(v>=50)return'#c2410c';return'#b91c1c';
+}
+function _fmtHeight(inches){if(!inches)return'—';return`${Math.floor(inches/12)}′${inches%12}″`;}
+function _fmtAge(dob){
+  if(!dob)return'';
+  const b=new Date(dob),n=new Date();
+  let age=n.getFullYear()-b.getFullYear();
+  const m=n.getMonth()-b.getMonth();
+  if(m<0||(m===0&&n.getDate()<b.getDate()))age--;
+  return age;
+}
+function _fmtDob(dob){
+  if(!dob)return'—';const[y,mo,d]=dob.split('-');return`${parseInt(mo)}/${parseInt(d)}/${y}`;
+}
+function _ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+
+function openPlayoffModal(playerId, row){
+  document.getElementById('player-modal-overlay').style.display='block';
+  const modal=document.getElementById('player-modal');
+  modal.style.display='block';
+  modal.style.transform='translateX(100%)';
+  setTimeout(()=>modal.style.transform='translateX(0)',10);
+
+  document.getElementById('pm-name').textContent='Loading…';
+  ['pm-meta','pm-bio','pm-grades','pm-stats'].forEach(id=>document.getElementById(id).innerHTML='');
+  document.getElementById('pm-headshot').src='';
+  document.getElementById('pm-teamlogo').src='';
+  document.getElementById('pm-team').textContent='';
+  document.getElementById('pm-draft-wrap').style.display='none';
+  document.getElementById('pm-gamelog').innerHTML='<div style="color:var(--muted);font-size:13px;">Loading…</div>';
+
+  // Grades from row data attributes
+  const d=row.dataset;
+  const overall=parseFloat(d.overall), off=parseFloat(d.off), dfn=parseFloat(d.dfn);
+  const gradeRows=[
+    ['Overall', overall, d.overallLetter],
+    ['Offense', off,     d.offLetter],
+    ['Defense', dfn,     d.dfnLetter],
+  ];
+  document.getElementById('pm-grades').innerHTML=gradeRows.map(([lbl,val,letter])=>{
+    if(isNaN(val))return'';
+    const color=_gradeColor(val);
+    return`<div class="pm-grade-row">
+      <span class="pm-grade-label">${lbl}</span>
+      <div class="pm-grade-bar-wrap"><div class="pm-grade-bar" style="width:${val}%;background:${color};"></div></div>
+      <span class="pm-grade-val" style="color:${color};">${val.toFixed(1)}</span>
+      <span class="pm-grade-letter">${letter||''}</span></div>`;
+  }).join('');
+
+  const toiMin = parseFloat(d.toi);
+  const toiFmt = isNaN(toiMin) ? '—' : `${Math.floor(toiMin)}:${String(Math.round((toiMin%1)*60)).padStart(2,'0')}`;
+  document.getElementById('pm-stats').innerHTML=[
+    ['GP',d.gp],['TOI/GM',toiFmt],['G',d.goals],['A',d.assists],['PTS',d.points]
+  ].map(([l,v])=>`<div class="pm-stat-cell"><div class="pm-stat-val">${v??'—'}</div><div class="pm-stat-lbl">${l}</div></div>`).join('');
+
+  // Bio from API
+  fetch(`/api/player/${playerId}`).then(r=>r.json()).then(data=>{
+    const bio=data.bio||{};
+    const hsEl=document.getElementById('pm-headshot');
+    hsEl.style.display='';
+    hsEl.src=bio.headshot||`https://assets.nhle.com/mugs/nhl/20252026/${bio.teamAbbrev||''}/${playerId}.png`;
+    document.getElementById('pm-name').textContent=`${bio.firstName||''} ${bio.lastName||''}`.trim()||'—';
+    const _posDisp=p=>({'L':'LW','R':'RW'}[p]||p);
+    document.getElementById('pm-meta').textContent=[_posDisp(bio.position),bio.sweater?`#${bio.sweater}`:''].filter(Boolean).join('  ·  ');
+    const logoEl=document.getElementById('pm-teamlogo');
+    logoEl.src=bio.teamLogo||'';
+    document.getElementById('pm-team').textContent=bio.teamName||bio.teamAbbrev||'';
+    const age=_fmtAge(bio.birthDate);
+    const bp=[bio.birthCity,bio.birthProv,bio.birthCountry].filter(Boolean).join(', ');
+    const bioItems=[['Height',_fmtHeight(bio.heightIn)],['Weight',bio.weightLbs?`${bio.weightLbs} lb`:'—'],
+      ['Born',bio.birthDate?`${_fmtDob(bio.birthDate)}${age?` (Age: ${age})`:''}`:'—'],
+      ['Birthplace',bp||'—'],['Shoots',bio.shoots||'—']];
+    document.getElementById('pm-bio').innerHTML=bioItems.map(([l,v])=>
+      `<div class="pm-bio-item"><span class="pm-bio-label">${l}</span><span class="pm-bio-value">${v}</span></div>`).join('');
+    const dr=bio.draft;
+    if(dr){document.getElementById('pm-draft-wrap').style.display='block';
+      document.getElementById('pm-draft').textContent=`${dr.year}, ${dr.teamAbbrev} (${_ordinal(dr.overallPick)} overall), Round ${dr.round}, Pick ${dr.pickInRound}`;}
+  });
+
+  // Playoff game log
+  fetch(`/api/player/${playerId}/playoff-games`).then(r=>r.json()).then(games=>{
+    const el=document.getElementById('pm-gamelog');
+    if(!games||!games.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">No playoff game data.</div>';return;}
+    function chip(v){if(v==null)return'—';return`<span class="gl-chip" style="background:${_gradeColor(v)}">${v.toFixed(1)}</span>`;}
+    let html='<table class="gl-table"><thead><tr>'
+      +'<th>Date</th><th>Opp</th><th>TOI</th><th>Overall</th><th>Off</th><th>Dfn</th>'
+      +'</tr></thead><tbody>';
+    for(const g of games){
+      const date=g.game_date?g.game_date.slice(5).replace('-','/'):'—';
+      const toi=g.toi_min!=null?`${Math.floor(g.toi_min)}:${String(Math.round((g.toi_min%1)*60)).padStart(2,'0')}`:'—';
+      const trk=g.has_tracking?'<span class="gl-trk-icon"></span>':'';
+      html+=`<tr>
+        <td style="color:var(--text2)">${date}</td>
+        <td style="font-weight:700;color:var(--text)">${g.opponent||'—'}${trk}</td>
+        <td>${toi}</td>
+        <td>${chip(g.overall)}</td><td>${chip(g.off)}</td><td>${chip(g.dfn)}</td>
+      </tr>`;
+    }
+    html+='</tbody></table>';
+    el.innerHTML=html;
+  });
+}
+
+function closePlayoffModal(){
+  const modal=document.getElementById('player-modal');
+  modal.style.transform='translateX(100%)';
+  setTimeout(()=>{modal.style.display='none';document.getElementById('player-modal-overlay').style.display='none';},250);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePlayoffModal();});
+</script>
+{% endblock %}

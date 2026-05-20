@@ -80,6 +80,7 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
   <a class="nav-brand" href="/"><img src="/static/logo.png" alt="PHG" style="height:40px;width:auto;display:block;"></a>
   <div class="nav-divider"></div>
   <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">Season</a>
+  <a class="nav-link {% if request.endpoint == 'playoffs' %}active{% endif %}" href="/playoffs">Playoffs</a>
   <a class="nav-link {% if request.endpoint == 'game_lookup' %}active{% endif %}" href="/game-lookup">Game Lookup</a>
   <a class="nav-link {% if request.endpoint == 'methodology' %}active{% endif %}" href="/methodology">Methodology</a>
 </nav>
