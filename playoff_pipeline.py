@@ -158,9 +158,9 @@ def download():
 
     player_ids = json.loads(PLAYERS_FILE.read_text())
 
-    # We download: std/all, std/5v4, std/4v5, oi/all  = 4 per player
+    # We download: std/all, std/5v4, std/4v5, oi/all, oi/4v5  = 5 per player
     downloads = [
-        ('std', 'all'), ('std', '5v4'), ('std', '4v5'), ('oi', 'all')
+        ('std', 'all'), ('std', '5v4'), ('std', '4v5'), ('oi', 'all'), ('oi', '4v5')
     ]
     total = len(player_ids) * len(downloads)
     done  = sum(
@@ -334,6 +334,25 @@ def load():
                         float(row.get('iHDCF', 0) or 0), # proxy for ixg_hd
                     ))
                     inserted += 1
+                except Exception as e:
+                    errors += 1
+
+        # ── On-ice PK (4v5) ──────────────────────────────────────────────────
+        oi_pk_path = _raw_path(pid, 'oi', '4v5', team)
+        if oi_pk_path.exists():
+            rows = _parse_html_table(oi_pk_path.read_text(encoding='utf-8'))
+            for row in rows:
+                game_str = str(row.get('Game', ''))
+                gid = _parse_game_str(game_str, game_meta)
+                if not gid:
+                    continue
+                try:
+                    xga = float(row.get('xGA', 0) or 0)
+                    conn.execute('''
+                        UPDATE moneypuck_games
+                        SET onice_xga_adj=?
+                        WHERE player_id=? AND game_id=? AND situation='4on5'
+                    ''', (xga, int(pid), gid))
                 except Exception as e:
                     errors += 1
 
@@ -523,22 +542,25 @@ def update_game(game_id: int):
 
     html = r.text
 
-    # Auto-detect NST team abbreviations from table IDs embedded in the page
-    nst_teams = re.findall(r'<table[^>]+id=tb([A-Z.]+)stall', html)
+    # Auto-detect NST team abbreviations and table prefix from table IDs embedded in the page
+    prefix_m = re.search(r'<table[^>]+id=(tb|rd)([A-Z.]+)stall', html)
+    tbl_prefix = prefix_m.group(1) if prefix_m else 'tb'
+    nst_teams = re.findall(rf'<table[^>]+id={tbl_prefix}([A-Z.]+)stall', html)
     if len(nst_teams) < 2:
-        print(f'  ERROR: Could not find team tables (found: {nst_teams}).')
+        print(f'  ERROR: Could not find team tables (found: {nst_teams}, prefix={tbl_prefix}).')
         return
-    print(f'  NST teams: {nst_teams}')
+    print(f'  NST teams: {nst_teams} (prefix={tbl_prefix})')
 
     conn = sqlite3.connect(DB_PATH)
     inserted = oi_updated = skipped = 0
 
     for nst_team in nst_teams:
-        # Pull the four tables we need for this team
-        std_all = _extract_game_table(html, f'tb{nst_team}stall')
-        std_pp  = _extract_game_table(html, f'tb{nst_team}stpp')
-        std_pk  = _extract_game_table(html, f'tb{nst_team}stpk')
-        oi_all  = _extract_game_table(html, f'tb{nst_team}oiall')
+        # Pull the five tables we need for this team
+        std_all = _extract_game_table(html, f'{tbl_prefix}{nst_team}stall')
+        std_pp  = _extract_game_table(html, f'{tbl_prefix}{nst_team}stpp')
+        std_pk  = _extract_game_table(html, f'{tbl_prefix}{nst_team}stpk')
+        oi_all  = _extract_game_table(html, f'{tbl_prefix}{nst_team}oiall')
+        oi_pk   = _extract_game_table(html, f'{tbl_prefix}{nst_team}oipk')
 
         # Insert standard stats for all three situation tables
         for rows, db_sit in [(std_all, 'all'), (std_pp, '5on4'), (std_pk, '4on5')]:
@@ -575,6 +597,23 @@ def update_game(game_id: int):
                     inserted += 1
                 except Exception as e:
                     print(f'  Insert error ({name}, {db_sit}): {e}')
+
+        # Update on-ice xGA into the already-inserted '4on5' rows
+        for row in oi_pk:
+            name    = _norm_name(str(row.get('Player', '')))
+            pid_str = name_to_pid.get(name)
+            if not pid_str:
+                continue
+            pid = int(pid_str)
+            try:
+                xga = float(row.get('xGA', 0) or 0)
+                conn.execute('''
+                    UPDATE moneypuck_games
+                    SET onice_xga_adj=?
+                    WHERE player_id=? AND game_id=? AND situation='4on5'
+                ''', (xga, pid, game_id))
+            except Exception as e:
+                print(f'  OI PK update error ({name}): {e}')
 
         # Update on-ice stats into the already-inserted 'all' rows
         for row in oi_all:

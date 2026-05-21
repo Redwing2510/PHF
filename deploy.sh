@@ -28,6 +28,8 @@ rsync -av "${EXCLUDES[@]}" /Users/nicklamanna/Documents/PHF/ "$SERVER:$REMOTE/"
 if $WITH_LOGS; then
   echo "Syncing cache.db..."
   rsync -av /Users/nicklamanna/Documents/PHF/cache.db "$SERVER:$REMOTE/cache.db"
+  echo "Syncing microstat pkl cache..."
+  rsync -av /Users/nicklamanna/Documents/PHF/.ms_grades_cache.pkl "$SERVER:$REMOTE/.ms_grades_cache.pkl"
   echo "Clearing server season cache (logs updated)..."
   ssh "$SERVER" "rm -f /opt/phf/season_cache/*.json"
 fi

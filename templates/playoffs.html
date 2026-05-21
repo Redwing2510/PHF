@@ -1,13 +1,19 @@
 {% extends "base.html" %}
-{% block title %} — 2025–26 Playoff Grades{% endblock %}
+{% block title %} — {{ '2025–26' if season_str == '20252026' else '2024–25' }} Playoff Grades{% endblock %}
 
 {% block style %}
-.page-title{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;}
 .page-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.season-hero{display:flex;align-items:baseline;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.season-title{font-size:26px;font-weight:900;letter-spacing:-1px;color:var(--text);}
+.season-select{padding:7px 36px 7px 14px;border-radius:8px;font-size:14px;font-weight:700;color:var(--text);background:var(--surface2);border:1.5px solid var(--border2);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.season-select:focus{outline:none;border-color:var(--accent);}
+.season-select:hover{border-color:var(--accent);}
+@media(max-width:768px){.page{padding:12px 10px}}
+@media(max-width:600px){.season-hero{gap:8px;flex-direction:column;align-items:flex-start}.season-title{font-size:20px}}
 
 .filters{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
 .filter-group{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:3px;}
-.filter-btn{padding:4px 12px;border:none;border-radius:5px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,color .12s;}
+.filter-btn{padding:4px 18px;border:none;border-radius:5px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,color .12s;}
 .filter-btn.active{background:var(--surface3);color:var(--text)}
 .filter-btn:hover:not(.active){color:var(--text2)}
 
@@ -40,19 +46,25 @@
 .grades-table thead tr.col-row th.th-stats-first{border-left:1px solid var(--border2);}
 
 @media(max-width:640px){
+  .grades-table{border-collapse:separate;border-spacing:0;min-width:700px;}
+  .grades-table thead th{background:var(--surface2) !important;z-index:3;}
   .grades-table .td-rank,
   .grades-table thead tr.col-row th:nth-child(1),
   .grades-table thead tr.group-row th:nth-child(1){
-    position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--surface);border-right:none;
+    position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--surface);
+    width:28px;min-width:28px;
   }
   .grades-table thead tr.col-row th:nth-child(1),
   .grades-table thead tr.group-row th:nth-child(1){background:var(--surface2);z-index:3;}
   .grades-table .td-name,
   .grades-table thead tr.col-row th:nth-child(2){
-    position:-webkit-sticky;position:sticky;left:36px;z-index:2;background:var(--surface);
-    border-left:none;box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
+    position:-webkit-sticky;position:sticky;left:28px;z-index:2;background:var(--surface);
+    width:160px !important;min-width:160px !important;max-width:160px !important;
+    box-shadow:3px 0 6px -2px rgba(0,0,0,.4);
   }
-  .grades-table thead tr.col-row th:nth-child(2){background:var(--surface2);z-index:3;}
+  .grades-table thead tr.col-row th:nth-child(2){background:var(--surface2);z-index:3;padding-left:36px;}
+  .grades-table .td-name .td-name-text{width:160px;overflow:hidden;}
+  .grades-table .td-name .td-name-text > :first-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 }
 
 .grade-badge{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;border-radius:5px;font-weight:700;color:#fff;}
@@ -76,6 +88,9 @@
   .td-name-text{display:flex;flex-direction:column;min-width:0;}
   .grades-table .td-team,.grades-table .td-pos{display:none !important;}
   .grades-table .col-row th:nth-child(3),.grades-table .col-row th:nth-child(4){display:none !important;}
+  .grades-table{font-size:11px !important;}
+  .grades-table td{padding:6px 4px !important;}
+  .grades-table thead tr.col-row th{padding:6px 4px !important;}
 }
 
 .trk-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#818cf8;vertical-align:middle;margin-left:4px;flex-shrink:0;}
@@ -84,28 +99,140 @@
 th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 
 .hidden{display:none!important;}
+
+/* ── Page layout ── */
+.page-layout{display:flex;align-items:flex-start;gap:0}
+.playoff-main{flex:1;min-width:0;padding-left:20px}
+
+/* ── Team sidebar ── */
+.team-sidebar{
+  width:156px;flex-shrink:0;position:sticky;top:54px;
+  max-height:calc(100vh - 60px);overflow:hidden;
+  border-right:1px solid var(--border);background:var(--bg);
+  transition:width .2s ease;display:flex;flex-direction:column;
+}
+.team-sidebar.collapsed{width:40px}
+.sidebar-toggle{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:32px;flex-shrink:0;background:none;border:none;
+  border-bottom:1px solid var(--border);color:var(--muted);font-size:13px;
+  cursor:pointer;transition:color .12s,background .12s;
+}
+.sidebar-toggle:hover{color:var(--text2);background:var(--surface)}
+.sidebar-inner{overflow-y:auto;flex:1;padding:6px 0}
+.sidebar-inner::-webkit-scrollbar{width:3px}
+.sidebar-inner::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sidebar-team{
+  display:flex;align-items:center;gap:7px;
+  width:100%;padding:5px 8px;background:none;border:none;
+  color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.4px;
+  cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;
+  transition:background .1s,color .1s;
+}
+.sidebar-team:hover{background:var(--surface);color:var(--text2)}
+.sidebar-team.active{background:var(--surface2);color:var(--accent)}
+.st-logo{width:22px;height:22px;object-fit:contain;flex-shrink:0}
+.st-abbrev{flex-shrink:0;transition:opacity .1s,width .1s}
+.team-sidebar.collapsed .st-abbrev{opacity:0;width:0;overflow:hidden}
+.team-sidebar.collapsed .sidebar-team{justify-content:center;padding:7px 0}
+.sidebar-conf{display:flex;align-items:center;width:100%;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--accent);padding:10px 10px;white-space:nowrap;overflow:hidden;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;transition:background .1s,color .1s;}
+.sidebar-conf:hover{background:var(--surface);color:var(--text)}
+.sidebar-conf.active{background:var(--surface2);color:#c9a227}
+.team-sidebar.collapsed .sidebar-conf{opacity:0;height:0;padding:0;pointer-events:none;overflow:hidden}
+
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49;}
+.mobile-filter-btn{
+  display:none;align-items:center;gap:8px;margin-bottom:14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:7px 14px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;
+  width:100%;
+}
+.mobile-filter-btn svg{flex-shrink:0}
+
+@media(max-width:600px){
+  .sidebar-backdrop.open{display:block}
+  .team-sidebar{
+    position:fixed;left:0;top:54px;
+    height:calc(100dvh - 54px);
+    z-index:50;
+    width:180px !important;transform:translateX(-100%);transition:transform .25s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,.5);
+  }
+  .team-sidebar.mobile-open{transform:translateX(0)}
+  .team-sidebar.collapsed{width:180px !important}
+  .team-sidebar.mobile-open .st-abbrev{opacity:1;width:auto;overflow:visible}
+  .team-sidebar.mobile-open .sidebar-team{justify-content:flex-start;padding:5px 8px}
+  .team-sidebar.mobile-open .sidebar-conf{opacity:1;height:auto;padding:10px 10px;pointer-events:auto}
+  .sidebar-toggle{display:none}
+  .playoff-main{padding-left:0}
+  .page-layout{gap:0}
+  .mobile-filter-btn{display:flex}
+  .filter-group{width:100%}
+  .filter-group .filter-btn{flex:1;text-align:center}
+  .search-wrap{margin-left:0;width:100%;max-width:none;min-width:0}
+}
 {% endblock %}
 
 {% block content %}
-<div class="page-title">2025–26 Playoff Grades</div>
+<div class="page-layout">
+
+<!-- ── Team sidebar ── -->
+<aside class="team-sidebar" id="team-sidebar">
+  <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle team filter">‹</button>
+  <div class="sidebar-inner">
+    <button class="sidebar-team active" data-team="all">
+      <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/NHL_dark.svg" alt="NHL">
+      <span class="st-abbrev">All Teams</span>
+    </button>
+    {%- set divisions = [
+      ('EAST', ['BOS','BUF','DET','FLA','MTL','OTT','TBL','TOR','CAR','CBJ','NJD','NYI','NYR','PHI','PIT','WSH']),
+      ('WEST', ['CHI','COL','DAL','MIN','NSH','STL','UTA','WPG','ANA','CGY','EDM','LAK','SEA','SJS','VAN','VGK'])
+    ] -%}
+    {%- set team_set = teams -%}
+    {% for conf, conf_teams in divisions %}
+    {% if conf_teams | select('in', team_set) | list %}
+    <button class="sidebar-conf" data-conf="{{ conf }}">{{ conf }}</button>
+    {% for t in conf_teams %}{% if t in team_set %}
+    <button class="sidebar-team" data-team="{{ t }}">
+      <img class="st-logo" src="https://assets.nhle.com/logos/nhl/svg/{{ t }}_dark.svg" alt="{{ t }}" onerror="this.style.display='none'">
+      <span class="st-abbrev">{{ t }}</span>
+    </button>
+    {% endif %}{% endfor %}
+    {% endif %}
+    {% endfor %}
+  </div>
+</aside>
+
+<!-- ── Main content ── -->
+<div class="playoff-main">
+
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
+
+<div class="season-hero">
+  <div class="season-title">{{ '2025–26' if season_str == '20252026' else '2024–25' }} Playoff Grades</div>
+  <select class="season-select" id="season-select" onchange="window.location='/playoffs?season='+this.value">
+    <option value="20252026" {% if season_str == '20252026' %}selected{% endif %}>2025–26</option>
+    <option value="20242025" {% if season_str == '20242025' %}selected{% endif %}>2024–25</option>
+  </select>
+</div>
+
+<button class="mobile-filter-btn" onclick="toggleMobileSidebar()">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v1.5H1zm2.5 4h9v1.5h-9zm2.5 4h4v1.5H6z"/></svg>
+  Filter by Team
+</button>
 <div class="page-sub">Grades averaged across all playoff games played. Min. 3 games to qualify.</div>
 
 <div class="filters">
   <div class="filter-group" id="pos-filters">
     <button class="filter-btn active" data-pos="all">All</button>
-    <button class="filter-btn" data-pos="fwd">Forwards</button>
-    <button class="filter-btn" data-pos="def">Defense</button>
+    <button class="filter-btn" data-pos="F">F</button>
     <button class="filter-btn" data-pos="C">C</button>
     <button class="filter-btn" data-pos="LW">LW</button>
     <button class="filter-btn" data-pos="RW">RW</button>
     <button class="filter-btn" data-pos="D">D</button>
   </div>
-  <select id="team-filter" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--text);outline:none;cursor:pointer;">
-    <option value="all">All Teams</option>
-    {% for t in teams %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
-  </select>
   <div class="search-wrap">
-    <input id="player-search" type="search" placeholder="Search player…" autocomplete="off" class="player-search">
+    <input id="player-search" type="search" placeholder="Search player name..." autocomplete="off" class="player-search">
   </div>
 </div>
 
@@ -148,8 +275,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
         style="cursor:pointer"
         data-pos="{{ p.position }}"
         data-team="{{ p.team }}"
-        data-overall="{{ p.overall }}"
-        data-overall-letter="{{ p.overall_letter }}"
+        data-overall="{{ p.overall_adj }}"
+        data-overall-letter="{{ p.overall_adj_letter }}"
         data-off="{{ p.off }}"
         data-off-letter="{{ p.off_letter }}"
         data-dfn="{{ p.dfn }}"
@@ -176,10 +303,10 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
         </div>
       </td>
       <td class="td-pos">{{ p.position }}</td>
-      <td class="td-grade" data-val="{{ p.overall }}">
-        <div class="grade-badge" style="background:{{ p.overall | grade_bg }}">
-          <span class="g-letter">{{ p.overall_letter }}</span>
-          <span class="g-score">{{ p.overall }}</span>
+      <td class="td-grade" data-val="{{ p.overall_adj }}">
+        <div class="grade-badge" style="background:{{ p.overall_adj | grade_bg }}">
+          <span class="g-letter">{{ p.overall_adj_letter }}</span>
+          <span class="g-score">{{ p.overall_adj }}</span>
         </div>
       </td>
       <td class="td-grade" data-val="{{ p.off }}">
@@ -208,11 +335,14 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 </table>
 </div>
 
+</div>{# end .playoff-main #}
+</div>{# end .page-layout #}
+
 <script>
 const COL_ORDER = ['rank','name','team','pos','overall','off','dfn','toi_pg','gp','goals','assists','points','sog','hits','blocks','gva','tka','pim','cf_pct','xg_pct','fo_pct'];
 const colIndex = col => COL_ORDER.indexOf(col);
 
-let sortCol = 'overall', sortAsc = false;
+let sortCol = '', sortAsc = false;
 
 function sortTable(col) {
   if (col === sortCol) { sortAsc = !sortAsc; }
@@ -248,21 +378,20 @@ function rerank() {
   });
 }
 
-let activePosGroup = 'all', activeTeam = 'all', activeSearch = '';
+let activePosSet = new Set(), activeTeam = 'all', activeSearch = '';
 
 function applyFilters() {
   let rank = 0;
   document.querySelectorAll('.player-row').forEach(r => {
-    const pos   = r.dataset.pos;
-    const team  = r.dataset.team;
-    const name  = r.querySelector('.td-name').textContent.toLowerCase();
-    const isFwd = ['C','LW','RW'].includes(pos);
+    const pos  = r.dataset.pos;
+    const team = r.dataset.team;
+    const name = r.querySelector('.td-name').textContent.toLowerCase();
 
-    const posOk  = activePosGroup === 'all'
-      || (activePosGroup === 'fwd' && isFwd)
-      || (activePosGroup === 'def' && pos === 'D')
-      || activePosGroup === pos;
-    const teamOk = activeTeam === 'all' || team === activeTeam;
+    const posOk  = activePosSet.size === 0 || activePosSet.has(pos);
+    const teamOk = activeTeam === 'all'
+      || team === activeTeam
+      || (activeTeam === 'EAST' && EAST_TEAMS.has(team))
+      || (activeTeam === 'WEST' && WEST_TEAMS.has(team));
     const filterOk = posOk && teamOk;
     const srchOk = !activeSearch || name.includes(activeSearch);
 
@@ -278,20 +407,92 @@ function applyFilters() {
   });
 }
 
+function updatePosUI() {
+  document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  if (activePosSet.size === 0) {
+    document.querySelector('#pos-filters .filter-btn[data-pos="all"]').classList.add('active');
+  } else {
+    if (['C','LW','RW'].every(p => activePosSet.has(p)))
+      document.querySelector('#pos-filters .filter-btn[data-pos="F"]').classList.add('active');
+    ['C','LW','RW','D'].forEach(p => {
+      if (activePosSet.has(p))
+        document.querySelector(`#pos-filters .filter-btn[data-pos="${p}"]`).classList.add('active');
+    });
+  }
+}
+
 document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activePosGroup = btn.dataset.pos;
+    const pos = btn.dataset.pos;
+    if (pos === 'all') {
+      activePosSet.clear();
+    } else if (pos === 'F') {
+      if (['C','LW','RW'].every(p => activePosSet.has(p)))
+        ['C','LW','RW'].forEach(p => activePosSet.delete(p));
+      else
+        ['C','LW','RW'].forEach(p => activePosSet.add(p));
+    } else {
+      if (activePosSet.has(pos)) activePosSet.delete(pos);
+      else activePosSet.add(pos);
+    }
+    if (['C','LW','RW','D'].every(p => activePosSet.has(p))) activePosSet.clear();
+    updatePosUI();
     applyFilters();
   });
 });
 
 
-document.getElementById('team-filter').addEventListener('change', e => {
-  activeTeam = e.target.value;
-  applyFilters();
+const EAST_TEAMS = new Set(['BOS','BUF','DET','FLA','MTL','OTT','TBL','TOR','CAR','CBJ','NJD','NYI','NYR','PHI','PIT','WSH']);
+const WEST_TEAMS = new Set(['CHI','COL','DAL','MIN','NSH','STL','UTA','WPG','ANA','CGY','EDM','LAK','SEA','SJS','VAN','VGK']);
+
+document.querySelectorAll('.team-sidebar .sidebar-team').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.team-sidebar .sidebar-team, .team-sidebar .sidebar-conf').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTeam = btn.dataset.team;
+    applyFilters();
+    if (window.innerWidth <= 600) toggleMobileSidebar();
+  });
 });
+
+document.querySelectorAll('.team-sidebar .sidebar-conf').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.team-sidebar .sidebar-team, .team-sidebar .sidebar-conf').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTeam = btn.dataset.conf;
+    applyFilters();
+    if (window.innerWidth <= 600) toggleMobileSidebar();
+  });
+});
+
+document.getElementById('sidebar-toggle').addEventListener('click', () => {
+  const sb = document.getElementById('team-sidebar');
+  const collapsed = sb.classList.toggle('collapsed');
+  document.getElementById('sidebar-toggle').textContent = collapsed ? '›' : '‹';
+});
+
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('team-sidebar');
+  const isOpen = sidebar.classList.toggle('mobile-open');
+  document.getElementById('sidebar-backdrop').classList.toggle('open');
+  if (isOpen) {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    sidebar.style.pointerEvents = 'none';
+    setTimeout(() => { sidebar.style.pointerEvents = ''; }, 350);
+  } else {
+    document.body.style.overflow = '';
+  }
+}
+
+if (window.innerWidth <= 640) {
+  const gr = document.querySelector('.grades-table .group-row');
+  if (gr) {
+    gr.children[0].colSpan = 2;
+    gr.children[1].colSpan = 5;
+  }
+}
 
 document.getElementById('player-search').addEventListener('input', e => {
   activeSearch = e.target.value.trim().toLowerCase();
@@ -301,6 +502,8 @@ document.getElementById('player-search').addEventListener('input', e => {
 document.querySelectorAll('.col-row th[data-col]').forEach(th => {
   th.addEventListener('click', () => sortTable(th.dataset.col));
 });
+
+sortTable('overall');
 </script>
 
 {# ── Playoff player modal ── #}
@@ -369,8 +572,8 @@ document.querySelectorAll('.col-row th[data-col]').forEach(th => {
 
 <script>
 function _gradeColor(v){
-  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#4d7c0f';
-  if(v>=60)return'#b45309';if(v>=50)return'#c2410c';return'#b91c1c';
+  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#c45e0a';
+  if(v>=60)return'#9a3412';return'#b91c1c';
 }
 function _fmtHeight(inches){if(!inches)return'—';return`${Math.floor(inches/12)}′${inches%12}″`;}
 function _fmtAge(dob){
@@ -450,7 +653,7 @@ function openPlayoffModal(playerId, row){
   });
 
   // Playoff game log
-  fetch(`/api/player/${playerId}/playoff-games`).then(r=>r.json()).then(games=>{
+  fetch(`/api/player/${playerId}/playoff-games?season={{ season_str }}`).then(r=>r.json()).then(games=>{
     const el=document.getElementById('pm-gamelog');
     if(!games||!games.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">No playoff game data.</div>';return;}
     function chip(v){if(v==null)return'—';return`<span class="gl-chip" style="background:${_gradeColor(v)}">${v.toFixed(1)}</span>`;}

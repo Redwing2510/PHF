@@ -141,36 +141,31 @@ FACEOFF_POS_MULTIPLIER = {
 }
 
 # ─── Normalization ────────────────────────────────────────────────────────────
-# PFF standard: average player in a game = 60, normalized via z-score.
-
-NORM_MEAN   = 60.0   # target mean for every game
-NORM_SD_PTS = 12.0   # one standard deviation = 12 grade points
-                     # +1 SD → ~72 (B-)  |  +2 SD → ~84 (A-)
-                     # -1 SD → ~48 (F)   |  -2 SD → ~36 (F)
+NORM_MEAN   = 75.0   # target mean: average player = 75
+NORM_SD_PTS =  7.0   # one standard deviation = 7 grade points
+                     # +1 SD → ~82 (B+)  |  +2 SD → ~89 (A-)  |  +3 SD → ~96 (A+)
+                     # -1 SD → ~68 (C)   |  -2 SD → ~61 (D+)  |  -3 SD → ~54 (D-)
 
 
-def normalize_grades(raw_grades: List[float]) -> List[float]:
-    """
-    Normalize a list of raw play-by-play grade totals to a 0-100 scale
-    where the mean is 60 (PFF standard) and one SD = 12 points.
-    """
+def normalize_grades(raw_grades: List[float], norm_sd: float = None) -> List[float]:
+    """Normalize raw grades to mean=NORM_MEAN, SD=norm_sd (defaults to NORM_SD_PTS)."""
     if len(raw_grades) < 2:
         return [NORM_MEAN] * len(raw_grades)
     mean = statistics.mean(raw_grades)
     std  = statistics.stdev(raw_grades)
+    sd_pts = norm_sd if norm_sd is not None else NORM_SD_PTS
     if std == 0:
         return [NORM_MEAN] * len(raw_grades)
     return [
-        round(max(0.0, min(100.0, NORM_MEAN + (r - mean) / std * NORM_SD_PTS)), 1)
+        round(max(0.0, min(100.0, NORM_MEAN + (r - mean) / std * sd_pts)), 1)
         for r in raw_grades
     ]
 
 
-def normalize_by_position_group(grades_with_pos: List[Tuple[float, str]]) -> List[float]:
+def normalize_by_position_group(grades_with_pos: List[Tuple[float, str]], norm_sd: float = None) -> List[float]:
     """
     Normalize forwards (C/L/R) and defensemen (D) separately.
-    Each group targets mean=60, 1 SD=12 points — so a forward is graded
-    relative to other forwards in the same game, not mixed with D-men.
+    Each group targets mean=NORM_MEAN, 1 SD=norm_sd (or NORM_SD_PTS) points.
     """
     FORWARD_POS = {'C', 'L', 'R'}
     fwd_idx = [i for i, (_, pos) in enumerate(grades_with_pos) if pos in FORWARD_POS]
@@ -181,7 +176,7 @@ def normalize_by_position_group(grades_with_pos: List[Tuple[float, str]]) -> Lis
         if not indices:
             continue
         group = [grades_with_pos[i][0] for i in indices]
-        normed = normalize_grades(group)
+        normed = normalize_grades(group, norm_sd=norm_sd)
         for i, val in zip(indices, normed):
             result[i] = val
     return result
@@ -254,16 +249,16 @@ def get_position_group(position: str) -> str:
 
 
 def score_to_letter(score: float) -> str:
-    if score >= 90:   return 'A+'
-    elif score >= 85: return 'A'
-    elif score >= 80: return 'A-'
-    elif score >= 77: return 'B+'
-    elif score >= 73: return 'B'
-    elif score >= 70: return 'B-'
-    elif score >= 67: return 'C+'
-    elif score >= 63: return 'C'
-    elif score >= 60: return 'C-'
-    elif score >= 57: return 'D+'
-    elif score >= 53: return 'D'
-    elif score >= 50: return 'D-'
+    if score >= 97:   return 'A+'
+    elif score >= 93: return 'A'
+    elif score >= 90: return 'A-'
+    elif score >= 87: return 'B+'
+    elif score >= 83: return 'B'
+    elif score >= 80: return 'B-'
+    elif score >= 77: return 'C+'
+    elif score >= 73: return 'C'
+    elif score >= 70: return 'C-'
+    elif score >= 67: return 'D+'
+    elif score >= 63: return 'D'
+    elif score >= 60: return 'D-'
     else:             return 'F'

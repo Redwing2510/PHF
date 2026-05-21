@@ -67,7 +67,7 @@ def compute_tracking_split(r: MicrostatRecord, position: str = 'F') -> tuple:
     dz_exit += r.clears                       *  0.38
     dz_exit += r.exchanges                    *  0.05
     dz_exit += r.failed_exits                 * -0.50
-    dz_exit += r.botched_retrievals           * -0.55
+    dz_exit += r.botched_retrievals           * -0.20
     dz_exit += r.missed_passes                * -0.15
 
     # ── ENTRY DEFENSE ─────────────────────────────────────────────────────────

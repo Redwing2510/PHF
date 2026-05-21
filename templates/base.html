@@ -62,9 +62,36 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
   padding:4px 2px;
   border-bottom:2px solid transparent;
   transition:color .15s,border-color .15s;
+  white-space:nowrap;
 }
 .nav-link:hover{color:var(--text2)}
 .nav-link.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-hamburger{display:none;margin-left:auto;background:none;border:none;padding:6px;color:var(--muted);cursor:pointer}
+.nav-dropdown{
+  display:none;
+  position:absolute;
+  top:54px;left:0;right:0;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-direction:column;
+  z-index:99;
+}
+.nav-dropdown.open{display:flex}
+.nav-dropdown .nav-link{
+  padding:14px 24px;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+.nav-dropdown .nav-link:last-child{border-bottom:none}
+@media(max-width:600px){
+  .nav-links{display:none}
+  .nav-divider{display:none}
+  .nav-hamburger{display:block}
+  .nav{justify-content:center}
+  .nav-brand{position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-hamburger{position:absolute;right:16px}
+}
 
 /* ── Page wrapper ── */
 .page{max-width:1700px;margin:0 auto;padding:24px 20px}
@@ -76,14 +103,33 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 </style>
 </head>
 <body>
-<nav class="nav">
+<nav class="nav" style="position:relative">
   <a class="nav-brand" href="/"><img src="/static/logo.png" alt="PHG" style="height:40px;width:auto;display:block;"></a>
   <div class="nav-divider"></div>
-  <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">Season</a>
-  <a class="nav-link {% if request.endpoint == 'playoffs' %}active{% endif %}" href="/playoffs">Playoffs</a>
-  <a class="nav-link {% if request.endpoint == 'game_lookup' %}active{% endif %}" href="/game-lookup">Game Lookup</a>
-  <a class="nav-link {% if request.endpoint == 'methodology' %}active{% endif %}" href="/methodology">Methodology</a>
+  <div class="nav-links">
+    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">Regular Season</a>
+    <a class="nav-link {% if request.endpoint == 'playoffs' %}active{% endif %}" href="/playoffs">Playoffs</a>
+    <a class="nav-link {% if request.endpoint == 'game_lookup' %}active{% endif %}" href="/game-lookup">Game Lookup</a>
+    <a class="nav-link {% if request.endpoint == 'methodology' %}active{% endif %}" href="/methodology">Methodology</a>
+  </div>
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/></svg>
+  </button>
+  <div class="nav-dropdown" id="nav-dropdown">
+    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">Regular Season</a>
+    <a class="nav-link {% if request.endpoint == 'playoffs' %}active{% endif %}" href="/playoffs">Playoffs</a>
+    <a class="nav-link {% if request.endpoint == 'game_lookup' %}active{% endif %}" href="/game-lookup">Game Lookup</a>
+    <a class="nav-link {% if request.endpoint == 'methodology' %}active{% endif %}" href="/methodology">Methodology</a>
+  </div>
 </nav>
+<script>
+  document.getElementById('nav-hamburger').addEventListener('click', function() {
+    document.getElementById('nav-dropdown').classList.toggle('open');
+  });
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nav')) document.getElementById('nav-dropdown').classList.remove('open');
+  });
+</script>
 <div class="page">
 {% block content %}{% endblock %}
 </div>

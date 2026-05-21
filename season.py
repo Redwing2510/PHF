@@ -387,7 +387,7 @@ def main():
             if season[pid].position not in pos_set:
                 continue
             z = (season[pid].avg_score - raw_mean) / raw_sd
-            final_scores[pid] = 60.0 + z * 12.0
+            final_scores[pid] = 75.0 + z * 7.0
 
     # ── Sub-grade scores from accumulated stats ───────────────────────────────
     all_pids = list(season.keys())
@@ -506,9 +506,9 @@ def main():
                 printed_divider = True
             rank += 1
             letter = score_to_letter(score)
-            off_score  = entry_off_scores.get(pid, 60.0)
-            def_score  = entry_def_scores.get(pid, 60.0)
-            poss_score = entry_poss_scores.get(pid, 60.0)
+            off_score  = entry_off_scores.get(pid, 75.0)
+            def_score  = entry_def_scores.get(pid, 75.0)
+            poss_score = entry_poss_scores.get(pid, 75.0)
             fo_score   = entry_fo_scores.get(pid, None)
             fo_total   = entry.es_fo_won + entry.es_fo_lost + entry.pp_fo_won + entry.pp_fo_lost + entry.pk_fo_won + entry.pk_fo_lost
             fo_display = _fmt_sub(fo_score) if fo_total > 0 and fo_score is not None else _Text("—", style="dim")
@@ -974,7 +974,7 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
             if season_acc[p].position not in pos_set:
                 continue
             z = (season_acc[p].avg_score - raw_mean) / raw_sd
-            final_scores[p] = 60.0 + z * 12.0
+            final_scores[p] = 75.0 + z * 7.0
 
     # ── Sub-grade scores from tracking data ──────────────────────────────────
     all_pids = list(season_acc.keys())
@@ -1340,11 +1340,11 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         xga_weight   = 0.20 * xga_toi_mult
         remainder    = 0.20 - xga_weight
 
-        pk_v   = max(60.0, pk_scores_map[pid])
-        mp_fwd = (0.35 * _fwd_pkdep_map.get(pid, 60.0)
-                + xga_weight * xga_map.get(pid, 60.0) + remainder * 60.0
+        pk_v   = max(75.0, pk_scores_map[pid])
+        mp_fwd = (0.35 * _fwd_pkdep_map.get(pid, 75.0)
+                + xga_weight * xga_map.get(pid, 75.0) + remainder * 75.0
                 + 0.25 * pk_v
-                + 0.20 * _fwd_netpuck_map.get(pid, 60.0))
+                + 0.20 * _fwd_netpuck_map.get(pid, 75.0))
 
         trk_toi_min = e.ms_toi_seconds / 60.0
         trk_w       = min(trk_toi_min / 300.0, 1.0) * 0.30
@@ -1388,12 +1388,12 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
         fo_score = fo_normed.get(pid)
         fo_total = (e.es_fo_won + e.es_fo_lost + e.pp_fo_won
                     + e.pp_fo_lost + e.pk_fo_won + e.pk_fo_lost)
-        off_v        = min(100.0, round(off_scores.get(pid, 60.0),        1))
-        dfn_v        = min(100.0, round(def_scores.get(pid, 60.0),        1))
-        dfn_legacy_v = min(100.0, round(def_scores_legacy.get(pid, 60.0), 1))
-        off_mp_v     = min(100.0, round(off_mp_scores.get(pid, 60.0),     1))
+        off_v        = min(100.0, round(off_scores.get(pid, 75.0),        1))
+        dfn_v        = min(100.0, round(def_scores.get(pid, 75.0),        1))
+        dfn_legacy_v = min(100.0, round(def_scores_legacy.get(pid, 75.0), 1))
+        off_mp_v     = min(100.0, round(off_mp_scores.get(pid, 75.0),     1))
 
-        dfn_mp_v     = min(100.0, round(dfn_mp_scores.get(pid, 60.0),     1))
+        dfn_mp_v     = min(100.0, round(dfn_mp_scores.get(pid, 75.0),     1))
 
         is_d  = e.position == 'D'
         # O/D Blend: F off = 50% ATZ + 50% MP; D off = pure ATZ (matches what overall_v already uses)
@@ -1482,18 +1482,18 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     }
 
     def _best_grade(p):
-        return p.get('overall', 60.0)
+        return p.get('overall', 75.0)
 
     def _avg(pool):
         scores = [_best_grade(p) for p in pool]
         return round(sum(scores) / len(scores), 1) if scores else None
 
     def _avg_mp(pool):
-        scores = [p.get('overall_mp', 60.0) for p in pool]
+        scores = [p.get('overall_mp', 75.0) for p in pool]
         return round(sum(scores) / len(scores), 1) if scores else None
 
     def _avg_blend(pool):
-        scores = [p.get('overall_blend', p.get('overall_mp', 60.0)) for p in pool]
+        scores = [p.get('overall_blend', p.get('overall_mp', 75.0)) for p in pool]
         return round(sum(scores) / len(scores), 1) if scores else None
 
     def _avg_sub(pool, col):
@@ -1551,6 +1551,14 @@ def build_season_grades(season_str: str = SEASON, teams: list = None) -> dict:
     from game_grade_builder import build_player_game_grades
     print('  Building per-game grades...', flush=True)
     build_player_game_grades(season_str, season_acc, game_ids + playoff_game_ids)
+
+    # Re-run playoff-only build so playoff grades are normalized within the playoff
+    # pool (not diluted by the full regular-season pool).
+    _mp_year = int(season_str[:4])
+    if any(gid >= _mp_year * 1000000 + 30000 for gid in playoff_game_ids):
+        from build_playoff_grades import build as _build_playoffs
+        print('  Re-normalizing playoff grades within playoff pool...', flush=True)
+        _build_playoffs(_mp_year)
 
     _sy = int(season_str[:4])
     return {

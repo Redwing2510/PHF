@@ -44,10 +44,10 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _norm_pool(raw_vals: List[float], positions: List[str]) -> List[float]:
-    """z-score normalize a list of (val, position) pairs → mean=60 SD=12 clamp 0-100."""
+def _norm_pool(raw_vals: List[float], positions: List[str], norm_sd: float = None) -> List[float]:
+    """z-score normalize a list of (val, position) pairs → mean=NORM_MEAN, clamp 0-100."""
     pairs = list(zip(raw_vals, positions))
-    normed = normalize_by_position_group(pairs)
+    normed = normalize_by_position_group(pairs, norm_sd=norm_sd)
     return [max(0.0, min(100.0, v)) for v in normed]
 
 
@@ -60,6 +60,7 @@ def build_player_game_grades(
     season_acc: dict,          # pid → SeasonEntry
     game_ids: List[int],       # tracked game IDs (xlsx files) — used for tracking blend only
     playoff_only: bool = False, # if True, only build/replace playoff game rows (game_id >= {year}030000)
+    norm_sd: float = None,     # override SD for normalization (e.g. 9 for playoffs)
 ) -> None:
     """
     Build and store per-game grades for ALL player-games in the season (full MP data).
@@ -208,6 +209,7 @@ def build_player_game_grades(
             # raw dfn components
             'npk_xga_p60': npk_xga_p60,
             'net_puck_p60': net_puck_p60,
+            'pk_xga_p60': (pk_xga / (pk_toi_s / 3600.0)) if pk_toi_s >= 60 else None,
             # tracking
             'has_tracking': has_tracking,
             'trk_off_pts': trk_off_pts,
@@ -223,7 +225,7 @@ def build_player_game_grades(
     positions = [r['pos'] for r in records]
 
     def _norm(vals):
-        return _norm_pool(vals, positions)
+        return _norm_pool(vals, positions, norm_sd=norm_sd)
 
     ixg_n      = _norm([r['ixg_p60']      for r in records])
     ixg_hd_n   = _norm([r['ixg_hd_p60']   for r in records])
@@ -233,21 +235,31 @@ def build_player_game_grades(
     npk_xga_n  = _norm([-r['npk_xga_p60'] for r in records])   # negated
     net_puck_n = _norm([r['net_puck_p60']  for r in records])
 
+    # PK performance: D only, >= 1 min PK time; neutral 75 for all others
+    pk_perf_n = [75.0] * len(records)
+    pk_indices = [i for i, r in enumerate(records)
+                  if r['pos'] == 'D' and r['pk_xga_p60'] is not None]
+    if pk_indices:
+        pk_vals = [-records[i]['pk_xga_p60'] for i in pk_indices]  # negated: lower xGA = better
+        pk_pos  = [records[i]['pos'] for i in pk_indices]
+        pk_normed = normalize_by_position_group(list(zip(pk_vals, pk_pos)), norm_sd=norm_sd)
+        for j, idx in enumerate(pk_indices):
+            pk_perf_n[idx] = max(0.0, min(100.0, pk_normed[j]))
+
     # Tracking off/dfn: normalize raw point totals across games that have tracking
     trk_off_n = trk_dfn_n = None
     trk_indices = [i for i, r in enumerate(records) if r['has_tracking']]
     if trk_indices:
-        # Divide by TOI so tracking scores are rate-based (pts/min), consistent
-        # with mp_dfn/mp_off which are all per-60. Without this, high-minute
-        # players accumulate more raw events and get unfairly extreme scores.
-        trk_off_raw = [records[i]['trk_off_pts'] / max(records[i]['toi_min'], 5)
+        trk_off_raw = [records[i]['trk_off_pts']
                        for i in trk_indices]
-        trk_dfn_raw = [(records[i]['trk_dz_pts'] * 0.45 + records[i]['trk_ed_pts'] * 0.55)
-                       / max(records[i]['toi_min'], 5)
-                       for i in trk_indices]
+        trk_dfn_raw = [
+            (records[i]['trk_dz_pts'] * 0.45 + records[i]['trk_ed_pts'] * 0.55)
+            / (max(records[i]['toi_min'], 5) if records[i]['pos'] == 'D' else 1.0)
+            for i in trk_indices
+        ]
         trk_positions = [records[i]['pos'] for i in trk_indices]
-        trk_off_normed  = normalize_by_position_group(list(zip(trk_off_raw, trk_positions)))
-        trk_dfn_normed  = normalize_by_position_group(list(zip(trk_dfn_raw, trk_positions)))
+        trk_off_normed  = normalize_by_position_group(list(zip(trk_off_raw, trk_positions)), norm_sd=norm_sd)
+        trk_dfn_normed  = normalize_by_position_group(list(zip(trk_dfn_raw, trk_positions)), norm_sd=norm_sd)
         trk_off_n  = {trk_indices[j]: max(0.0, min(100.0, v)) for j, v in enumerate(trk_off_normed)}
         trk_dfn_n  = {trk_indices[j]: max(0.0, min(100.0, v)) for j, v in enumerate(trk_dfn_normed)}
 
@@ -266,9 +278,16 @@ def build_player_game_grades(
             mp_off = (0.20 * ixg_n[i] + 0.15 * ixg_hd_n[i] +
                       0.45 * xgf_n[i] + 0.20 * g_pa_n[i])
 
-        # MP dfn blend — for tracked games, reduce net_puck weight since giveaways
-        # are already captured in the exit tracking score (avoids double-counting)
-        if r['has_tracking']:
+        # MP dfn blend — D gets PK performance component; tracked games reduce
+        # net_puck weight since giveaways are captured in tracking exit score
+        if is_d:
+            if r['has_tracking']:
+                mp_dfn = (0.65 * npk_xga_n[i] + 0.15 * net_puck_n[i]
+                          + 0.20 * pk_perf_n[i])
+            else:
+                mp_dfn = (0.50 * npk_xga_n[i] + 0.30 * net_puck_n[i]
+                          + 0.20 * pk_perf_n[i])
+        elif r['has_tracking']:
             mp_dfn = 0.80 * npk_xga_n[i] + 0.20 * net_puck_n[i]
         else:
             mp_dfn = 0.60 * npk_xga_n[i] + 0.40 * net_puck_n[i]

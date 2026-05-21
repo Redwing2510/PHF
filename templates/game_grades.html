@@ -27,6 +27,8 @@
   .gh-sep{padding:0 20px;min-width:auto;}
   .gh-scores{font-size:48px;gap:12px;}
   .gh-dash{font-size:32px;}
+  #pos-filters{width:100%}
+  #pos-filters .filter-btn{flex:1;text-align:center}
 }
 
 .play-grade-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 10px;margin-bottom:20px;transition:color .15s,border-color .15s;}
@@ -131,8 +133,11 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <div class="filters">
   <div class="filter-group" id="pos-filters">
     <button class="filter-btn active" data-pos="all">All</button>
-    <button class="filter-btn" data-pos="fwd">Forwards</button>
-    <button class="filter-btn" data-pos="def">Defense</button>
+    <button class="filter-btn" data-pos="F">F</button>
+    <button class="filter-btn" data-pos="C">C</button>
+    <button class="filter-btn" data-pos="LW">LW</button>
+    <button class="filter-btn" data-pos="RW">RW</button>
+    <button class="filter-btn" data-pos="D">D</button>
   </div>
   <div class="filter-group" id="team-filters">
     <button class="filter-btn active" data-team="all">Both Teams</button>
@@ -173,6 +178,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
   {% for p in grades | sort(attribute='overall', reverse=True) %}
   <tr class="player-row"
       data-pos="{{ 'fwd' if p.position in ('C','L','R') else 'def' }}"
+      data-position="{{ {'L':'LW','R':'RW'}.get(p.position, p.position) }}"
       data-team="{{ p.team }}">
     <td class="td-rank">—</td>
     <td class="td-name">
@@ -219,7 +225,7 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <script>
 let sortCol = 'overall';
 let sortAsc = false;
-let activePos = 'all';
+let activePosSet = new Set();
 let activeTeam = 'all';
 
 const COL_ORDER = ['rank','name','overall','off','dfn','fo_grade','toi','cf_pct','xg_pct','goals','assists','sog','hits','blocks','gva','tka','fo_pct'];
@@ -228,7 +234,7 @@ function colIndex(col) { return COL_ORDER.indexOf(col); }
 function applyFilters() {
   let rank = 0;
   document.querySelectorAll('.player-row').forEach(row => {
-    const posOk  = activePos  === 'all' || activePos  === row.dataset.pos;
+    const posOk  = activePosSet.size === 0 || activePosSet.has(row.dataset.position);
     const teamOk = activeTeam === 'all' || activeTeam === row.dataset.team;
     const show = posOk && teamOk;
     row.style.display = show ? '' : 'none';
@@ -282,11 +288,36 @@ document.querySelectorAll('.col-row th[data-col]').forEach(th => {
   th.addEventListener('click', () => sortTable(th.dataset.col));
 });
 
+function updatePosUI() {
+  document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  if (activePosSet.size === 0) {
+    document.querySelector('#pos-filters .filter-btn[data-pos="all"]').classList.add('active');
+  } else {
+    if (['C','LW','RW'].every(p => activePosSet.has(p)))
+      document.querySelector('#pos-filters .filter-btn[data-pos="F"]').classList.add('active');
+    ['C','LW','RW','D'].forEach(p => {
+      if (activePosSet.has(p))
+        document.querySelector(`#pos-filters .filter-btn[data-pos="${p}"]`).classList.add('active');
+    });
+  }
+}
+
 document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    activePos = this.dataset.pos;
+  btn.addEventListener('click', () => {
+    const pos = btn.dataset.pos;
+    if (pos === 'all') {
+      activePosSet.clear();
+    } else if (pos === 'F') {
+      if (['C','LW','RW'].every(p => activePosSet.has(p)))
+        ['C','LW','RW'].forEach(p => activePosSet.delete(p));
+      else
+        ['C','LW','RW'].forEach(p => activePosSet.add(p));
+    } else {
+      if (activePosSet.has(pos)) activePosSet.delete(pos);
+      else activePosSet.add(pos);
+    }
+    if (['C','LW','RW','D'].every(p => activePosSet.has(p))) activePosSet.clear();
+    updatePosUI();
     applyFilters();
   });
 });

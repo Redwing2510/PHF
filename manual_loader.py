@@ -714,33 +714,58 @@ _RECORD_CACHE:  Optional[dict] = None  # records dict
 
 
 def _load_both_caches() -> None:
-    """Populate _CACHE and _RECORD_CACHE from disk or by parsing xlsx files."""
+    """Populate _CACHE and _RECORD_CACHE, updating incrementally for new xlsx files."""
     global _CACHE, _RECORD_CACHE
 
+    existing_grades:  dict = {}
+    existing_records: dict = {}
+    processed_ids:    set  = set()
+
     if _CACHE_FILE.exists():
-        cache_mtime = _CACHE_FILE.stat().st_mtime
-        xlsx_mtime  = _xlsx_fingerprint()
-        if xlsx_mtime <= cache_mtime:
-            print("  Loading microstat grades from cache...", flush=True)
+        try:
             with open(_CACHE_FILE, 'rb') as f:
                 payload = pickle.load(f)
-            # Support both old format (raw grades dict) and new format (dict with keys)
             if isinstance(payload, dict) and 'grades' in payload:
-                _CACHE        = payload['grades']
-                _RECORD_CACHE = payload.get('records', {})
-            else:
-                # Old format — invalidate so we rebuild with records included
-                _CACHE = None
-                _RECORD_CACHE = None
-            if _CACHE is not None:
-                print(f"  Cache loaded ({len(_CACHE)} player-game records).", flush=True)
-                return
+                existing_grades  = payload['grades']
+                existing_records = payload.get('records', {})
+                processed_ids    = {k[0] for k in existing_grades}
+        except Exception:
+            pass
 
-    # Cache miss or old format — parse all xlsx files
-    records = _load_all_records()
-    _CACHE        = _compute_grades(records)
-    # Key includes team + position to disambiguate same-name players on the same team
-    _RECORD_CACHE = {(r.game_file_id, r.name, _norm_team(r.team), r.position): r for r in records}
+    # Find xlsx files whose game_file_id hasn't been processed yet
+    new_files: list = []
+    if LOGS_DIR.exists():
+        for fname in sorted(LOGS_DIR.rglob('*.xlsx')):
+            m = re.match(r'^(\d+)', fname.name)
+            if not m:
+                continue
+            if int(m.group(1)) not in processed_ids:
+                new_files.append(fname)
+
+    if not new_files:
+        _CACHE        = existing_grades
+        _RECORD_CACHE = existing_records
+        if _CACHE:
+            print(f"  Microstat cache loaded ({len(_CACHE)} player-game records).", flush=True)
+        return
+
+    print(f"  Parsing {len(new_files)} new xlsx file(s)...", flush=True)
+    new_records = []
+    for fname in new_files:
+        m = re.match(r'^(\d+)', fname.name)
+        file_game_id = int(m.group(1))
+        try:
+            new_records.extend(_load_records_from_file(fname, file_game_id))
+        except Exception:
+            pass
+
+    new_grades  = _compute_grades(new_records)
+    new_rec_map = {(r.game_file_id, r.name, _norm_team(r.team), r.position): r for r in new_records}
+
+    existing_grades.update(new_grades)
+    existing_records.update(new_rec_map)
+    _CACHE        = existing_grades
+    _RECORD_CACHE = existing_records
 
     payload = {'grades': _CACHE, 'records': _RECORD_CACHE}
     with open(_CACHE_FILE, 'wb') as f:

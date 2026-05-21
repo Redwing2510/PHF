@@ -39,7 +39,7 @@
 
 /* Grade scale visual */
 .gs-outer{position:relative;padding:120px 0 130px;margin:32px 0 42px}
-.gs-track{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:8px;background:linear-gradient(to right,#b91c1c 0%,#b45309 25%,#4d7c0f 50%,#16a34a 75%,#0d9488 100%);border-radius:4px}
+.gs-track{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:8px;background:linear-gradient(to right,#b91c1c 0%,#c45e0a 25%,#4d7c0f 50%,#16a34a 75%,#0d9488 100%);border-radius:4px}
 .gs-nodes{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:space-between}
 .gs-node{width:26px;height:26px;border-radius:50%;border:2px solid #4b5563;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--muted);position:relative;z-index:2}
 .gs-node.gs-mid{background:var(--surface3)}
@@ -111,7 +111,7 @@
     <h2>How MP/NST Grades Work</h2>
     <div class="meth-body">
       <p>In <strong>All Games (MP/NST)</strong> mode, grades are built from aggregated season statistics provided by <a href="https://moneypuck.com" target="_blank" rel="noopener" style="color:var(--accent)">MoneyPuck</a> and <a href="https://www.naturalstattrick.com" target="_blank" rel="noopener" style="color:var(--accent)">Natural Stat Trick</a>. These include metrics like individual expected goals per 60 minutes (iXG/60), on-ice shot share (CF%), high-danger chance rates, and more.</p>
-      <p>Rather than grading individual plays, this approach looks at a player's rate stats across many games and asks whether that player is generating more or fewer high-quality chances than expected for someone in their role. The result is normalized the same way, 60 = league average, one standard deviation = 12 points, so grades are directly comparable between modes.</p>
+      <p>Rather than grading individual plays, this approach looks at a player's rate stats across many games and asks whether that player is generating more or fewer high-quality chances than expected for someone in their role. The result is normalized the same way, 75 = league average, one standard deviation = 7 points, so grades are directly comparable between modes.</p>
       <p>The tradeoff is that MP/NST grades are based on what automated tracking captures. They can miss things a human observer would catch: a defenseman who breaks up plays before they become shots, or a forward who constantly creates opportunities that don't show up as shots on goal. That is exactly why A3Z manual tracking gets blended in.</p>
     </div>
   </div>
@@ -119,7 +119,7 @@
   <div class="meth-section">
     <h2>The Grading Scale</h2>
     <div class="meth-body">
-      <p>All grades, whether from A3Z manual tracking or MP/NST, are normalized to the same 0-100 scale. <strong>60 = league average</strong>. One standard deviation equals 12 points, meaning a grade of 72 puts a player roughly one standard deviation above average, and a grade of 48 puts them one below. Forwards and defensemen are normalized separately so grades reflect performance relative to the same position group.</p>
+      <p>All grades, whether from A3Z manual tracking or MP/NST, are normalized to the same 0-100 scale. <strong>75 = league average</strong>. One standard deviation equals 7 points, meaning a grade of 82 puts a player roughly one standard deviation above average, and a grade of 68 puts them one below. Forwards and defensemen are normalized separately so grades reflect performance relative to the same position group.</p>
       <p>For manually tracked games, each on-ice event earns a delta between roughly <strong>-2.0 and +2.0</strong>. Goals are the exception. A goal bonus stacks on top of the shot delta, reflecting that scoring is the single highest-impact play in hockey. A typical goal results in a combined delta of around <strong>+3.4</strong>.</p>
     </div>
 
@@ -204,11 +204,11 @@
     </div>
 
     <div class="scale-row" style="margin-top:24px">
-      <span class="scale-chip" style="background:#b91c1c">F  &nbsp;&lt; 50</span>
-      <span class="scale-chip" style="background:#b45309">D- / D / D+  &nbsp;50–59</span>
-      <span class="scale-chip" style="background:#4d7c0f">C- / C / C+  &nbsp;60–69</span>
-      <span class="scale-chip" style="background:#16a34a">B- / B / B+  &nbsp;70–79</span>
-      <span class="scale-chip" style="background:#0d9488">A- / A / A+  &nbsp;80–100</span>
+      <span class="scale-chip" style="background:#b91c1c">F  &nbsp;0–59</span>
+      <span class="scale-chip" style="background:#9a3412">D- / D / D+  &nbsp;60–69</span>
+      <span class="scale-chip" style="background:#c45e0a">C- / C / C+  &nbsp;70–79</span>
+      <span class="scale-chip" style="background:#16a34a">B- / B / B+  &nbsp;80–89</span>
+      <span class="scale-chip" style="background:#0d9488">A- / A / A+  &nbsp;90–100</span>
     </div>
   </div>
 
@@ -255,6 +255,16 @@
         <h3>Faceoff Grade</h3>
         <p>{{ desc.fo }}</p>
       </div>
+    </div>
+  </div>
+
+  <div class="meth-section">
+    <h2>Playoff Grades vs. Regular Season Grades</h2>
+    <div class="meth-body">
+      <p>Playoff grades are normalized within the playoff pool only — roughly 330 players across teams that qualified for the postseason. Because weaker teams are eliminated, everyone left is an above-average NHL player. This means <strong>75 still represents the average playoff performer</strong>, but that average is higher quality than the regular season average.</p>
+      <p>As a result, you cannot directly compare a playoff grade number to a regular season grade number. A player grading <strong>82 in the playoffs</strong> is performing better relative to their competition than a player grading 82 in the regular season — the playoff bar is simply harder to clear. Think of it like class rank: finishing at the top of a more selective group is a greater accomplishment than the same rank in a larger, more varied pool.</p>
+      <p>To give better visual separation in the compressed playoff pool, individual playoff game grades use a slightly wider scale than the regular season. This means the gap between the best and worst playoff performers looks similar to what you'd see in the regular season, even though the underlying talent range is narrower.</p>
+      <p>The practical takeaway: use playoff grades to compare players <strong>within the playoffs</strong>, and regular season grades to compare players <strong>across the full league</strong>. Crossing the two numbers directly will understate how hard it is to grade well in the postseason.</p>
     </div>
   </div>
 

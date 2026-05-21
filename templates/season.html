@@ -200,8 +200,8 @@
 }
 .player-search{
   margin-left:auto;
-  min-width:220px;
-  max-width:320px;
+  min-width:200px;
+  max-width:290px;
   width:100%;
 }
 .player-search input{
@@ -229,7 +229,7 @@
   padding:3px;
 }
 .filter-btn{
-  padding:4px 12px;
+  padding:4px 18px;
   border:none;
   border-radius:5px;
   background:transparent;
@@ -597,6 +597,8 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 @media(max-width:768px){
   .page{padding:12px 10px}
   .mobile-filter-btn{display:flex}
+  #pos-filters{width:100%}
+  #pos-filters .filter-btn{flex:1;text-align:center}
   .sidebar-backdrop.open{display:block}
   .page-layout{gap:0}
   .season-main{padding-left:0}
@@ -689,16 +691,15 @@ th.sorted .sort-arrow{opacity:1;color:var(--accent)}
 <!-- ── Main content ── -->
 <div class="season-main">
 <div class="season-hero">
-  <div class="season-title">{{ data.season_label }} NHL Season</div>
+  <div class="season-title">{{ data.season_label }} Regular Season Grades</div>
   <select class="season-select" onchange="(function(s){
     var tab   = document.getElementById('view-teams-btn').classList.contains('active')?'teams':'players';
     var tmode = document.getElementById('teams-allgames-toggle').classList.contains('active')?'all':'manual';
-    var pos   = (document.querySelector('.filter-btn.active')||{}).dataset?.pos||'all';
     var dz    = document.getElementById('dzblend-toggle').classList.contains('active')?'on':'off';
     var fs    = document.getElementById('full-season-toggle').classList.contains('active')?'on':'off';
     var team = typeof activeTeam !== 'undefined' ? activeTeam : 'ALL';
     var uq   = document.getElementById('unqualified-toggle').classList.contains('active')?'on':'off';
-    window.location='/?season='+s+'&tab='+tab+'&tmode='+tmode+'&pos='+pos+'&dz='+dz+'&fs='+fs+'&team='+encodeURIComponent(team)+'&uq='+uq;
+    window.location='/?season='+s+'&tab='+tab+'&tmode='+tmode+'&dz='+dz+'&fs='+fs+'&team='+encodeURIComponent(team)+'&uq='+uq;
   })(this.value)">
     {% for s_str, s_label in seasons %}
       <option value="{{ s_str }}"{% if s_str == active_season %} selected{% endif %}>{{ s_label }}</option>
@@ -850,9 +851,12 @@ Loading grades...
 <div id="players-view"{% if active_tab == 'teams' %} style="display:none"{% endif %}>
 <div class="filters" id="players-filters" style="visibility:hidden">
   <div class="filter-group" id="pos-filters">
-    <button class="filter-btn {% if active_pos == 'all' %}active{% endif %}" data-pos="all">All</button>
-    <button class="filter-btn {% if active_pos == 'fwd' %}active{% endif %}" data-pos="fwd">Forwards</button>
-    <button class="filter-btn {% if active_pos == 'def' %}active{% endif %}" data-pos="def">Defense</button>
+    <button class="filter-btn active" data-pos="all">All</button>
+    <button class="filter-btn" data-pos="F">F</button>
+    <button class="filter-btn" data-pos="C">C</button>
+    <button class="filter-btn" data-pos="LW">LW</button>
+    <button class="filter-btn" data-pos="RW">RW</button>
+    <button class="filter-btn" data-pos="D">D</button>
   </div>
 <button class="ms-toggle-btn" id="ms-toggle" title="Microstat mode: overlay AllThreeZones manual tracking data" style="display:none">MS Mode</button>
   <button class="ms-toggle-btn" id="atz-toggle" title="Add AllThreeZones tracking data on top of MoneyPuck baseline scores" style="display:none">ATZ +Tracking</button>
@@ -917,6 +921,7 @@ Loading grades...
       data-stats-subset="{{ row.sub_goals }}|{{ row.sub_assists }}|{{ row.sub_points }}|{{ row.sub_sog }}|{{ row.sub_hits }}|{{ row.sub_blocks }}|{{ row.sub_gva }}|{{ row.sub_tka }}|{{ row.sub_pim }}|{{ row.sub_toi_per_game }}"
       data-team="{{ row.team }}"
       data-pos="{{ row.pos_group }}"
+      data-position="{{ row.position | pos_display }}"
       data-qualified="{{ 'true' if row.qualified else 'false' }}"
       data-qualified-manual="{{ 'true' if row.qualified_manual else 'false' }}"
       data-global-rank="{{ row.rank }}"
@@ -1022,9 +1027,8 @@ function gradeColor(s) {
   if (s == null) return '#374151';
   if (s >= 90) return '#0d9488';
   if (s >= 80) return '#16a34a';
-  if (s >= 70) return '#4d7c0f';
-  if (s >= 60) return '#b45309';
-  if (s >= 50) return '#c2410c';
+  if (s >= 70) return '#c45e0a';
+  if (s >= 60) return '#9a3412';
   return '#b91c1c';
 }
 
@@ -1182,7 +1186,7 @@ const TEAM_DIV = {
 };
 
 let activeTeam = '{{ active_team or "ALL" }}';
-let activePos  = '{{ active_pos }}';
+let activePosSet = new Set();
 let showUnqualified = {{ 'true' if show_unqualified else 'false' }};
 let activeSearch = '';
 
@@ -1200,7 +1204,7 @@ function applyFilters() {
     else if (activeTeam === 'EAST' || activeTeam === 'WEST') teamOk = TEAM_CONF[t] === activeTeam;
     else if (['Atlantic','Metropolitan','Central','Pacific'].includes(activeTeam)) teamOk = TEAM_DIV[t] === activeTeam;
     else                                                   teamOk = t === activeTeam;
-    const posOk    = activePos === 'all' || row.dataset.pos === activePos;
+    const posOk    = activePosSet.size === 0 || activePosSet.has(row.dataset.position);
     const qualOk    = showUnqualified || row.dataset.qualified === 'true';
     const filterOk  = teamOk && posOk && qualOk;
     const nameOk    = !activeSearch || row.querySelector('.td-name').textContent.toLowerCase().includes(activeSearch);
@@ -1341,11 +1345,36 @@ _sidebarBtn.addEventListener('click', () =>
 try { if (localStorage.getItem('phf_sidebar')) _setSidebarCollapsed(true); } catch(e){}
 
 /* ── position filter ── */
+function updatePosUI() {
+  document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  if (activePosSet.size === 0) {
+    document.querySelector('#pos-filters .filter-btn[data-pos="all"]').classList.add('active');
+  } else {
+    if (['C','LW','RW'].every(p => activePosSet.has(p)))
+      document.querySelector('#pos-filters .filter-btn[data-pos="F"]').classList.add('active');
+    ['C','LW','RW','D'].forEach(p => {
+      if (activePosSet.has(p))
+        document.querySelector(`#pos-filters .filter-btn[data-pos="${p}"]`).classList.add('active');
+    });
+  }
+}
+
 document.querySelectorAll('#pos-filters .filter-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('#pos-filters .filter-btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    activePos = this.dataset.pos;
+  btn.addEventListener('click', () => {
+    const pos = btn.dataset.pos;
+    if (pos === 'all') {
+      activePosSet.clear();
+    } else if (pos === 'F') {
+      if (['C','LW','RW'].every(p => activePosSet.has(p)))
+        ['C','LW','RW'].forEach(p => activePosSet.delete(p));
+      else
+        ['C','LW','RW'].forEach(p => activePosSet.add(p));
+    } else {
+      if (activePosSet.has(pos)) activePosSet.delete(pos);
+      else activePosSet.add(pos);
+    }
+    if (['C','LW','RW','D'].every(p => activePosSet.has(p))) activePosSet.clear();
+    updatePosUI();
     applyFilters();
   });
 });
@@ -1443,9 +1472,8 @@ document.getElementById('ms-toggle').addEventListener('click', function() {
 function gradeBg(s) {
   if (s >= 90) return '#0d9488';
   if (s >= 80) return '#16a34a';
-  if (s >= 70) return '#4d7c0f';
-  if (s >= 60) return '#b45309';
-  if (s >= 50) return '#c2410c';
+  if (s >= 70) return '#c45e0a';
+  if (s >= 60) return '#9a3412';
   return '#b91c1c';
 }
 
@@ -1527,7 +1555,9 @@ function applyDzBlend() {
       const badge = overallTd.querySelector('.grade-badge');
       if (badge) {
         badge.style.background = gradeBg(overallVal);
+        const lEl = badge.querySelector('.g-letter');
         const sEl = badge.querySelector('.g-score');
+        if (lEl) lEl.textContent = gradeLetterFromScore(overallVal);
         if (sEl) sEl.textContent = overallVal.toFixed(1);
       }
     } else {
@@ -1550,7 +1580,9 @@ function applyDzBlend() {
       const badge = overallTd.querySelector('.grade-badge');
       if (badge) {
         badge.style.background = gradeBg(overallVal);
+        const lEl = badge.querySelector('.g-letter');
         const sEl = badge.querySelector('.g-score');
+        if (lEl) lEl.textContent = gradeLetterFromScore(overallVal);
         if (sEl) sEl.textContent = overallVal.toFixed(1);
       }
     }
@@ -1760,6 +1792,12 @@ function toggleMobileSidebar() {
   const bd = document.getElementById('sidebar-backdrop');
   const open = sb.classList.toggle('mobile-open');
   bd.classList.toggle('open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+  if (open) {
+    window.scrollTo(0, 0);
+    sb.style.pointerEvents = 'none';
+    setTimeout(() => { sb.style.pointerEvents = ''; }, 350);
+  }
 }
 document.getElementById('sidebar-backdrop').addEventListener('click', toggleMobileSidebar);
 
@@ -1914,8 +1952,8 @@ document.addEventListener('touchend', e => {
 
 <script>
 function _gradeColor(v){
-  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#4d7c0f';
-  if(v>=60)return'#b45309';if(v>=50)return'#c2410c';return'#b91c1c';
+  if(v>=90)return'#0d9488';if(v>=80)return'#16a34a';if(v>=70)return'#c45e0a';
+  if(v>=60)return'#9a3412';return'#b91c1c';
 }
 function _fmtHeight(inches){
   if(!inches)return'—';return`${Math.floor(inches/12)}′${inches%12}″`;

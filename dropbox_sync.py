@@ -21,7 +21,7 @@ import requests
 DROPBOX_URL = (
     'https://www.dropbox.com/scl/fo/6azd6a52j9muyqmy6lkeu'
     '/APMHEXDrhNze8yjdVdNIES8/Playoff%20Game%20Log'
-    '?dl=0&rlkey=2ahheo6zj5nd7bc2d4upvlyxc'
+    '?dl=1&rlkey=2ahheo6zj5nd7bc2d4upvlyxc'
 )
 
 LOGS_BASE = Path(__file__).parent / 'Manual Game Logs' / 'Playoffs'
@@ -79,4 +79,9 @@ if __name__ == '__main__':
         print(f'{len(changed)} file(s) changed — rebuilding grades...')
         from build_playoff_grades import build
         build(mp_year)
+        # Clear season cache so Flask picks up new grades on next request
+        cache_dir = Path(__file__).parent / 'season_cache'
+        for f in cache_dir.glob('*.json'):
+            f.unlink()
+            print(f'  Cleared cache: {f.name}')
         print('Done.')

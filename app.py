@@ -73,9 +73,8 @@ def _grade_bg(score) -> str:
     score = float(score)
     if score >= 90: return '#0d9488'
     if score >= 80: return '#16a34a'
-    if score >= 70: return '#4d7c0f'
-    if score >= 60: return '#b45309'
-    if score >= 50: return '#c2410c'
+    if score >= 70: return '#c45e0a'
+    if score >= 60: return '#9a3412'
     return '#b91c1c'
 
 
@@ -130,9 +129,6 @@ def index():
     teams_mode = request.args.get('tmode', 'manual')
     if teams_mode not in ('manual', 'all'):
         teams_mode = 'manual'
-    active_pos = request.args.get('pos', 'all')
-    if active_pos not in ('all', 'fwd', 'def'):
-        active_pos = 'all'
     dz_blend = request.args.get('dz', 'on') == 'on'
     full_season = request.args.get('fs', 'off') == 'on'
     show_unqualified = request.args.get('uq', 'off') == 'on'
@@ -161,7 +157,28 @@ def index():
                 'dfn':     _rank_by('dfn_blend'),
                 'fo':      _rank_by('fo_g'),
             }
-    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS, active_tab=active_tab, teams_mode=teams_mode, active_pos=active_pos, dz_blend=dz_blend, full_season=full_season, show_unqualified=show_unqualified, active_team=active_team, active_team_grade=active_team_grade, active_team_ranks=active_team_ranks)
+    return render_template('season.html', data=data, active_season=season_str, seasons=_SEASONS, grade_desc=GRADE_DESCRIPTIONS, active_tab=active_tab, teams_mode=teams_mode, dz_blend=dz_blend, full_season=full_season, show_unqualified=show_unqualified, active_team=active_team, active_team_grade=active_team_grade, active_team_ranks=active_team_ranks)
+
+
+@app.route('/api/player/<int:player_id>/playoff-games')
+def player_playoff_games(player_id: int):
+    season_str = request.args.get('season', '20252026')
+    if season_str not in ('20252026', '20242025'):
+        season_str = '20252026'
+    season = int(season_str[:4])
+    playoff_min = int(f'{season}030000')
+    conn = sqlite3.connect('cache.db')
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        '''SELECT game_id, team, opponent, game_date, toi_min,
+                  off, dfn, overall, has_tracking
+           FROM player_game_grades
+           WHERE player_id=? AND season=? AND game_id >= ?
+           ORDER BY game_date ASC, game_id ASC''',
+        (player_id, season, playoff_min)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 
 @app.route('/api/player/<int:player_id>/games')
@@ -193,7 +210,7 @@ def season_extended_api(season_str):
     conn = sqlite3.connect('cache.db')
     rows = conn.execute(
         "SELECT player_id, toi_min, off, dfn, overall FROM player_game_grades "
-        "WHERE season=? AND CAST(game_id AS TEXT) LIKE ?",
+        "WHERE season=? AND CAST(game_id AS TEXT) LIKE ? AND toi_min >= 7",
         [mp_year, f'{mp_year}02%']
     ).fetchall()
     conn.close()
@@ -558,6 +575,109 @@ def game_grades(game_id):
         has_play_grades=has_play_grades,
         has_ms_grades=has_ms_grades,
     )
+
+
+@app.route('/playoffs')
+def playoffs():
+    season_str = request.args.get('season', '20252026')
+    if season_str not in ('20252026', '20242025'):
+        season_str = '20252026'
+    season = int(season_str[:4])
+    playoff_min = int(f'{season}030000')
+
+    conn = sqlite3.connect('cache.db')
+
+    # Grades + moneypuck stats
+    rows = conn.execute('''
+        SELECT
+            pgg.player_id, pgg.name, pgg.team, pgg.position,
+            COUNT(*)                                                AS gp,
+            ROUND(SUM(pgg.toi_min) / COUNT(*), 1)                  AS toi_pg,
+            ROUND(SUM(pgg.overall * pgg.toi_min) / SUM(pgg.toi_min), 1) AS overall,
+            ROUND(SUM(pgg.off     * pgg.toi_min) / SUM(pgg.toi_min), 1) AS off,
+            ROUND(SUM(pgg.dfn     * pgg.toi_min) / SUM(pgg.toi_min), 1) AS dfn,
+            ROUND(SUM(pgg.overall * pgg.toi_min) / SUM(pgg.toi_min), 1) AS overall_adj,
+            SUM(pgg.has_tracking)                                   AS tracked,
+            CAST(ROUND(SUM(COALESCE(mp.goals, 0)))           AS INTEGER) AS goals,
+            CAST(ROUND(SUM(COALESCE(mp.primary_assists,0) + COALESCE(mp.secondary_assists,0))) AS INTEGER) AS assists,
+            CAST(ROUND(SUM(COALESCE(mp.shots_on_goal, 0)))   AS INTEGER) AS sog,
+            CAST(ROUND(SUM(COALESCE(mp.hits, 0)))            AS INTEGER) AS hits,
+            CAST(ROUND(SUM(COALESCE(mp.giveaways, 0)))       AS INTEGER) AS gva,
+            CAST(ROUND(SUM(COALESCE(mp.takeaways, 0)))       AS INTEGER) AS tka,
+            CAST(ROUND(SUM(COALESCE(mp.pim, 0)))             AS INTEGER) AS pim,
+            CASE WHEN SUM(mp.icetime) > 0
+                 THEN ROUND(SUM(mp.onice_corsi_pct * mp.icetime) / SUM(mp.icetime) * 100, 1)
+                 ELSE NULL END AS cf_pct,
+            CASE WHEN SUM(mp.icetime) > 0
+                 THEN ROUND(SUM(mp.onice_xg_pct * mp.icetime) / SUM(mp.icetime) * 100, 1)
+                 ELSE NULL END AS xg_pct
+        FROM player_game_grades pgg
+        LEFT JOIN moneypuck_games mp
+               ON mp.game_id = pgg.game_id
+              AND mp.player_id = pgg.player_id
+              AND mp.situation = 'all'
+        WHERE pgg.season=? AND pgg.game_id >= ? AND pgg.toi_min >= 7
+        GROUP BY pgg.player_id
+        HAVING gp >= 4
+        ORDER BY overall_adj DESC
+    ''', (season, playoff_min)).fetchall()
+
+    # Blocks and FO% from games table player_stats JSON
+    game_rows = conn.execute(
+        "SELECT player_stats FROM games WHERE CAST(game_id AS TEXT) LIKE ?",
+        (f'{season}03%',)
+    ).fetchall()
+    conn.close()
+
+    blocks_map: dict[int, int] = {}
+    fo_map: dict[int, list] = {}  # pid -> [won, total]
+    for (ps_json,) in game_rows:
+        try:
+            ps = json.loads(ps_json)
+        except Exception:
+            continue
+        for pid_str, s in ps.items():
+            pid = int(pid_str)
+            blk = int(s.get('blocked_shots', 0) or 0)
+            blocks_map[pid] = blocks_map.get(pid, 0) + blk
+            won = (int(s.get('es_fo_won', 0) or 0) +
+                   int(s.get('pp_fo_won', 0) or 0) +
+                   int(s.get('pk_fo_won', 0) or 0))
+            lost = (int(s.get('es_fo_lost', 0) or 0) +
+                    int(s.get('pp_fo_lost', 0) or 0) +
+                    int(s.get('pk_fo_lost', 0) or 0))
+            entry = fo_map.setdefault(pid, [0, 0])
+            entry[0] += won
+            entry[1] += won + lost
+
+    pos_display = {'L': 'LW', 'R': 'RW'}
+    players = []
+    for r in rows:
+        (pid, name, team, pos, gp, toi_pg, overall, off, dfn, overall_adj,
+         tracked, goals, assists, sog, hits, gva, tka, pim, cf_pct, xg_pct) = r
+        points = (goals or 0) + (assists or 0)
+        fo_d = fo_map.get(pid, [0, 0])
+        fo_pct = f'{fo_d[0]/fo_d[1]*100:.1f}' if fo_d[1] >= 5 else '—'
+        toi_mm = f'{int(toi_pg)}:{round((toi_pg % 1) * 60):02d}' if toi_pg is not None else '—'
+        players.append({
+            'player_id': pid, 'name': name, 'team': team,
+            'position': pos_display.get(pos, pos),
+            'gp': gp, 'toi_pg': toi_mm, 'toi_pg_raw': toi_pg,
+            'overall': overall, 'overall_adj': overall_adj,
+            'overall_letter': score_to_letter(overall_adj), 'overall_adj_letter': score_to_letter(overall_adj),
+            'off': off,         'off_letter':     score_to_letter(off),
+            'dfn': dfn,         'dfn_letter':     score_to_letter(dfn),
+            'has_tracking': tracked >= gp / 2,
+            'goals': goals or 0, 'assists': assists or 0, 'points': points,
+            'sog': sog or 0, 'hits': hits or 0, 'blocks': blocks_map.get(pid, 0),
+            'gva': gva or 0, 'tka': tka or 0, 'pim': pim or 0,
+            'cf_pct': f'{cf_pct:.1f}' if cf_pct is not None else '—',
+            'xg_pct': f'{xg_pct:.1f}' if xg_pct is not None else '—',
+            'fo_pct': fo_pct,
+        })
+
+    teams = sorted({p['team'] for p in players})
+    return render_template('playoffs.html', players=players, teams=teams, season_str=season_str)
 
 
 @app.route('/game/<int:game_id>')
